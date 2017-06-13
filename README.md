@@ -1,11 +1,9 @@
 # One True Path 
 
-
 The aim is to create one package that makes working with SVG paths nice and convenient.  
-The goal is to remove (part of) the current separate implementations of SVG paths in existing packages.
+Eventually, this package should replace (part of) the current separate implementations of SVG paths in existing packages.
 
-I'll refer to the package here as `OneTruePath`, but we might want to pick a more serious name later.
-
+*I'll refer to the package here as `OneTruePath`, but we might want to pick a more serious name later.*
 
 ### in scope 
 
@@ -19,16 +17,13 @@ I'll refer to the package here as `OneTruePath`, but we might want to pick a mor
 ### out of scope (for now) 
 
 * advanced mathematics: 
-    Stuff like derivatives, tangents, interpolation is probably best implemented on top of OneTruePath.
+    Stuff like derivatives, tangents, interpolation is probably best implemented on top of OneTruePath. Maybe there are good practical reasons to implement mathematical funcions directly on svg instructions. 
     We'll have to investigate what exactly makes sense to include here and what truely belongs in a separate package.
 
 * different backends:
     - Canvas is compatable with svg (has move, arc and cubicBezier, so all svg instructions can be mapped to canvas ones), but does not 
     have adequate support in elm right now
     - WebGL would involve writing a rasterizer (convert curves to pixels)
-
-
-
 
 ## SVG Path usage in current packages
 
@@ -53,7 +48,7 @@ be generalized to `(Coordinate -> Coordinate) -> Path -> Path`.
 Only supports a subset of the path instructions, and adds some new ones (ArcCustom, Rect). 
 The main data structure is [PathSegment](https://github.com/gampleman/elm-visualization/blob/79ce8ecf7d208a2969805085a64b1017dce5334d/src/Visualization/Path.elm#L47) .
 
-[ArcCustom](https://github.com/gampleman/elm-visualization/blob/79ce8ecf7d208a2969805085a64b1017dce5334d/src/Visualization/Path.elm#L142) operates with a startAngle and endAngle, a construct that is also defined by elm-style-animation. This is not part of the SVG standard, but maybe useful enough in practice to include 
+The custom [ArcCustom](https://github.com/gampleman/elm-visualization/blob/79ce8ecf7d208a2969805085a64b1017dce5334d/src/Visualization/Path.elm#L142) instruction operates with a startAngle and endAngle, something that is also defined by elm-style-animation. This is not part of the SVG standard, but maybe useful enough in practice to include 
 as a first-class instruction?
 
 ### svg-path-dsl
@@ -80,7 +75,7 @@ This is an experiment to see what kind of API and data structure is convenient. 
 There are currently 4 modules  
 
 * Path 
-    A path is a list of subpaths. A subpath is one moveto instruction (relative or abolute) followed by a list of drawto instructions (drawto includes all the other
+    A path is a list of subpaths. A subpath is one moveto instruction (relative or absolute) followed by a list of drawto instructions (drawto includes all the other
     instructions, like `L`, `Q`, etc.)
 
     The main data strucures look like 
