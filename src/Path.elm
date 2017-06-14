@@ -112,6 +112,14 @@ closepath =
     ClosePath
 
 
+quadraticCurveTo =
+    QuadraticBezierCurveTo Absolute
+
+
+arcTo =
+    EllipticArc Absolute
+
+
 
 -- Composing Paths
 

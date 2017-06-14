@@ -51,6 +51,9 @@ The main data structure is [PathSegment](https://github.com/gampleman/elm-visual
 The custom [ArcCustom](https://github.com/gampleman/elm-visualization/blob/79ce8ecf7d208a2969805085a64b1017dce5334d/src/Visualization/Path.elm#L142) instruction operates with a startAngle and endAngle, something that is also defined by elm-style-animation. This is not part of the SVG standard, but maybe useful enough in practice to include 
 as a first-class instruction?
 
+This package also keeps track of the cursor state when operating on the instructions. This is very convenient to have around - for concatenating paths 
+but possibly much more.
+
 ### svg-path-dsl
 
 
@@ -151,22 +154,80 @@ And then some experiments
 
 ## Current packages and this proposal 
 
+I've included some code from the libraries, rewritten with the proposed api. 
+
 * elm-style-animation
 
-    This module uses a custom type [at the nodes of its PathCommand type](https://github.com/mdgriffith/elm-style-animation/blob/86f81b0f5a28289894fe61c14fa2c34c0bf895ec/src/Animation/Model.elm#L97) (not `(Float, Float)` but something more elaborate). It probably makes most sense to 
-    create a function `Model.PathCommand -> OneTruePath.Command`, then use the stringification in the shared package.
+    This module uses a custom type [at the nodes of its PathCommand type](https://github.com/mdgriffith/elm-style-animation/blob/86f81b0f5a28289894fe61c14fa2c34c0bf895ec/src/Animation/Model.elm#L97) (not `(Float, Float)` but something more elaborate).
+    Ideally, the package would be changed to work more naturally with (sub)paths (i.e. enforcing a leading MoveTo). In any case it can 
+    use the low-level strinify functions.
 
-    Alternatively, the elm-style-animation package could be changed to work more naturally with (sub)paths (i.e. enforcing a leading MoveTo)
+    [source](https://github.com/mdgriffith/elm-style-animation/blob/master/src/Animation/Render.elm#L565)
+
+    ```elm
+    arcToExample arc dx dy =
+        stringifyDrawTo <|
+            arcTo
+                [ { radii = ( arc.radius.position, arc.radius.position )
+                  , xAxisRotate = 0
+                  , arcFlag = LargestArc
+                  , direction = CounterClockwise
+                  , target = ( arc.x.position - dx, arc.y.position - dy )
+                  }
+                , { radii = ( arc.radius.position, arc.radius.position )
+                  , xAxisRotate = 0
+                  , arcFlag = LargestArc
+                  , direction = Clockwise
+                  , target = ( arc.x.position + dx, arc.y.position + dy )
+                  }
+                ]
+    ```
+    
     
 
 * elm-plot 
     Looks like it can use `OneTruePath.Path` and its api
+
+    [source](https://github.com/terezka/elm-plot/blob/master/src/Internal/Draw.elm#L113)
+    ```elm
+    linear : PlotSummary -> List Point -> Path
+    linear plot points =
+        let 
+            -- conversion to svg coordinates
+            translation (x, y) = ( toSVGX plot x, toSVGY plot y)
+        in 
+            case points of 
+                [] -> []
+                p::ps -> 
+                    subpath (moveTo p) (lineTo points)
+                        |> List.singleton
+                        |> Path.mapCoordinates translation 
+    ```
     
 * elm-visualization 
     Looks like it can use `OneTruePath.Path` and its api
+
+    [source](https://github.com/gampleman/elm-visualization/blob/master/src/Visualization/Path.elm#L363)
+
+    ```elm
+    subpath (moveTo (x, y)) 
+        [ horizontalBy [ w ] 
+        , verticalBy [ h ]
+        , horizontalBy [ -w ]
+        , closepath
+        ]
+    ```
     
 * opensolid/svg
     Looks like it can use `OneTruePath.Path` and its api
+
+    [source](https://github.com/opensolid/svg/blob/1.1.0/src/OpenSolid/Svg.elm#L692)
+    ```elm
+    openSolidExample x1 y1 x2 y2 x3 y3 =
+        subpath (Path.moveTo ( x1, y1 )) [ quadraticCurveTo [ ( x2, y2 ), ( x3, y3 ) ] ]
+            |> stringifySubPath
+    ```
+
 
 * svg-path-dsl
 
