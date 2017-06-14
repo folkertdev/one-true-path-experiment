@@ -11,7 +11,7 @@ Eventually, this package should replace (part of) the current separate implement
 * a pretty-printer (convert draw instructions to strings)
 * a parser (convert strings to draw instructions)  - could be a separate package
 * basic transformations:
-    For instance translating a set of instructions by some amount, get the bounding box of a path, 
+    For instance spatial transformations (translate, scale, rotate), get the bounding box of a path, 
     visually concatenate paths, overlay paths.  
 
 ### out of scope (for now) 
@@ -65,8 +65,10 @@ one constructor of the PathCommand type can construct multiple commands.
 
 ### opensolid/svg
 
-the opensolid/svg package uses polygon and polyline where possible, and draws arcs and curves using manual string concatenation.
-It also defines curves and polylines in a more abstract way, and implements many mathematical operations on them.
+the opensolid/svg package uses polygon and polyline where possible, and draws arcs and curves using [manual string concatenation](https://github.com/opensolid/svg/blob/1.1.0/src/OpenSolid/Svg.elm#L692).
+The parent opensolid/opensolid package defines curves and polylines in a more abstract way, and implements many mathematical operations on them.
+
+
 
 ## My Experiment 
 
@@ -74,7 +76,7 @@ This is an experiment to see what kind of API and data structure is convenient. 
 
 There are currently 4 modules  
 
-* Path 
+* **Path**: 
     A path is a list of subpaths. A subpath is one moveto instruction (relative or absolute) followed by a list of drawto instructions (drawto includes all the other
     instructions, like `L`, `Q`, etc.)
 
@@ -120,10 +122,15 @@ There are currently 4 modules
     ```
 
     This module also includes stringify functions to convert to something that the `d` attribute (and the parser) accepts.
-* Command
+
+* **Command:**
     Path makes a distinction (in the types) between `MoveTo` and `DrawTo`. In general that is great, but sometimes it is nicer to be able to easily compose 
     movetos and drawtos. Command is a wrapper for that, with conversion functions to and from Path.
-* PathParser
+
+    We'll have to see how useful this is in practice. Path enforces correct svg (leading MoveTo) and in general I think it is 
+    nicer to think of svg as subpaths (moveto, list of drawtos) rather than a list of instructions without structure.
+
+* **PathParser:**
     Parse some svg path syntax into an elm `Path` object.
 
 
