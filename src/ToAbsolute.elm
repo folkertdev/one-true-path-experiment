@@ -38,11 +38,13 @@ toAbsoluteSubPath_ subpath =
 toAbsoluteSubPath : CursorState -> SubPath -> ( SubPath, CursorState )
 toAbsoluteSubPath ({ start, cursor } as state) { moveto, drawtos } =
     -- the foldlM and map List.reverse should be combined into a (working) traverse
-    drawtos
-        |> State.foldlM (\accum elem -> State.map2 (::) (toAbsoluteDrawTo_ elem) (State.state accum)) []
-        |> State.map List.reverse
-        |> State.map2 SubPath (toAbsoluteMoveTo_ moveto)
+    State.map2 SubPath (toAbsoluteMoveTo_ moveto) (State.map List.reverse << State.traverse toAbsoluteDrawTo_ << List.reverse <| drawtos)
         |> State.run state
+
+
+traverseLeft : (a -> State s b) -> List a -> State s (List b)
+traverseLeft f list =
+    State.foldlM (\accum elem -> State.map2 (::) (f elem) (State.state accum)) [] list
 
 
 toAbsoluteMoveTo_ : MoveTo -> State CursorState MoveTo
@@ -52,7 +54,14 @@ toAbsoluteMoveTo_ moveto =
 
 toAbsoluteDrawTo_ : DrawTo -> State CursorState DrawTo
 toAbsoluteDrawTo_ drawto =
-    State.advance (\state -> toAbsoluteDrawTo state drawto)
+    State.advance
+        (\state ->
+            let
+                _ =
+                    Debug.log "absolute drawto" ( drawto, state )
+            in
+                toAbsoluteDrawTo state drawto
+        )
 
 
 type alias CursorState =
