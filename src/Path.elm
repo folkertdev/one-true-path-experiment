@@ -40,7 +40,7 @@ type DrawTo
     | SmoothCurveTo Mode (List ( Coordinate, Coordinate ))
     | QuadraticBezierCurveTo Mode (List ( Coordinate, Coordinate ))
     | SmoothQuadraticBezierCurveTo Mode (List Coordinate)
-    | EllipticArc Mode (List EllipticalArcArgument)
+    | EllipticalArc Mode (List EllipticalArcArgument)
     | ClosePath
 
 
@@ -117,25 +117,7 @@ quadraticCurveTo =
 
 
 arcTo =
-    EllipticArc Absolute
-
-
-
--- Composing Paths
-
-
-{-| Overlay two paths (this only makes sense when both paths start with an absolute move instruction)
--}
-overlay : Path -> Path -> Path
-overlay =
-    (++)
-
-
-{-| Visually concatenate 2 paths: the instructions in the second path will be ofset by the last position in the first path
--}
-concatenate : Path -> Path -> Path
-concatenate pathA pathB =
-    Debug.crash "not implemented"
+    EllipticalArc Absolute
 
 
 
@@ -168,8 +150,46 @@ stringifyDrawTo command =
         LineTo mode coordinates ->
             stringifyCharacter mode 'L' ++ String.join " " (List.map stringifyCoordinate coordinates)
 
-        _ ->
-            ""
+        Horizontal mode coordinates ->
+            stringifyCharacter mode 'H' ++ String.join " " (List.map toString coordinates)
+
+        Vertical mode coordinates ->
+            stringifyCharacter mode 'V' ++ String.join " " (List.map toString coordinates)
+
+        CurveTo mode coordinates ->
+            stringifyCharacter mode 'C' ++ String.join " " (List.map stringifyCoordinate3 coordinates)
+
+        SmoothCurveTo mode coordinates ->
+            stringifyCharacter mode 'S' ++ String.join " " (List.map stringifyCoordinate2 coordinates)
+
+        QuadraticBezierCurveTo mode coordinates ->
+            stringifyCharacter mode 'Q' ++ String.join " " (List.map stringifyCoordinate2 coordinates)
+
+        SmoothQuadraticBezierCurveTo mode coordinates ->
+            stringifyCharacter mode 'T' ++ String.join " " (List.map stringifyCoordinate coordinates)
+
+        EllipticalArc mode arguments ->
+            stringifyCharacter mode 'A' ++ String.join " " (List.map stringifyEllipticalArcArgument arguments)
+
+        ClosePath ->
+            "Z"
+
+
+stringifyEllipticalArcArgument : EllipticalArcArgument -> String
+stringifyEllipticalArcArgument { radii, xAxisRotate, arcFlag, direction, target } =
+    String.join " "
+        [ stringifyCoordinate radii
+        , toString xAxisRotate
+        , if arcFlag == LargestArc then
+            "1"
+          else
+            "0"
+        , if direction == Clockwise then
+            "1"
+          else
+            "0"
+        , stringifyCoordinate target
+        ]
 
 
 stringifyCharacter : Mode -> Char -> String
@@ -185,3 +205,13 @@ stringifyCharacter mode character =
 stringifyCoordinate : Coordinate -> String
 stringifyCoordinate ( x, y ) =
     toString x ++ "," ++ toString y
+
+
+stringifyCoordinate2 : ( Coordinate, Coordinate ) -> String
+stringifyCoordinate2 ( c1, c2 ) =
+    stringifyCoordinate c1 ++ " " ++ stringifyCoordinate c2
+
+
+stringifyCoordinate3 : ( Coordinate, Coordinate, Coordinate ) -> String
+stringifyCoordinate3 ( c1, c2, c3 ) =
+    stringifyCoordinate c1 ++ " " ++ stringifyCoordinate c2 ++ " " ++ stringifyCoordinate c3
