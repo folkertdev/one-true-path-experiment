@@ -8,6 +8,10 @@ import State exposing (State)
 import Path exposing (..)
 
 
+type alias CursorState =
+    { start : Coordinate, cursor : Coordinate }
+
+
 addCoordinates : Coordinate -> Coordinate -> Coordinate
 addCoordinates ( x1, y1 ) ( x2, y2 ) =
     ( x1 + x2, y1 + y2 )
@@ -42,11 +46,6 @@ toAbsoluteSubPath ({ start, cursor } as state) { moveto, drawtos } =
         |> State.run state
 
 
-traverseLeft : (a -> State s b) -> List a -> State s (List b)
-traverseLeft f list =
-    State.foldlM (\accum elem -> State.map2 (::) (f elem) (State.state accum)) [] list
-
-
 toAbsoluteMoveTo_ : MoveTo -> State CursorState MoveTo
 toAbsoluteMoveTo_ moveto =
     State.advance (\state -> toAbsoluteMoveTo state moveto)
@@ -54,18 +53,7 @@ toAbsoluteMoveTo_ moveto =
 
 toAbsoluteDrawTo_ : DrawTo -> State CursorState DrawTo
 toAbsoluteDrawTo_ drawto =
-    State.advance
-        (\state ->
-            let
-                _ =
-                    Debug.log "absolute drawto" ( drawto, state )
-            in
-                toAbsoluteDrawTo state drawto
-        )
-
-
-type alias CursorState =
-    { start : Coordinate, cursor : Coordinate }
+    State.advance (\state -> toAbsoluteDrawTo state drawto)
 
 
 toAbsoluteMoveTo : CursorState -> MoveTo -> ( MoveTo, CursorState )
@@ -98,22 +86,13 @@ mapCoordinates tagger drawto =
             drawto
 
 
-toAbsoluteCoordinates mode cursor coordinates =
-    case mode of
-        Absolute ->
-            coordinates
-
-        Relative ->
-            List.map (addCoordinates cursor) coordinates
-
-
 toAbsoluteDrawTo : CursorState -> DrawTo -> ( DrawTo, CursorState )
 toAbsoluteDrawTo ({ start, cursor } as state) drawto =
     case drawto of
         LineTo mode coordinates ->
             let
                 absoluteCoordinates =
-                    toAbsoluteCoordinates mode cursor coordinates
+                    coordinatesToAbsolute mode (coordinateToAbsolute cursor) coordinates
             in
                 case last absoluteCoordinates of
                     Nothing ->
@@ -129,7 +108,7 @@ toAbsoluteDrawTo ({ start, cursor } as state) drawto =
                 absoluteCoordinates =
                     xs
                         |> List.map (\x -> ( x, 0 ))
-                        |> toAbsoluteCoordinates mode cursor
+                        |> coordinatesToAbsolute mode (coordinateToAbsolute cursor)
             in
                 case last absoluteCoordinates of
                     Nothing ->
@@ -140,8 +119,68 @@ toAbsoluteDrawTo ({ start, cursor } as state) drawto =
                         , { state | cursor = finalCoordinate }
                         )
 
+        CurveTo mode coordinates ->
+            let
+                coordinateToAbsolute ( p1, p2, p3 ) =
+                    ( addCoordinates cursor p1
+                    , addCoordinates cursor p1
+                    , addCoordinates cursor p1
+                    )
+
+                absoluteCoordinates =
+                    case mode of
+                        Absolute ->
+                            coordinates
+
+                        Relative ->
+                            List.map coordinateToAbsolute coordinates
+            in
+                case last absoluteCoordinates of
+                    Nothing ->
+                        ( CurveTo Absolute [], state )
+
+                    Just ( _, _, target ) ->
+                        ( CurveTo Absolute absoluteCoordinates, { state | cursor = target } )
+
+        EllipticalArc mode arguments ->
+            let
+                argumentToAbsolute cursor argument =
+                    { argument | target = addCoordinates cursor argument.target }
+
+                absoluteArguments =
+                    coordinatesToAbsolute mode (argumentToAbsolute cursor) arguments
+            in
+                case last absoluteArguments of
+                    Nothing ->
+                        ( EllipticalArc Absolute [], state )
+
+                    Just { target } ->
+                        ( EllipticalArc Absolute absoluteArguments, { state | cursor = target } )
+
         _ ->
             ( drawto, state )
+
+
+coordinateToAbsolute =
+    addCoordinates
+
+
+coordinateToAbsolute2 cursor ( p1, p2 ) =
+    ( addCoordinates cursor p1, addCoordinates cursor p2 )
+
+
+coordinateToAbsolute3 cursor ( p1, p2, p3 ) =
+    ( addCoordinates cursor p1, addCoordinates cursor p2, addCoordinates cursor p3 )
+
+
+coordinatesToAbsolute : Mode -> (coords -> coords) -> List coords -> List coords
+coordinatesToAbsolute mode toAbsolute coordinates =
+    case mode of
+        Absolute ->
+            coordinates
+
+        Relative ->
+            List.map toAbsolute coordinates
 
 
 last : List a -> Maybe a
