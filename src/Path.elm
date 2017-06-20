@@ -116,6 +116,10 @@ quadraticCurveTo =
     QuadraticBezierCurveTo Absolute
 
 
+cubicCurveTo =
+    CurveTo Absolute
+
+
 arcTo =
     EllipticalArc Absolute
 
