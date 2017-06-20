@@ -75,6 +75,87 @@ type alias LineGenerator a =
     }
 
 
+type MyMachine
+    = Empty
+    | One Vec2
+    | Two Vec2 Vec2
+    | Threes
+        { first : ( Vec2, Vec2, Vec2 )
+        , final : ( Vec2, Vec2, Vec2 )
+        , intermediate : List ( Vec2, Vec2, Vec2 )
+        }
+
+
+q : Vec2 -> MyMachine -> MyMacine
+q point machine =
+    case machine of
+        Empty ->
+            One point
+
+        One p ->
+            Two p point
+
+        Two p1 p2 ->
+            Threes { first = ( p1, p2, point ), final = ( p1, p2, point ), intermediate = [] }
+
+        Threes { first, final, intermediate } ->
+            Threes ( p2, p3, point ) (( p1, p2, p3 ) :: rest)
+
+
+h points =
+    case points of
+        [] ->
+            Empty
+
+        [ p ] ->
+            One p
+
+        [ p1, p ] ->
+            Two p1 p
+
+        x :: y :: z :: rest ->
+            Threes ( x, y, z ) (List.map3 (,,) (y :: z :: rest) (z :: rest) rest)
+
+
+g state =
+    case state of
+        Empty ->
+            []
+
+        One p ->
+            subpath (moveTo (Vec2.toTuple p)) [ closepath ]
+                |> List.singleton
+
+        Two p1 p ->
+            let
+                start =
+                    p
+                        |> Vec2.scale 2
+                        |> Vec2.add p1
+                        |> Vec2.scale (1 / 3)
+                        |> Vec2.toTuple
+
+                target =
+                    p1
+                        |> Vec2.scale 2
+                        |> Vec2.add p
+                        |> Vec2.scale (1 / 3)
+                        |> Vec2.toTuple
+            in
+                subpath (moveTo start) [ lineTo [ target ], closepath ]
+                    |> List.singleton
+
+        Threes ( p2, p3, p4 ) preceding ->
+            let
+                start =
+                    [ interpolateBasisPoint p0 p1 p2
+                    , interpolateBasisPoint p1 p2 p3
+                    , interpolateBasisPoint p2 p3 p4
+                    ]
+            in
+                List.foldl (\( p0, p1, p ) accum -> interpolateBasisPoint p0 p1 p :: accum) start preceding
+
+
 interpolateBasisClosed : List Vec2 -> Path.Path
 interpolateBasisClosed points =
     case points of
