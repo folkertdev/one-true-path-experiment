@@ -287,7 +287,7 @@ ellipticalArc : Parser DrawTo
 ellipticalArc =
     inContext "elliptical arc" <|
         command
-            { constructor = EllipticArc
+            { constructor = EllipticalArc
             , character = 'a'
             , arguments = ellipticalArcArgumentSequence
             }

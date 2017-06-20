@@ -1,6 +1,20 @@
 module ToAbsolute exposing (..)
 
-{-| WIP convert relative instructions to absolute ones
+{-| Helpers for converting relative instructions to absolute ones
+
+This is possible on a path level, because the first move instruction will always be interpreted as absolute.
+Therefore, there is an anchor for subsequent relative commands.
+
+This module defines a CursorState
+
+    type alias CursorState =
+        { start : Coordinate, cursor : Coordinate }
+
+And threads it through a path. There are functions that modify a relative moveto/drawto based on
+a `CursorState`, and also returns an updated CursorState. Then we use [elm-state](https://github.com/folkertdev/elm-state) to
+chain updating the `CursorState` first with the `MoveTo` and then with a list of `DrawTo`s.
+
+Similarly, we can easily chain making a path - consisting of many `SubPath`s - absolute with elm-state.
 
 -}
 
@@ -8,6 +22,8 @@ import State exposing (State)
 import Path exposing (..)
 
 
+{-| Store the start of the current subpath and the current cursor position
+-}
 type alias CursorState =
     { start : Coordinate, cursor : Coordinate }
 
@@ -41,8 +57,11 @@ toAbsoluteSubPath_ subpath =
 
 toAbsoluteSubPath : CursorState -> SubPath -> ( SubPath, CursorState )
 toAbsoluteSubPath ({ start, cursor } as state) { moveto, drawtos } =
-    -- the foldlM and map List.reverse should be combined into a (working) traverse
-    State.map2 SubPath (toAbsoluteMoveTo_ moveto) (State.map List.reverse << State.traverse toAbsoluteDrawTo_ << List.reverse <| drawtos)
+    drawtos
+        |> List.reverse
+        |> State.traverse toAbsoluteDrawTo_
+        |> State.map List.reverse
+        |> State.map2 SubPath (toAbsoluteMoveTo_ moveto)
         |> State.run state
 
 
@@ -106,34 +125,37 @@ toAbsoluteDrawTo ({ start, cursor } as state) drawto =
         Horizontal mode xs ->
             let
                 absoluteCoordinates =
-                    xs
-                        |> List.map (\x -> ( x, 0 ))
+                    List.map (\x -> ( x, 0 )) xs
                         |> coordinatesToAbsolute mode (coordinateToAbsolute cursor)
             in
                 case last absoluteCoordinates of
                     Nothing ->
                         ( Horizontal Absolute [], state )
 
-                    Just finalCoordinate ->
+                    Just ( finalX, _ ) ->
                         ( Horizontal Absolute (List.map Tuple.first absoluteCoordinates)
-                        , { state | cursor = finalCoordinate }
+                        , { state | cursor = ( finalX, Tuple.second cursor ) }
+                        )
+
+        Vertical mode ys ->
+            let
+                absoluteCoordinates =
+                    List.map (\y -> ( 0, y )) ys
+                        |> coordinatesToAbsolute mode (coordinateToAbsolute cursor)
+            in
+                case last absoluteCoordinates of
+                    Nothing ->
+                        ( Vertical Absolute [], state )
+
+                    Just ( _, finalY ) ->
+                        ( Vertical Absolute (List.map Tuple.second absoluteCoordinates)
+                        , { state | cursor = ( Tuple.first cursor, finalY ) }
                         )
 
         CurveTo mode coordinates ->
             let
-                coordinateToAbsolute ( p1, p2, p3 ) =
-                    ( addCoordinates cursor p1
-                    , addCoordinates cursor p1
-                    , addCoordinates cursor p1
-                    )
-
                 absoluteCoordinates =
-                    case mode of
-                        Absolute ->
-                            coordinates
-
-                        Relative ->
-                            List.map coordinateToAbsolute coordinates
+                    coordinatesToAbsolute mode (coordinateToAbsolute3 cursor) coordinates
             in
                 case last absoluteCoordinates of
                     Nothing ->
@@ -141,6 +163,44 @@ toAbsoluteDrawTo ({ start, cursor } as state) drawto =
 
                     Just ( _, _, target ) ->
                         ( CurveTo Absolute absoluteCoordinates, { state | cursor = target } )
+
+        SmoothCurveTo mode coordinates ->
+            let
+                absoluteCoordinates =
+                    coordinatesToAbsolute mode (coordinateToAbsolute2 cursor) coordinates
+            in
+                case last absoluteCoordinates of
+                    Nothing ->
+                        ( SmoothCurveTo Absolute [], state )
+
+                    Just ( _, target ) ->
+                        ( SmoothCurveTo Absolute absoluteCoordinates, { state | cursor = target } )
+
+        QuadraticBezierCurveTo mode coordinates ->
+            let
+                absoluteCoordinates =
+                    coordinatesToAbsolute mode (coordinateToAbsolute2 cursor) coordinates
+            in
+                case last absoluteCoordinates of
+                    Nothing ->
+                        ( QuadraticBezierCurveTo Absolute [], state )
+
+                    Just ( _, target ) ->
+                        ( QuadraticBezierCurveTo Absolute absoluteCoordinates, { state | cursor = target } )
+
+        SmoothQuadraticBezierCurveTo mode coordinates ->
+            let
+                absoluteCoordinates =
+                    coordinatesToAbsolute mode (coordinateToAbsolute cursor) coordinates
+            in
+                case last absoluteCoordinates of
+                    Nothing ->
+                        ( SmoothQuadraticBezierCurveTo Absolute [], state )
+
+                    Just finalCoordinate ->
+                        ( SmoothQuadraticBezierCurveTo Absolute absoluteCoordinates
+                        , { state | cursor = finalCoordinate }
+                        )
 
         EllipticalArc mode arguments ->
             let
@@ -157,8 +217,8 @@ toAbsoluteDrawTo ({ start, cursor } as state) drawto =
                     Just { target } ->
                         ( EllipticalArc Absolute absoluteArguments, { state | cursor = target } )
 
-        _ ->
-            ( drawto, state )
+        ClosePath ->
+            ( ClosePath, { state | cursor = start } )
 
 
 coordinateToAbsolute =
