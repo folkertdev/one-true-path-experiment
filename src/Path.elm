@@ -3,41 +3,35 @@ module Path
         ( Path
         , SubPath
         , Coordinate
-        , subpath
-        , stringify
+        , MoveTo(..)
+        , DrawTo(..)
+        , Direction
+        , ArcFlag
+        , EllipticalArcArgument
+        , toString
         , parse
+        , subpath
         , mapCoordinate
-        , lineTo
-        , lineBy
+          --
         , moveTo
-        , moveBy
-        , horizontalBy
+        , lineTo
         , horizontalTo
         , verticalTo
-        , verticalBy
-        , arcTo
-        , arcBy
-        , closePath
-        , MoveTo
-        , DrawTo
-        , quadraticCurveExtendBy
-        , quadraticCurveExtendTo
         , quadraticCurveTo
-        , quadraticCurveBy
-        , cubicCurveExtendBy
-        , cubicCurveExtendTo
+        , quadraticCurveExtendTo
         , cubicCurveTo
-        , cubicCurveBy
-        , EllipticalArcArgument
-        , Direction
+        , cubicCurveExtendTo
+        , arcTo
+        , closePath
         , clockwise
         , counterClockwise
-        , ArcFlag
         , largestArc
         , smallestArc
-        , AbstractMoveTo(..)
-        , AbstractDrawTo(..)
-        , Mode(..)
+        , toAbsoluteMoveTo
+        , toAbsoluteDrawTo
+        , toMixedMoveTo
+        , toMixedDrawTo
+        , addCoordinates
         )
 
 {-| Low-level module for working with constructing svg paths
@@ -51,7 +45,7 @@ If you want to visualize data, have a look at [elm-plot] and [elm-visualization]
 
 For more information on svg paths, see the [MDN documentation].
 
-[MDN documentation]: https://developer.mozilla.org/en/docs/Web/SVG/Tutorial/Paths.
+[MDN documentation]: https://developer.mozilla.org/en/docs/Web/SVG/Tutorial/MixedPaths.
 [elm-plot]: http://package.elm-lang.org/packages/terezka/elm-plot/latest
 [elm-visualization]: http://package.elm-lang.org/packages/gampleman/elm-visualization/latest
 [opensolid]: http://package.elm-lang.org/packages/opensolid/geometry/latest
@@ -59,55 +53,52 @@ For more information on svg paths, see the [MDN documentation].
 
 [`MoveTo`]: #MoveTo
 [`DrawTo`]: #DrawTo
+[with the spec]: https://www.w3.org/TR/SVG/paths.html#PathDataMovetoCommands
 
 ## Data Layout
 
 A path is a list of subpaths that are drawn in order. A subpath consists of a [`MoveTo`] instruction followed by a list of [`DrawTo`] instructions.
 
-If the first [`MoveTo`] instruction is a relative one, it is interpreted as an absolute instruction. This makes sure there is always an absolute cursor position.
-The `stringify` function in this module will always make the first [`MoveTo`] absolute.
+This package only supports absolute coordinates and instructions, but it is possible to parse strings with relative intructions.
+When a path is parsed, the first [`MoveTo`] instruction is always interpreted as absolute (this is in accordance [with the spec]),
+thus making sure  that there is always an absolute cursor position.
 
-The constructors are exposed, so if you need an escape hatch it is available. As always though, never reach for them if there are other options available.
+The constructors are exposed, so if you need an escape hatch it is available. As always though, never reach for it when there are other options available.
 
 ## Data Structures
-@docs Coordinate, Path, SubPath, subpath, stringify, parse, mapCoordinate
+@docs Coordinate, Path, SubPath, subpath, toString, parse, mapCoordinate
 
 ## Moving the cursor
 
-@docs MoveTo, moveTo, moveBy
+@docs MoveTo, moveTo
 
 ## Drawing on the canvas
 
 @docs DrawTo
 
 ## Straight lines
-@docs lineTo, lineBy, horizontalTo, horizontalBy, verticalTo, verticalBy
+@docs lineTo, horizontalTo, verticalTo
 
 ## Close Path
 @docs closePath
 
 ## Quadratic Beziers
-@docs quadraticCurveTo, quadraticCurveBy, quadraticCurveExtendTo, quadraticCurveExtendBy
+@docs quadraticCurveTo, quadraticCurveExtendTo
 
 ## Cubic Beziers
-Every Cubic bezier can also be drawn by two quadratic beziers. The cubic bezier is thus a more compact way of writing a curve.
-
-@docs cubicCurveTo, cubicCurveBy, cubicCurveExtendTo, cubicCurveExtendBy
+@docs cubicCurveTo, cubicCurveExtendTo
 
 ## Arcs
-@docs arcTo, arcBy, EllipticalArcArgument, Direction, clockwise, counterClockwise, ArcFlag, largestArc, smallestArc
+@docs arcTo, EllipticalArcArgument, Direction, clockwise, counterClockwise, ArcFlag, largestArc, smallestArc
 
-
-## Internal Data (used by the parser)
-
-These constructors can be used when you want to modify the path in some custom way.
-@docs AbstractMoveTo, AbstractDrawTo, Mode
+## Internal
+@docs toAbsoluteMoveTo, toAbsoluteDrawTo, toMixedDrawTo, toMixedMoveTo, addCoordinates
 
 -}
 
-import Char
-import Parser exposing (Parser, (|.), (|=), oneOrMore, zeroOrMore, inContext, oneOf, symbol, succeed)
-import ParserPrimitives exposing (delimited, isWhitespace, (|-), wsp, withDefault, coordinatePair, nonNegativeNumber, number, commaWsp, optional, flag)
+import State exposing (State)
+import Parser
+import MixedPath exposing (..)
 
 
 {-| A path is a list of [`SubPath`](#SubPath)s.
@@ -139,238 +130,31 @@ subpath =
     SubPath
 
 
-{-| The mode of an instruction
+{-| Constructors for MoveTo instructions
 -}
-type Mode
-    = Relative
-    | Absolute
+type MoveTo
+    = MoveTo Coordinate
 
 
-{-| MoveTo instructions move the cursor, but don't draw anything.
+{-| Move to a position on the canvas without drawing.
 -}
-type alias MoveTo =
-    AbstractMoveTo Mode
-
-
-{-| Constructor for MoveTo instructions
--}
-type AbstractMoveTo mode
-    = MoveTo mode Coordinate
-
-
-{-| DrawTo instructions draw from the current cursor position to their target.
--}
-type alias DrawTo =
-    AbstractDrawTo Mode
+moveTo : Coordinate -> MoveTo
+moveTo =
+    MoveTo
 
 
 {-| Constructors for DrawTo instructions
 -}
-type AbstractDrawTo mode
-    = LineTo mode (List Coordinate)
-    | Horizontal mode (List Float)
-    | Vertical mode (List Float)
-    | CurveTo mode (List ( Coordinate, Coordinate, Coordinate ))
-    | SmoothCurveTo mode (List ( Coordinate, Coordinate ))
-    | QuadraticBezierCurveTo mode (List ( Coordinate, Coordinate ))
-    | SmoothQuadraticBezierCurveTo mode (List Coordinate)
-    | EllipticalArc mode (List EllipticalArcArgument)
+type DrawTo
+    = LineTo (List Coordinate)
+    | Horizontal (List Float)
+    | Vertical (List Float)
+    | CurveTo (List ( Coordinate, Coordinate, Coordinate ))
+    | SmoothCurveTo (List ( Coordinate, Coordinate ))
+    | QuadraticBezierCurveTo (List ( Coordinate, Coordinate ))
+    | SmoothQuadraticBezierCurveTo (List Coordinate)
+    | EllipticalArc (List EllipticalArcArgument)
     | ClosePath
-
-
-{-| Manipulate the coordinates in your SVG. This can be useful for scaling the svg.
-
-    -- make the image twice as big in the x direction
-    [ subpath (moveTo (10,0)) [ lineTo [ (42, 42) ] ] ]
-        |> mapCoordinate (\(x,y) -> (2 * x, y))
-             --> [ subpath (moveTo (20,0)) [ lineTo [ (84, 42) ] ] ]
--}
-mapCoordinate : (Coordinate -> Coordinate) -> Path -> Path
-mapCoordinate f path =
-    let
-        helper : SubPath -> SubPath
-        helper { moveto, drawtos } =
-            case moveto of
-                MoveTo mode coordinate ->
-                    { moveto = MoveTo mode (f coordinate)
-                    , drawtos = List.map helperDrawTo drawtos
-                    }
-
-        helperDrawTo drawto =
-            case drawto of
-                LineTo mode coordinates ->
-                    LineTo mode (List.map f coordinates)
-
-                Horizontal mode coordinates ->
-                    coordinates
-                        |> List.map ((\x -> ( x, 0 )) >> f >> Tuple.first)
-                        |> Horizontal mode
-
-                Vertical mode coordinates ->
-                    coordinates
-                        |> List.map ((\y -> ( 0, y )) >> f >> Tuple.second)
-                        |> Vertical mode
-
-                CurveTo mode coordinates ->
-                    CurveTo mode (List.map (mapTriplet f) coordinates)
-
-                SmoothCurveTo mode coordinates ->
-                    SmoothCurveTo mode (List.map (mapTuple f) coordinates)
-
-                QuadraticBezierCurveTo mode coordinates ->
-                    QuadraticBezierCurveTo mode (List.map (mapTuple f) coordinates)
-
-                SmoothQuadraticBezierCurveTo mode coordinates ->
-                    SmoothQuadraticBezierCurveTo mode (List.map f coordinates)
-
-                EllipticalArc mode arguments ->
-                    EllipticalArc mode (List.map (\argument -> { argument | target = f argument.target }) arguments)
-
-                ClosePath ->
-                    ClosePath
-    in
-        List.map helper path
-
-
-mapTuple : (a -> b) -> ( a, a ) -> ( b, b )
-mapTuple f ( a, b ) =
-    ( f a, f b )
-
-
-mapTriplet : (a -> b) -> ( a, a, a ) -> ( b, b, b )
-mapTriplet f ( a, b, c ) =
-    ( f a, f b, f c )
-
-
-
--- Creating paths
-
-
-{-| Move the cursor to an absolute position on the canvas
--}
-moveTo : Coordinate -> MoveTo
-moveTo =
-    MoveTo Absolute
-
-
-{-| Move the cursor by some amount
--}
-moveBy : Coordinate -> MoveTo
-moveBy =
-    MoveTo Relative
-
-
-{-| Draw a series of line segments to absolute positions
--}
-lineTo : List Coordinate -> DrawTo
-lineTo =
-    LineTo Absolute
-
-
-{-| Draw a series of line segments relative to the current cursor position
--}
-lineBy : List Coordinate -> DrawTo
-lineBy =
-    LineTo Relative
-
-
-{-| Specific version of `lineTo` that only moves horizontally.
--}
-horizontalTo : List Float -> DrawTo
-horizontalTo =
-    Horizontal Absolute
-
-
-{-| Specific version of `lineBy` that only moves horizontally
-
-    horizontalBy [ x ] == lineBy [ (x, 0) ]
--}
-horizontalBy : List Float -> DrawTo
-horizontalBy =
-    Horizontal Relative
-
-
-{-| Specific version of `lineTo` that only moves vertically
--}
-verticalTo : List Float -> DrawTo
-verticalTo =
-    Vertical Absolute
-
-
-{-| Specific version of `lineBy` that only moves vertically
-
-    verticalBy [ y ] == lineBy [ (0, y) ]
--}
-verticalBy : List Float -> DrawTo
-verticalBy =
-    Vertical Relative
-
-
-{-| Draw a straight line from the cursor position to the starting position of the path .
--}
-closePath : DrawTo
-closePath =
-    ClosePath
-
-
-{-| -}
-quadraticCurveTo : List ( Coordinate, Coordinate ) -> DrawTo
-quadraticCurveTo =
-    QuadraticBezierCurveTo Absolute
-
-
-{-| -}
-quadraticCurveExtendTo : List Coordinate -> DrawTo
-quadraticCurveExtendTo =
-    SmoothQuadraticBezierCurveTo Absolute
-
-
-{-| -}
-quadraticCurveBy : List ( Coordinate, Coordinate ) -> DrawTo
-quadraticCurveBy =
-    QuadraticBezierCurveTo Relative
-
-
-{-| -}
-quadraticCurveExtendBy : List Coordinate -> DrawTo
-quadraticCurveExtendBy =
-    SmoothQuadraticBezierCurveTo Relative
-
-
-{-| -}
-cubicCurveTo : List ( Coordinate, Coordinate, Coordinate ) -> DrawTo
-cubicCurveTo =
-    CurveTo Absolute
-
-
-{-| -}
-cubicCurveExtendTo : List ( Coordinate, Coordinate ) -> DrawTo
-cubicCurveExtendTo =
-    SmoothCurveTo Absolute
-
-
-{-| -}
-cubicCurveBy : List ( Coordinate, Coordinate, Coordinate ) -> DrawTo
-cubicCurveBy =
-    CurveTo Relative
-
-
-{-| -}
-cubicCurveExtendBy : List ( Coordinate, Coordinate ) -> DrawTo
-cubicCurveExtendBy =
-    SmoothCurveTo Relative
-
-
-{-| -}
-arcTo : List EllipticalArcArgument -> DrawTo
-arcTo =
-    EllipticalArc Absolute
-
-
-{-| -}
-arcBy : List EllipticalArcArgument -> DrawTo
-arcBy =
-    EllipticalArc Relative
 
 
 {-| The arguments for an Arc
@@ -386,16 +170,72 @@ type alias EllipticalArcArgument =
 
 {-| Determine which arc to draw
 -}
-type ArcFlag
-    = SmallestArc
-    | LargestArc
+type alias Direction =
+    MixedPath.Direction
 
 
 {-| Determine which arc to draw
 -}
-type Direction
-    = Clockwise
-    | CounterClockwise
+type alias ArcFlag =
+    MixedPath.ArcFlag
+
+
+{-| Draw a series of line segments to absolute positions
+-}
+lineTo : List Coordinate -> DrawTo
+lineTo =
+    LineTo
+
+
+{-| Specific version of `lineTo` that only moves horizontally.
+-}
+horizontalTo : List Float -> DrawTo
+horizontalTo =
+    Horizontal
+
+
+{-| Specific version of `lineTo` that only moves vertically
+-}
+verticalTo : List Float -> DrawTo
+verticalTo =
+    Vertical
+
+
+{-| Draw a straight line from the cursor position to the starting position of the path .
+-}
+closePath : DrawTo
+closePath =
+    ClosePath
+
+
+{-| -}
+quadraticCurveTo : List ( Coordinate, Coordinate ) -> DrawTo
+quadraticCurveTo =
+    QuadraticBezierCurveTo
+
+
+{-| -}
+quadraticCurveExtendTo : List Coordinate -> DrawTo
+quadraticCurveExtendTo =
+    SmoothQuadraticBezierCurveTo
+
+
+{-| -}
+cubicCurveTo : List ( Coordinate, Coordinate, Coordinate ) -> DrawTo
+cubicCurveTo =
+    CurveTo
+
+
+{-| -}
+cubicCurveExtendTo : List ( Coordinate, Coordinate ) -> DrawTo
+cubicCurveExtendTo =
+    SmoothCurveTo
+
+
+{-| -}
+arcTo : List EllipticalArcArgument -> DrawTo
+arcTo =
+    EllipticalArc
 
 
 {-| Corresponds to a sweep flag of 1
@@ -426,113 +266,30 @@ smallestArc =
     SmallestArc
 
 
-
--- STRINGIFY
-
-
-{-| Turn a `Path` into a `String`. The result is ready to be used with the `d` attribute.
-
-    stringify [ subpath (moveTo (0,0)) [ lineBy ( 42, 73 ) ] ]
-        --> "M0,0 l42,73
+{-| Store the start of the current subpath and the current cursor position
 -}
-stringify : Path -> String
-stringify subpaths =
-    String.join " " (List.map stringifySubPath subpaths)
+type alias CursorState =
+    { start : Coordinate, cursor : Coordinate }
 
 
-stringifySubPath : SubPath -> String
-stringifySubPath { moveto, drawtos } =
-    stringifyMoveTo moveto ++ " " ++ String.join " " (List.map stringifyDrawTo drawtos)
+{-| Exposed for testing
+-}
+addCoordinates : Coordinate -> Coordinate -> Coordinate
+addCoordinates ( x1, y1 ) ( x2, y2 ) =
+    ( x1 + x2, y1 + y2 )
 
 
-stringifyMoveTo : MoveTo -> String
-stringifyMoveTo (MoveTo mode coordinate) =
-    case mode of
-        Absolute ->
-            "M" ++ stringifyCoordinate coordinate
+{-| Turn a `MixedPath` into a `String`. The result is ready to be used with the `d` attribute.
 
-        Relative ->
-            "m" ++ stringifyCoordinate coordinate
-
-
-stringifyDrawTo : DrawTo -> String
-stringifyDrawTo command =
-    case command of
-        LineTo mode coordinates ->
-            stringifyCharacter mode 'L' ++ String.join " " (List.map stringifyCoordinate coordinates)
-
-        Horizontal mode coordinates ->
-            stringifyCharacter mode 'H' ++ String.join " " (List.map toString coordinates)
-
-        Vertical mode coordinates ->
-            stringifyCharacter mode 'V' ++ String.join " " (List.map toString coordinates)
-
-        CurveTo mode coordinates ->
-            stringifyCharacter mode 'C' ++ String.join " " (List.map stringifyCoordinate3 coordinates)
-
-        SmoothCurveTo mode coordinates ->
-            stringifyCharacter mode 'S' ++ String.join " " (List.map stringifyCoordinate2 coordinates)
-
-        QuadraticBezierCurveTo mode coordinates ->
-            stringifyCharacter mode 'Q' ++ String.join " " (List.map stringifyCoordinate2 coordinates)
-
-        SmoothQuadraticBezierCurveTo mode coordinates ->
-            stringifyCharacter mode 'T' ++ String.join " " (List.map stringifyCoordinate coordinates)
-
-        EllipticalArc mode arguments ->
-            stringifyCharacter mode 'A' ++ String.join " " (List.map stringifyEllipticalArcArgument arguments)
-
-        ClosePath ->
-            "Z"
+    Path.toString [ subpath (moveTo (0,0)) [ lineBy ( 42, 73 ) ] ]
+        --> "M0,0 l42,73"
+-}
+toString : Path -> String
+toString =
+    toMixedPath >> MixedPath.stringify
 
 
-stringifyEllipticalArcArgument : EllipticalArcArgument -> String
-stringifyEllipticalArcArgument { radii, xAxisRotate, arcFlag, direction, target } =
-    String.join " "
-        [ stringifyCoordinate radii
-        , toString xAxisRotate
-        , if arcFlag == LargestArc then
-            "1"
-          else
-            "0"
-        , if direction == Clockwise then
-            "1"
-          else
-            "0"
-        , stringifyCoordinate target
-        ]
-
-
-stringifyCharacter : Mode -> Char -> String
-stringifyCharacter mode character =
-    case mode of
-        Absolute ->
-            String.fromChar (Char.toUpper character)
-
-        Relative ->
-            String.fromChar (Char.toLower character)
-
-
-stringifyCoordinate : Coordinate -> String
-stringifyCoordinate ( x, y ) =
-    toString x ++ "," ++ toString y
-
-
-stringifyCoordinate2 : ( Coordinate, Coordinate ) -> String
-stringifyCoordinate2 ( c1, c2 ) =
-    stringifyCoordinate c1 ++ " " ++ stringifyCoordinate c2
-
-
-stringifyCoordinate3 : ( Coordinate, Coordinate, Coordinate ) -> String
-stringifyCoordinate3 ( c1, c2, c3 ) =
-    stringifyCoordinate c1 ++ " " ++ stringifyCoordinate c2 ++ " " ++ stringifyCoordinate c3
-
-
-
--- PARSER
-
-
-{-| Parse a path string into a `Path`
+{-| Parse a path string into a `MixedPath`
 
 
     parse "M0,0 l42,73"
@@ -546,298 +303,329 @@ The error type is [`Parser.Error`](http://package.elm-lang.org/packages/elm-tool
 -}
 parse : String -> Result Parser.Error Path
 parse =
-    Parser.run svgPath
+    Result.map fromMixedPath << MixedPath.parse
 
 
-svgPath : Parser (List SubPath)
-svgPath =
-    Parser.succeed identity
-        |. Parser.ignore zeroOrMore isWhitespace
-        |= withDefault [] moveToDrawToCommandGroups
-        |. Parser.ignore zeroOrMore isWhitespace
-        |. Parser.end
+{-| Manipulate the coordinates in your SVG. This can be useful for scaling the svg.
 
-
-moveToDrawToCommandGroups : Parser (List SubPath)
-moveToDrawToCommandGroups =
-    delimited { item = moveToDrawToCommandGroup, delimiter = Parser.ignore zeroOrMore isWhitespace }
-
-
-moveToDrawToCommandGroup : Parser SubPath
-moveToDrawToCommandGroup =
-    inContext "moveto drawto command group" <|
-        Parser.succeed
-            (\( move, linetos ) drawtos ->
-                case linetos of
-                    Nothing ->
-                        SubPath move drawtos
-
-                    Just lt ->
-                        SubPath move (lt :: drawtos)
-            )
-            |= moveto
-            |. Parser.ignore zeroOrMore isWhitespace
-            |= withDefault [] drawtoCommands
-
-
-drawtoCommands : Parser (List DrawTo)
-drawtoCommands =
-    inContext "drawto commands" <|
-        delimited { item = drawtoCommand, delimiter = Parser.ignore zeroOrMore isWhitespace }
-
-
-drawtoCommand : Parser DrawTo
-drawtoCommand =
-    oneOf
-        [ closepath
-        , lineto
-        , horizontalLineto
-        , verticalLineto
-        , curveto
-        , smoothCurveto
-        , quadraticBezierCurveto
-        , smoothQuadraticBezierCurveto
-        , ellipticalArc
-        ]
-
-
-
--- command : { constructor : Mode -> args -> command, character : Char, arguments : Parser args } -> Parser command
-
-
-moveto : Parser ( MoveTo, Maybe DrawTo )
-moveto =
-    {- moveto has some corner cases
-
-       * if a moveto is followed by extra coordinate pairs, they are interpreted as lineto commands (relative when the moveto is relative, absolute otherwise).
-       * the first moveto in a path is always interpreted as absolute (but following linetos are still relative)
-    -}
-    inContext "moveto" <|
-        command
-            { constructor =
-                \mode coordinates ->
-                    case coordinates of
-                        [] ->
-                            Debug.crash "movetoArgumentSequence succeeded but parsed no coordinates"
-
-                        [ c ] ->
-                            ( MoveTo mode c, Nothing )
-
-                        c :: cs ->
-                            -- cs has at least size 1
-                            ( MoveTo mode c, Just (LineTo mode cs) )
-            , character = 'm'
-            , arguments = movetoArgumentSequence
-            }
-
-
-movetoArgumentSequence : Parser (List Coordinate)
-movetoArgumentSequence =
-    delimited { item = coordinatePair, delimiter = withDefault () wsp }
-
-
-closepath : Parser DrawTo
-closepath =
-    -- per the w3c spec "Since the Z and z commands take no parameters, they have an identical effect."
-    inContext "closepath" <|
-        oneOf
-            [ symbol "z"
-                |- succeed ClosePath
-            , symbol "Z"
-                |- succeed ClosePath
-            ]
-
-
-lineto : Parser DrawTo
-lineto =
-    inContext "lineto" <|
-        command
-            { constructor = LineTo
-            , character = 'l'
-            , arguments = linetoArgumentSequence
-            }
-
-
-linetoArgumentSequence : Parser (List Coordinate)
-linetoArgumentSequence =
-    delimited { item = coordinatePair, delimiter = withDefault () wsp }
-
-
-horizontalLineto : Parser DrawTo
-horizontalLineto =
-    inContext "horizontal lineto" <|
-        command
-            { constructor = Horizontal
-            , character = 'h'
-            , arguments = horizontalLinetoArgumentSequence
-            }
-
-
-horizontalLinetoArgumentSequence : Parser (List Float)
-horizontalLinetoArgumentSequence =
-    delimited { item = number, delimiter = withDefault () wsp }
-
-
-verticalLineto : Parser DrawTo
-verticalLineto =
-    inContext "vertical lineto" <|
-        command
-            { constructor = Vertical
-            , character = 'v'
-            , arguments = verticalLinetoArgumentSequence
-            }
-
-
-verticalLinetoArgumentSequence : Parser (List Float)
-verticalLinetoArgumentSequence =
-    delimited { item = number, delimiter = withDefault () wsp }
-
-
-curveto : Parser DrawTo
-curveto =
-    inContext "curveto" <|
-        command
-            { constructor = CurveTo
-            , character = 'c'
-            , arguments = curvetoArgumentSequence
-            }
-
-
-curvetoArgumentSequence : Parser (List ( Coordinate, Coordinate, Coordinate ))
-curvetoArgumentSequence =
-    delimited { item = curvetoArgument, delimiter = withDefault () wsp }
-
-
-curvetoArgument : Parser ( Coordinate, Coordinate, Coordinate )
-curvetoArgument =
-    succeed (,,)
-        |= coordinatePair
-        |. withDefault () wsp
-        |= coordinatePair
-        |. withDefault () wsp
-        |= coordinatePair
-
-
-smoothCurveto : Parser DrawTo
-smoothCurveto =
-    inContext "smooth curveto" <|
-        command
-            { constructor = SmoothCurveTo
-            , character = 's'
-            , arguments = smoothCurvetoArgumentSequence
-            }
-
-
-smoothCurvetoArgumentSequence : Parser (List ( Coordinate, Coordinate ))
-smoothCurvetoArgumentSequence =
-    delimited { item = smoothCurvetoArgument, delimiter = withDefault () wsp }
-
-
-smoothCurvetoArgument : Parser ( Coordinate, Coordinate )
-smoothCurvetoArgument =
-    succeed (,)
-        |= coordinatePair
-        |. withDefault () wsp
-        |= coordinatePair
-
-
-quadraticBezierCurveto : Parser DrawTo
-quadraticBezierCurveto =
-    inContext "quadratic bezier curveto" <|
-        command
-            { constructor = QuadraticBezierCurveTo
-            , character = 'q'
-            , arguments = quadraticBezierCurvetoArgumentSequence
-            }
-
-
-quadraticBezierCurvetoArgumentSequence : Parser (List ( Coordinate, Coordinate ))
-quadraticBezierCurvetoArgumentSequence =
-    delimited { item = quadraticBezierCurvetoArgument, delimiter = withDefault () wsp }
-
-
-quadraticBezierCurvetoArgument : Parser ( Coordinate, Coordinate )
-quadraticBezierCurvetoArgument =
-    succeed (,)
-        |= coordinatePair
-        |. withDefault () wsp
-        |= coordinatePair
-
-
-smoothQuadraticBezierCurveto : Parser DrawTo
-smoothQuadraticBezierCurveto =
-    inContext "smooth quadratic bezier curveto" <|
-        command
-            { constructor = SmoothQuadraticBezierCurveTo
-            , character = 't'
-            , arguments = smoothQuadraticBezierCurvetoArgumentSequence
-            }
-
-
-smoothQuadraticBezierCurvetoArgumentSequence : Parser (List Coordinate)
-smoothQuadraticBezierCurvetoArgumentSequence =
-    delimited { item = coordinatePair, delimiter = withDefault () wsp }
-
-
-ellipticalArc : Parser DrawTo
-ellipticalArc =
-    inContext "elliptical arc" <|
-        command
-            { constructor = EllipticalArc
-            , character = 'a'
-            , arguments = ellipticalArcArgumentSequence
-            }
-
-
-ellipticalArcArgumentSequence : Parser (List EllipticalArcArgument)
-ellipticalArcArgumentSequence =
-    delimited { item = ellipticalArcArgument, delimiter = withDefault () wsp }
-
-
-ellipticalArcArgument : Parser EllipticalArcArgument
-ellipticalArcArgument =
-    let
-        helper rx ry xAxisRotate arcFlag direction target =
-            { radii = ( rx, ry )
-            , xAxisRotate = xAxisRotate
-            , arcFlag =
-                if arcFlag then
-                    LargestArc
-                else
-                    SmallestArc
-            , direction =
-                if direction then
-                    Clockwise
-                else
-                    CounterClockwise
-            , target = target
-            }
-    in
-        succeed helper
-            |= nonNegativeNumber
-            |. optional commaWsp
-            |= nonNegativeNumber
-            |. withDefault () commaWsp
-            |= number
-            |. commaWsp
-            |= flag
-            |. withDefault () commaWsp
-            |= flag
-            |. withDefault () commaWsp
-            |= coordinatePair
-
-
-{-| Construct both the absolute and relative parser for a command.
+    -- make the image twice as big in the x direction
+    [ subpath (moveTo (10,0)) [ lineTo [ (42, 42) ] ] ]
+        |> mapCoordinate (\(x,y) -> (2 * x, y))
+             --> [ subpath (moveTo (20,0)) [ lineTo [ (84, 42) ] ] ]
 -}
-command : { constructor : Mode -> args -> command, character : Char, arguments : Parser args } -> Parser command
-command { constructor, character, arguments } =
-    oneOf
-        [ succeed (constructor Absolute)
-            |. symbol (String.fromChar <| Char.toUpper character)
-            |. Parser.ignore zeroOrMore isWhitespace
-            |= arguments
-        , succeed (constructor Relative)
-            |. symbol (String.fromChar <| Char.toLower character)
-            |. Parser.ignore zeroOrMore isWhitespace
-            |= arguments
-        ]
+mapCoordinate : (Coordinate -> Coordinate) -> Path -> Path
+mapCoordinate f path =
+    let
+        helper : SubPath -> SubPath
+        helper { moveto, drawtos } =
+            case moveto of
+                MoveTo coordinate ->
+                    { moveto = MoveTo (f coordinate)
+                    , drawtos = List.map helperDrawTo drawtos
+                    }
+
+        helperDrawTo drawto =
+            case drawto of
+                LineTo coordinates ->
+                    LineTo (List.map f coordinates)
+
+                Horizontal coordinates ->
+                    coordinates
+                        |> List.map ((\x -> ( x, 0 )) >> f >> Tuple.first)
+                        |> Horizontal
+
+                Vertical coordinates ->
+                    coordinates
+                        |> List.map ((\y -> ( 0, y )) >> f >> Tuple.second)
+                        |> Vertical
+
+                CurveTo coordinates ->
+                    CurveTo (List.map (mapTriplet f) coordinates)
+
+                SmoothCurveTo coordinates ->
+                    SmoothCurveTo (List.map (mapTuple f) coordinates)
+
+                QuadraticBezierCurveTo coordinates ->
+                    QuadraticBezierCurveTo (List.map (mapTuple f) coordinates)
+
+                SmoothQuadraticBezierCurveTo coordinates ->
+                    SmoothQuadraticBezierCurveTo (List.map f coordinates)
+
+                EllipticalArc arguments ->
+                    EllipticalArc (List.map (\argument -> { argument | target = f argument.target }) arguments)
+
+                ClosePath ->
+                    ClosePath
+    in
+        List.map helper path
+
+
+{-| Helpers for converting relative instructions to absolute ones
+
+This is possible on a path level, because the first move instruction will always be interpreted as absolute.
+Therefore, there is an anchor for subsequent relative commands.
+
+This module defines a CursorState
+
+    type alias CursorState =
+        { start : Coordinate, cursor : Coordinate }
+
+And threads it through a path. There are functions that modify a relative moveto/drawto based on
+a `CursorState`, and also returns an updated CursorState. Then we use [elm-state](https://github.com/folkertdev/elm-state) to
+chain updating the `CursorState` first with the `MoveTo` and then with a list of `DrawTo`s.
+
+Similarly, we can easily chain making a path - consisting of many `SubPath`s - absolute with elm-state.
+-}
+fromMixedPath : MixedPath -> Path
+fromMixedPath subpaths =
+    case subpaths of
+        [] ->
+            []
+
+        ({ moveto } as sp) :: sps ->
+            case moveto of
+                MixedPath.MoveTo _ coordinate ->
+                    let
+                        initialState =
+                            { start = coordinate, cursor = coordinate }
+                    in
+                        State.traverse toSubPath_ subpaths
+                            |> State.finalValue initialState
+
+
+{-| Exposed for testing purposes
+-}
+toMixedDrawTo : DrawTo -> MixedPath.DrawTo
+toMixedDrawTo drawto =
+    case drawto of
+        LineTo coordinates ->
+            MixedPath.LineTo MixedPath.Absolute coordinates
+
+        Horizontal coordinates ->
+            MixedPath.Horizontal MixedPath.Absolute coordinates
+
+        Vertical coordinates ->
+            MixedPath.Vertical MixedPath.Absolute coordinates
+
+        CurveTo coordinates ->
+            MixedPath.CurveTo MixedPath.Absolute coordinates
+
+        SmoothCurveTo coordinates ->
+            MixedPath.SmoothCurveTo MixedPath.Absolute coordinates
+
+        QuadraticBezierCurveTo coordinates ->
+            MixedPath.QuadraticBezierCurveTo MixedPath.Absolute coordinates
+
+        SmoothQuadraticBezierCurveTo coordinates ->
+            MixedPath.SmoothQuadraticBezierCurveTo MixedPath.Absolute coordinates
+
+        EllipticalArc arguments ->
+            MixedPath.EllipticalArc MixedPath.Absolute arguments
+
+        ClosePath ->
+            MixedPath.ClosePath
+
+
+{-| Exposed for testing purposes
+-}
+toMixedMoveTo : MoveTo -> MixedPath.MoveTo
+toMixedMoveTo (MoveTo coordinates) =
+    MixedPath.MoveTo Absolute coordinates
+
+
+toMixedPath : Path -> MixedPath
+toMixedPath path =
+    List.map (\{ moveto, drawtos } -> { moveto = toMixedMoveTo moveto, drawtos = List.map toMixedDrawTo drawtos }) path
+
+
+toSubPath_ : MixedPath.MixedSubPath -> State CursorState SubPath
+toSubPath_ subpath =
+    State.advance (\state -> toSubPath state subpath)
+
+
+toSubPath : CursorState -> MixedPath.MixedSubPath -> ( SubPath, CursorState )
+toSubPath ({ start, cursor } as state) { moveto, drawtos } =
+    drawtos
+        |> List.reverse
+        |> State.traverse toAbsoluteDrawTo_
+        |> State.map List.reverse
+        |> State.map2 SubPath (toAbsoluteMoveTo_ moveto)
+        |> State.run state
+
+
+toAbsoluteMoveTo_ : MixedPath.MoveTo -> State CursorState MoveTo
+toAbsoluteMoveTo_ moveto =
+    State.advance (\state -> toAbsoluteMoveTo state moveto)
+
+
+toAbsoluteDrawTo_ : MixedPath.DrawTo -> State CursorState DrawTo
+toAbsoluteDrawTo_ drawto =
+    State.advance (\state -> toAbsoluteDrawTo state drawto)
+
+
+{-| Exposed for testing
+-}
+toAbsoluteMoveTo : CursorState -> MixedPath.MoveTo -> ( MoveTo, CursorState )
+toAbsoluteMoveTo { start, cursor } (MixedPath.MoveTo mode coordinate) =
+    case mode of
+        MixedPath.Absolute ->
+            ( MoveTo coordinate, { start = coordinate, cursor = coordinate } )
+
+        Relative ->
+            let
+                newCoordinate =
+                    addCoordinates cursor coordinate
+            in
+                ( MoveTo newCoordinate, { start = newCoordinate, cursor = newCoordinate } )
+
+
+{-| Exposed for testing
+-}
+toAbsoluteDrawTo : CursorState -> MixedPath.DrawTo -> ( DrawTo, CursorState )
+toAbsoluteDrawTo ({ start, cursor } as state) drawto =
+    case drawto of
+        MixedPath.LineTo mode coordinates ->
+            let
+                absoluteCoordinates =
+                    coordinatesToAbsolute mode (coordinateToAbsolute cursor) coordinates
+            in
+                case last absoluteCoordinates of
+                    Nothing ->
+                        ( LineTo [], state )
+
+                    Just finalCoordinate ->
+                        ( LineTo absoluteCoordinates
+                        , { state | cursor = finalCoordinate }
+                        )
+
+        MixedPath.Horizontal mode xs ->
+            let
+                absoluteCoordinates =
+                    List.map (\x -> ( x, 0 )) xs
+                        |> coordinatesToAbsolute mode (coordinateToAbsolute cursor)
+            in
+                case last absoluteCoordinates of
+                    Nothing ->
+                        ( Horizontal [], state )
+
+                    Just ( finalX, _ ) ->
+                        ( Horizontal (List.map Tuple.first absoluteCoordinates)
+                        , { state | cursor = ( finalX, Tuple.second cursor ) }
+                        )
+
+        MixedPath.Vertical mode ys ->
+            let
+                absoluteCoordinates =
+                    List.map (\y -> ( 0, y )) ys
+                        |> coordinatesToAbsolute mode (coordinateToAbsolute cursor)
+            in
+                case last absoluteCoordinates of
+                    Nothing ->
+                        ( Vertical [], state )
+
+                    Just ( _, finalY ) ->
+                        ( Vertical (List.map Tuple.second absoluteCoordinates)
+                        , { state | cursor = ( Tuple.first cursor, finalY ) }
+                        )
+
+        MixedPath.CurveTo mode coordinates ->
+            let
+                absoluteCoordinates =
+                    coordinatesToAbsolute mode (coordinateToAbsolute3 cursor) coordinates
+            in
+                case last absoluteCoordinates of
+                    Nothing ->
+                        ( CurveTo [], state )
+
+                    Just ( _, _, target ) ->
+                        ( CurveTo absoluteCoordinates, { state | cursor = target } )
+
+        MixedPath.SmoothCurveTo mode coordinates ->
+            let
+                absoluteCoordinates =
+                    coordinatesToAbsolute mode (coordinateToAbsolute2 cursor) coordinates
+            in
+                case last absoluteCoordinates of
+                    Nothing ->
+                        ( SmoothCurveTo [], state )
+
+                    Just ( _, target ) ->
+                        ( SmoothCurveTo absoluteCoordinates, { state | cursor = target } )
+
+        MixedPath.QuadraticBezierCurveTo mode coordinates ->
+            let
+                absoluteCoordinates =
+                    coordinatesToAbsolute mode (coordinateToAbsolute2 cursor) coordinates
+            in
+                case last absoluteCoordinates of
+                    Nothing ->
+                        ( QuadraticBezierCurveTo [], state )
+
+                    Just ( _, target ) ->
+                        ( QuadraticBezierCurveTo absoluteCoordinates, { state | cursor = target } )
+
+        MixedPath.SmoothQuadraticBezierCurveTo mode coordinates ->
+            let
+                absoluteCoordinates =
+                    coordinatesToAbsolute mode (coordinateToAbsolute cursor) coordinates
+            in
+                case last absoluteCoordinates of
+                    Nothing ->
+                        ( SmoothQuadraticBezierCurveTo [], state )
+
+                    Just finalCoordinate ->
+                        ( SmoothQuadraticBezierCurveTo absoluteCoordinates
+                        , { state | cursor = finalCoordinate }
+                        )
+
+        MixedPath.EllipticalArc mode arguments ->
+            let
+                argumentToAbsolute cursor argument =
+                    { argument | target = addCoordinates cursor argument.target }
+
+                absoluteArguments =
+                    coordinatesToAbsolute mode (argumentToAbsolute cursor) arguments
+            in
+                case last absoluteArguments of
+                    Nothing ->
+                        ( EllipticalArc [], state )
+
+                    Just { target } ->
+                        ( EllipticalArc absoluteArguments, { state | cursor = target } )
+
+        MixedPath.ClosePath ->
+            ( ClosePath, { state | cursor = start } )
+
+
+coordinateToAbsolute =
+    addCoordinates
+
+
+coordinateToAbsolute2 cursor ( p1, p2 ) =
+    ( addCoordinates cursor p1, addCoordinates cursor p2 )
+
+
+coordinateToAbsolute3 cursor ( p1, p2, p3 ) =
+    ( addCoordinates cursor p1, addCoordinates cursor p2, addCoordinates cursor p3 )
+
+
+coordinatesToAbsolute : Mode -> (coords -> coords) -> List coords -> List coords
+coordinatesToAbsolute mode toAbsolute coordinates =
+    case mode of
+        MixedPath.Absolute ->
+            coordinates
+
+        Relative ->
+            List.map toAbsolute coordinates
+
+
+last : List a -> Maybe a
+last =
+    List.foldr
+        (\element accum ->
+            if accum == Nothing then
+                Just element
+            else
+                accum
+        )
+        Nothing
