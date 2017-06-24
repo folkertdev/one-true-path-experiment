@@ -1,4 +1,4 @@
-module Example exposing (..)
+module Tests exposing (..)
 
 import Test exposing (..)
 import Expect
@@ -7,6 +7,27 @@ import Parser
 import MixedPath exposing (..)
 import Path exposing (addCoordinates)
 import ParserPrimitives exposing (..)
+
+
+pathPath =
+    [ Path.subpath (Path.moveTo ( 0, 0 )) [ Path.lineTo [ ( 20, 40 ) ], Path.lineTo [ ( 73, 73 ) ] ]
+    , Path.subpath (Path.moveTo ( 20, 0 )) [ Path.lineTo [ ( 30, 50 ) ], Path.lineTo [ ( 42, 42 ) ] ]
+    ]
+
+
+pathTests =
+    describe "functions directly related to paths"
+        [ fuzz2 fuzzCoordinate (Fuzz.list fuzzCoordinate) "mapWithCursorState" <|
+            \start rest ->
+                [ Path.subpath (Path.moveTo start) (List.map (Path.lineTo << List.singleton) rest) ]
+                    |> Path.mapWithCursorState (\{ cursor } _ -> cursor)
+                    |> Expect.equal
+                        (if rest /= [] then
+                            start :: (List.take (List.length rest - 1) rest)
+                         else
+                            []
+                        )
+        ]
 
 
 suite : Test
@@ -136,6 +157,32 @@ toAbsoluteConversion =
                     Path.toAbsoluteDrawTo startConfig ClosePath
                         |> Tuple.mapFirst Path.toMixedDrawTo
                         |> Expect.equal ( ClosePath, { startConfig | cursor = startConfig.start } )
+            , test "foldl/traverse works with multiple subpaths" <|
+                \_ ->
+                    "M10,10 L15,15 m20,20"
+                        |> Path.parse
+                        |> Result.map (List.map (\{ moveto, drawtos } -> { moveto = Path.toMixedMoveTo moveto, drawtos = List.map Path.toMixedDrawTo drawtos }))
+                        |> Expect.equal
+                            (Ok
+                                ([ { moveto = MoveTo Absolute ( 10, 10 ), drawtos = [ LineTo Absolute [ ( 15, 15 ) ] ] }
+                                 , { moveto = MoveTo Absolute ( 35, 35 ), drawtos = [] }
+                                 ]
+                                )
+                            )
+            , test "finalPoint documentation example" <|
+                \_ ->
+                    let
+                        finalPoint =
+                            Path.mapWithCursorState (flip Path.updateCursorState)
+                    in
+                        [ { moveto = Path.MoveTo ( 10, 10 ), drawtos = [ Path.LineTo [ ( 15, 15 ) ] ] }
+                        , { moveto = Path.MoveTo ( 35, 35 ), drawtos = [] }
+                        ]
+                            |> finalPoint
+                            |> List.reverse
+                            |> List.head
+                            |> Maybe.map .cursor
+                            |> Expect.equal (Just ( 15, 15 ))
             , fuzz fuzzMoveTo "a moveto always changes the CursorState starting position" <|
                 \(MoveTo mode coordinate) ->
                     let
