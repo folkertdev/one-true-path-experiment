@@ -8,10 +8,13 @@ module Path
         , Direction
         , ArcFlag
         , EllipticalArcArgument
+        , CursorState
         , toString
         , parse
         , subpath
         , mapCoordinate
+        , mapWithCursorState
+        , updateCursorState
           --
         , moveTo
         , lineTo
@@ -66,7 +69,7 @@ thus making sure  that there is always an absolute cursor position.
 The constructors are exposed, so if you need an escape hatch it is available. As always though, never reach for it when there are other options available.
 
 ## Data Structures
-@docs Coordinate, Path, SubPath, subpath, toString, parse, mapCoordinate
+@docs Coordinate, Path, SubPath, subpath, toString, parse, mapCoordinate, CursorState, mapWithCursorState, updateCursorState
 
 ## Moving the cursor
 
@@ -96,7 +99,6 @@ The constructors are exposed, so if you need an escape hatch it is available. As
 
 -}
 
-import State exposing (State)
 import Parser
 import MixedPath exposing (..)
 
@@ -266,7 +268,7 @@ smallestArc =
     SmallestArc
 
 
-{-| Store the start of the current subpath and the current cursor position
+{-| Contains the start of the current subpath and the current cursor position.
 -}
 type alias CursorState =
     { start : Coordinate, cursor : Coordinate }
@@ -289,7 +291,7 @@ toString =
     toMixedPath >> MixedPath.stringify
 
 
-{-| Parse a path string into a `MixedPath`
+{-| Parse a path string into a `Path`
 
 
     parse "M0,0 l42,73"
@@ -360,21 +362,93 @@ mapCoordinate f path =
         List.map helper path
 
 
+{-| Given a cursor state, simulate the effect that a `DrawTo` has on that cursor state
+-}
+updateCursorState : DrawTo -> CursorState -> CursorState
+updateCursorState drawto state =
+    let
+        ( cursorX, cursorY ) =
+            state.cursor
+
+        maybeUpdateCursor coordinate =
+            { state | cursor = Maybe.withDefault state.cursor coordinate }
+    in
+        case drawto of
+            LineTo coordinates ->
+                maybeUpdateCursor (last coordinates)
+
+            Horizontal coordinates ->
+                last coordinates
+                    |> Maybe.map (\x -> ( x, cursorY ))
+                    |> maybeUpdateCursor
+
+            Vertical coordinates ->
+                last coordinates
+                    |> Maybe.map (\y -> ( cursorX, y ))
+                    |> maybeUpdateCursor
+
+            CurveTo coordinates ->
+                last coordinates
+                    |> Maybe.map ((\( _, _, c ) -> c))
+                    |> maybeUpdateCursor
+
+            SmoothCurveTo coordinates ->
+                last coordinates
+                    |> Maybe.map Tuple.second
+                    |> maybeUpdateCursor
+
+            QuadraticBezierCurveTo coordinates ->
+                last coordinates
+                    |> Maybe.map Tuple.second
+                    |> maybeUpdateCursor
+
+            SmoothQuadraticBezierCurveTo coordinates ->
+                last coordinates
+                    |> maybeUpdateCursor
+
+            EllipticalArc arguments ->
+                last arguments
+                    |> Maybe.map .target
+                    |> maybeUpdateCursor
+
+            ClosePath ->
+                state
+
+
+{-| Map over the `DrawTo`s in a path with access to their starting point.
+
+Many mathematical operations (length, derivative, curvature) are only possible when a segment is fully specified. A `DrawTo` on its
+own misses its starting point - the current cursor position. This function makes the cursor position and the start of the current subpath available
+when mapping.
+-}
+mapWithCursorState : (CursorState -> DrawTo -> b) -> Path -> List b
+mapWithCursorState f =
+    List.concatMap (mapWithCursorStateSubPath f)
+
+
+mapWithCursorStateSubPath : (CursorState -> DrawTo -> b) -> SubPath -> List b
+mapWithCursorStateSubPath mapDrawTo { moveto, drawtos } =
+    let
+        start =
+            case moveto of
+                MoveTo coordinate ->
+                    coordinate
+
+        folder : DrawTo -> ( CursorState, List b ) -> ( CursorState, List b )
+        folder drawto ( cursorState, accum ) =
+            ( updateCursorState drawto cursorState
+            , mapDrawTo cursorState drawto :: accum
+            )
+    in
+        List.foldl folder ( { start = start, cursor = start }, [] ) drawtos
+            |> Tuple.second
+            |> List.reverse
+
+
 {-| Helpers for converting relative instructions to absolute ones
 
 This is possible on a path level, because the first move instruction will always be interpreted as absolute.
 Therefore, there is an anchor for subsequent relative commands.
-
-This module defines a CursorState
-
-    type alias CursorState =
-        { start : Coordinate, cursor : Coordinate }
-
-And threads it through a path. There are functions that modify a relative moveto/drawto based on
-a `CursorState`, and also returns an updated CursorState. Then we use [elm-state](https://github.com/folkertdev/elm-state) to
-chain updating the `CursorState` first with the `MoveTo` and then with a list of `DrawTo`s.
-
-Similarly, we can easily chain making a path - consisting of many `SubPath`s - absolute with elm-state.
 -}
 fromMixedPath : MixedPath -> Path
 fromMixedPath subpaths =
@@ -388,9 +462,14 @@ fromMixedPath subpaths =
                     let
                         initialState =
                             { start = coordinate, cursor = coordinate }
+
+                        folder mixedSubPath ( cursorState, accum ) =
+                            toSubPath mixedSubPath cursorState
+                                |> Tuple.mapSecond (\item -> item :: accum)
                     in
-                        State.traverse toSubPath_ subpaths
-                            |> State.finalValue initialState
+                        List.foldl folder ( initialState, [] ) subpaths
+                            |> Tuple.second
+                            |> List.reverse
 
 
 {-| Exposed for testing purposes
@@ -438,29 +517,27 @@ toMixedPath path =
     List.map (\{ moveto, drawtos } -> { moveto = toMixedMoveTo moveto, drawtos = List.map toMixedDrawTo drawtos }) path
 
 
-toSubPath_ : MixedPath.MixedSubPath -> State CursorState SubPath
-toSubPath_ subpath =
-    State.advance (\state -> toSubPath state subpath)
+toSubPath : MixedPath.MixedSubPath -> CursorState -> ( CursorState, SubPath )
+toSubPath { moveto, drawtos } ({ start, cursor } as state) =
+    let
+        ( newStart, newState ) =
+            toAbsoluteMoveTo state moveto
 
+        swap ( a, b ) =
+            ( b, a )
 
-toSubPath : CursorState -> MixedPath.MixedSubPath -> ( SubPath, CursorState )
-toSubPath ({ start, cursor } as state) { moveto, drawtos } =
-    drawtos
-        |> List.reverse
-        |> State.traverse toAbsoluteDrawTo_
-        |> State.map List.reverse
-        |> State.map2 SubPath (toAbsoluteMoveTo_ moveto)
-        |> State.run state
+        folder mixedDrawTo ( cursorState, accum ) =
+            toAbsoluteDrawTo cursorState mixedDrawTo
+                |> swap
+                |> Tuple.mapSecond (\absoluteDrawTo -> absoluteDrawTo :: accum)
 
-
-toAbsoluteMoveTo_ : MixedPath.MoveTo -> State CursorState MoveTo
-toAbsoluteMoveTo_ moveto =
-    State.advance (\state -> toAbsoluteMoveTo state moveto)
-
-
-toAbsoluteDrawTo_ : MixedPath.DrawTo -> State CursorState DrawTo
-toAbsoluteDrawTo_ drawto =
-    State.advance (\state -> toAbsoluteDrawTo state drawto)
+        ( newerState, newDrawtos ) =
+            List.foldl folder ( newState, [] ) drawtos
+                |> Tuple.mapSecond List.reverse
+    in
+        ( newerState
+        , { moveto = newStart, drawtos = newDrawtos }
+        )
 
 
 {-| Exposed for testing
@@ -474,7 +551,7 @@ toAbsoluteMoveTo { start, cursor } (MixedPath.MoveTo mode coordinate) =
         Relative ->
             let
                 newCoordinate =
-                    addCoordinates cursor coordinate
+                    uncurry addCoordinates ( cursor, coordinate )
             in
                 ( MoveTo newCoordinate, { start = newCoordinate, cursor = newCoordinate } )
 
