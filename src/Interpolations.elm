@@ -10,6 +10,28 @@ points =
         |> List.map (\( x, y ) -> ( x * 2, y * 2 ))
 
 
+
+{-
+   v =
+       Debug.log "xs" (List.map Tuple.first points)
+
+
+   vv =
+       Debug.log "ys" (List.map Tuple.second points)
+-}
+
+
+correct =
+    [ ( ( 95.50028627046834, 123.62853544028398 ), ( 191.00057254093667, 77.25707088056797 ), ( 240, 90 ) )
+    , ( ( 288.9994274590633, 102.74292911943203 ), ( 291.49799610672164, 174.60025191801213 ), ( 300, 178 ) )
+    , ( ( 308.50200389327836, 181.39974808198787 ), ( 323.00744303217675, 116.34192144738348 ), ( 334, 84 ) )
+    , ( ( 344.99255696782325, 51.658078552616516 ), ( 352.4722317645712, 52.032062292453915 ), ( 360, 46 ) )
+    , ( ( 367.5277682354288, 39.967937707546085 ), ( 375.10362990953854, 27.52982938280087 ), ( 380, 46 ) )
+    , ( ( 384.89637009046146, 64.47017061719913 ), ( 387.11324859727466, 113.84862017634262 ), ( 400, 178 ) )
+    ]
+        |> Debug.log "correct"
+
+
 monoY =
     List.map (\( x, y ) -> ( y, 500 - x )) points
 
@@ -33,10 +55,10 @@ radialPoints =
 
 main =
     Svg.svg [ width "1000", height "1000" ]
-        [ Svg.path [ d (Path.toString (linear monoY)), fill "none", stroke "orange" ] []
+        [ Svg.path [ d (Path.toString (linear points)), fill "none", stroke "orange" ] []
           --, Svg.path [ d (Path.toString (bundle 0.5 points)), fill "none", stroke "green" ] []
           --, Svg.path [ d (Path.toString (bundle 0.25 points)), fill "none", stroke "green" ] []
-        , Svg.path [ d (Path.toString (monotoneY monoY)), fill "none", stroke "green" ] []
+        , Svg.path [ d (Path.toString (natural points)), fill "none", stroke "green" ] []
           --, Svg.path [ d (Path.toString (monotoneX points)), fill "none", stroke "green" ] []
           -- , Svg.path [ d (Path.toString (basis points)), fill "none", stroke "green" ] []
           --, Svg.path [ d (Path.toString (basis points)), fill "none", stroke "black" ] []
@@ -703,3 +725,46 @@ controlPoints points =
             (List.map2 (\xx aa -> 2 * xx - aa) (List.drop 1 points) (List.drop 1 a_)) ++ [ (lastX + lastA) / 2 ]
     in
         ( a_, b_ )
+
+
+natural points =
+    case points of
+        [] ->
+            []
+
+        [ x ] ->
+            []
+
+        [ p1, p2 ] ->
+            [ subpath (moveTo p1) [ lineTo [ p2 ] ] ]
+
+        p :: ps ->
+            [ subpath (moveTo p) [ cubicCurveTo (naturalControlPoints p ps) ] ]
+
+
+naturalControlPoints p ps =
+    let
+        points =
+            p :: ps
+
+        ( xs, ys ) =
+            List.unzip points
+
+        ( px0, px1 ) =
+            controlPoints xs
+
+        ( py0, py1 ) =
+            controlPoints ys
+
+        pa =
+            List.map2 (,) px0 py0
+
+        pb =
+            List.map2 (,) px1 py1
+
+        segments =
+            List.map3 (,,) pa pb (List.drop 1 points)
+
+        --|> List.take (List.length points - 2)
+    in
+        segments
