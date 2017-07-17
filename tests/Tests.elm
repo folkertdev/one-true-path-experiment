@@ -9,6 +9,9 @@ import Path exposing (addCoordinates)
 import ParserPrimitives exposing (..)
 
 
+--
+
+
 pathPath =
     [ Path.subpath (Path.moveTo ( 0, 0 )) [ Path.lineTo [ ( 20, 40 ) ], Path.lineTo [ ( 73, 73 ) ] ]
     , Path.subpath (Path.moveTo ( 20, 0 )) [ Path.lineTo [ ( 30, 50 ) ], Path.lineTo [ ( 42, 42 ) ] ]
@@ -28,6 +31,39 @@ pathTests =
                             []
                         )
         ]
+
+
+
+{-
+   controlPointsTest3 =
+       let
+           ( correctA, correctB, correctR ) =
+               ( [ 1.3333333333333335, 2.333333333333333, 3.3333333333333335, 4.333333333333334, 5.333333333333333, 6.333333333333334, 7.333333333333333, 8.333333333333332 ]
+               , [ 1.666666666666667, 2.6666666666666665, 3.666666666666666, 4.666666666666667, 5.666666666666666, 6.666666666666667, 7.666666666666668, 8.666666666666666 ]
+               , [ 5, 11.5, 16.714285714285715, 21.5, 26.237113402061855, 30.96961325966851, 35.70170244263508, 53.86751289170964 ]
+               )
+
+           ( a, b ) =
+               Interpolations.controlPoints (List.map toFloat <| List.range 1 9)
+       in
+           describe "step 3"
+               [ test "a is correct" <| \_ -> Expect.equal correctA a
+               , test "b is correct" <| \_ -> Expect.equal correctB b
+               ]
+
+
+   controlPointsTest2 =
+       let
+           ( a, b, r ) =
+               Interpolations.step2 (List.map toFloat <| List.range 1 9)
+       in
+           describe "step 2"
+               [ test "a is correct" <| \_ -> Expect.equal [ 0, 1, 1, 1, 1, 1, 1, 2 ] a
+               , test "b is correct" <| \_ -> Expect.equal [ 2, 3.5, 3.7142857142857144, 3.730769230769231, 3.731958762886598, 3.7320441988950277, 3.7320503330866024, 6.464101547005157 ] b
+               , test "r is correct" <| \_ -> Expect.equal [ 5, 11.5, 16.714285714285715, 21.5, 26.237113402061855, 30.96961325966851, 35.70170244263508, 53.86751289170964 ] r
+               ]
+
+-}
 
 
 suite : Test
