@@ -5,7 +5,8 @@ import Expect
 import Fuzz exposing (..)
 import Parser
 import MixedPath exposing (..)
-import Path exposing (addCoordinates)
+import Path
+import Vector2 as Vec2
 import ParserPrimitives exposing (..)
 
 
@@ -224,8 +225,8 @@ toAbsoluteConversion =
                     let
                         ( newCursor, newStart ) =
                             if mode == Relative then
-                                ( addCoordinates startConfig.cursor coordinate
-                                , addCoordinates startConfig.start coordinate
+                                ( Vec2.add startConfig.cursor coordinate
+                                , Vec2.add startConfig.start coordinate
                                 )
                             else
                                 ( coordinate

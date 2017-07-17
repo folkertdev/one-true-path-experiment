@@ -9,6 +9,7 @@ module Path
         , ArcFlag
         , EllipticalArcArgument
         , CursorState
+        , svgPath
         , toString
         , parse
         , subpath
@@ -34,12 +35,11 @@ module Path
         , toAbsoluteDrawTo
         , toMixedMoveTo
         , toMixedDrawTo
-        , addCoordinates
         )
 
-{-| Low-level module for working with constructing svg paths
+{-| Low-level module for constructing svg paths.
 
-This module provides a wrapper around the svg path interface. A path can be parsed from a string or build up using the
+This module provides a wrapper around the svg path syntax. A path can be parsed from a string or build up using the
 svg path primitives, and then converted to a string that can be used in the [`d` attribute][d-attribute] to render the path.
 
 Note that this is not the most convenient way of drawing. This package is mainly meant as a primitive to build other packages on top of.
@@ -66,10 +66,42 @@ This package only supports absolute coordinates and instructions, but it is poss
 When a path is parsed, the first [`MoveTo`] instruction is always interpreted as absolute (this is in accordance [with the spec]),
 thus making sure  that there is always an absolute cursor position.
 
-The constructors are exposed, so if you need an escape hatch it is available. As always though, never reach for it when there are other options available.
+
+The constructors are exposed, so if you need an escape hatch it is available. As always though, never reach for it when there are other options.
+
+## Example
+
+```elm
+myPoints : List (Float, Float)
+
+-- connect all the points with a straight line
+linear : List Coordinate -> Path
+linear points =
+    case points of
+        [] ->
+            []
+
+        p::ps ->
+            [ subpath (moveTo p) [ lineTo ps ] ]
+
+
+main =
+    Svg.svg [ width "400", height "400" ]
+        [ Path.svgPath (linear myPoints) [ fill "none" ]
+        ]
+```
 
 ## Data Structures
-@docs Coordinate, Path, SubPath, subpath, toString, parse, mapCoordinate, CursorState, mapWithCursorState, updateCursorState
+@docs Coordinate, Path, SubPath
+
+## Constructing Paths
+@docs subpath, parse
+
+## Creating SVG
+@docs svgPath, toString
+
+## Modifying Paths
+@docs mapCoordinate, CursorState, mapWithCursorState, updateCursorState
 
 ## Moving the cursor
 
@@ -95,12 +127,23 @@ The constructors are exposed, so if you need an escape hatch it is available. As
 @docs arcTo, EllipticalArcArgument, Direction, clockwise, counterClockwise, ArcFlag, largestArc, smallestArc
 
 ## Internal
-@docs toAbsoluteMoveTo, toAbsoluteDrawTo, toMixedDrawTo, toMixedMoveTo, addCoordinates
+
+Some internal functions that need to be exposed in order to use them in tests.
+@docs toAbsoluteMoveTo, toAbsoluteDrawTo, toMixedDrawTo, toMixedMoveTo
 
 -}
 
+import Svg
+import Svg.Attributes
 import Parser
 import MixedPath exposing (..)
+
+
+{-| Construct an svg path element from a `Path` with the given attributes
+-}
+svgPath : Path -> List (Svg.Attribute msg) -> Svg.Svg msg
+svgPath path attributes =
+    Svg.path (Svg.Attributes.d (toString path) :: attributes) []
 
 
 {-| A path is a list of [`SubPath`](#SubPath)s.
@@ -182,59 +225,64 @@ type alias ArcFlag =
     MixedPath.ArcFlag
 
 
-{-| Draw a series of line segments to absolute positions
+{-| Draw a series of line segments to absolute positions. The `L` instruction.
 -}
 lineTo : List Coordinate -> DrawTo
 lineTo =
     LineTo
 
 
-{-| Specific version of `lineTo` that only moves horizontally.
+{-| Specific version of `lineTo` that only moves horizontally. The `H` instruction.
 -}
 horizontalTo : List Float -> DrawTo
 horizontalTo =
     Horizontal
 
 
-{-| Specific version of `lineTo` that only moves vertically
+{-| Specific version of `lineTo` that only moves vertically. The `V` instruction
 -}
 verticalTo : List Float -> DrawTo
 verticalTo =
     Vertical
 
 
-{-| Draw a straight line from the cursor position to the starting position of the path .
+{-| Draw a straight line from the cursor position to the starting position of the path. The `Z` instruction.
 -}
 closePath : DrawTo
 closePath =
     ClosePath
 
 
-{-| -}
+{-| A quadratic bezier. The `Q` instruction.
+-}
 quadraticCurveTo : List ( Coordinate, Coordinate ) -> DrawTo
 quadraticCurveTo =
     QuadraticBezierCurveTo
 
 
-{-| -}
+{-| A smooth extension to a quadratic bezier segment. The `T` instruction.
+-}
 quadraticCurveExtendTo : List Coordinate -> DrawTo
 quadraticCurveExtendTo =
     SmoothQuadraticBezierCurveTo
 
 
-{-| -}
+{-| A cubic bezier. The `C` instruction.
+-}
 cubicCurveTo : List ( Coordinate, Coordinate, Coordinate ) -> DrawTo
 cubicCurveTo =
     CurveTo
 
 
-{-| -}
+{-| A smooth extension to a cubic bezier segment. The `S` instruction.
+-}
 cubicCurveExtendTo : List ( Coordinate, Coordinate ) -> DrawTo
 cubicCurveExtendTo =
     SmoothCurveTo
 
 
-{-| -}
+{-| An elliptical arc. The `A` instruction.
+-}
 arcTo : List EllipticalArcArgument -> DrawTo
 arcTo =
     EllipticalArc
@@ -297,8 +345,8 @@ toString =
     parse "M0,0 l42,73"
         --> Ok [{ moveto = MoveTo Absolute (0,0), drawtos = [ LineTo Relative  [(42, 73)]]}]
 
-Only accepts valid complete subpaths (a sequences of a move followed by zero or more draws). The types and constructors in the output are
-detailed [here](#internal-data-used-by-the-parser-).
+Only accepts valid complete subpaths (a sequences of a move followed by zero or more draws). Relative instructions are converted to absolute ones.
+The types and constructors in the output are described [here](#internal-data-used-by-the-parser-).
 
 The parser uses [`elm-tools/parser`](http://package.elm-lang.org/packages/elm-tools/parser/2.0.1/).
 The error type is [`Parser.Error`](http://package.elm-lang.org/packages/elm-tools/parser/2.0.1/Parser#Error).
