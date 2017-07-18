@@ -307,6 +307,7 @@ commands =
     in
         describe "parsing individual commands"
             [ parseTest moveto "M0,0" ( MoveTo Absolute ( 0, 0 ), Nothing )
+            , parseTest moveto "M0.3,0" ( MoveTo Absolute ( 0.3, 0 ), Nothing )
             , parseTest moveto "m0,0" ( MoveTo Relative ( 0, 0 ), Nothing )
             , parseTest moveto "M0,0 20,20" ( MoveTo Absolute ( 0, 0 ), Just (LineTo Absolute [ ( 20, 20 ) ]) )
             , parseTest moveto "m0,0 20,20" ( MoveTo Relative ( 0, 0 ), Just (LineTo Relative [ ( 20, 20 ) ]) )
