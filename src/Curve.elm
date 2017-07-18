@@ -23,7 +23,12 @@ module Curve
         , naturalControlPoints
         )
 
-{-|
+{-| Construct curves from a set of points.
+
+The problem of drawing a line through a set of points is actually quite tricky. Should the curve be smooth? Should the ends be connected?
+This module gives many options for drawing lines through points.
+
+Supports all the curves defined by [D3 Shape](https://github.com/d3/d3-shape#curves).
 
 ## Linear
 
@@ -43,9 +48,21 @@ module Curve
 
 ## Catmull-Rom
 
+Catmull-Rom splines are a special case of cardinal splines. These curves are great for animation, because the data points are
+hit exactly and the curve is smooth.
+
 @docs catmullRom, catmullRomClosed, catmullRomOpen
 
 ## Monotone
+
+The monotone curves can only be increasing (staying flat or becoming higher) or decreasing (staying flat or becoming lower) between any two adjacent points.
+It cannot first go down and then go up.
+
+<img style="max-width: 100%;" src="https://upload.wikimedia.org/wikipedia/en/f/fe/MonotCubInt.png" />
+
+Notice that around 0.45, the cubic interpolation dives below the y-coordinate of the next point, whereas the monotone interpolation does not.
+
+A nice consequence is that there are no weird bumps in the curve between the data points.
 
 @docs monotoneX, monotoneY
 
@@ -90,7 +107,12 @@ type alias Triplet a =
     (,)
 
 
-{-| -}
+{-| Draw straight lines between the data points.
+
+
+<img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/linear.svg" />
+
+-}
 linear : List (Vec2 Float) -> Path
 linear points =
     case points of
@@ -101,7 +123,10 @@ linear points =
             [ subpath (moveTo x) [ lineTo xs ] ]
 
 
-{-| -}
+{-| Draw a straigt line between the data points, connecting the ends.
+
+<img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/linearClosed.svg" />
+-}
 linearClosed : List (Vec2 Float) -> Path
 linearClosed points =
     case points of
@@ -112,13 +137,24 @@ linearClosed points =
             [ subpath (moveTo x) [ lineTo xs, closePath ] ]
 
 
-{-| -}
+{-| Convert `(angle, radius)` pairs to `(x, y)` coordinates, relative to the given vector.
+
+This function is used by radial and can be used to use radial with different interpolations, for instance.
+
+    radialNatural  : Vec2 Float -> List (Vec2 Float) -> Path
+    radialNatural ( x, y ) =
+        natural << toPolarWithCenter ( x, y )
+
+-}
 toPolarWithCenter : Vec2 Float -> List (Vec2 Float) -> List (Vec2 Float)
 toPolarWithCenter ( x, y ) =
     List.map (\( angle, radius ) -> ( radius * sin angle + x, -radius * cos angle + y ))
 
 
-{-| -}
+{-| Interpret a 2D vector as a `(angle, radius)` pair. The angle is in radians. The first argument is the center.
+
+<img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/radial.svg" />
+-}
 radial : Vec2 Float -> List (Vec2 Float) -> Path
 radial ( x, y ) =
     linear << toPolarWithCenter ( x, y )
@@ -140,6 +176,9 @@ basisPoint p0 p1 p =
 
 
 {-| Basis interpolation (also known as B-spline)
+
+
+<img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/basis.svg" />
 -}
 basis : List (Vec2 Float) -> Path
 basis points =
@@ -174,6 +213,8 @@ basis points =
 
 
 {-| Closed Basis interpolation (also known as B-spline)
+
+<img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/basisClosed.svg" />
 -}
 basisClosed : List (Vec2 Float) -> Path
 basisClosed points =
@@ -218,7 +259,10 @@ basisClosed points =
                 []
 
 
-{-| -}
+{-|
+
+<img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/basisOpen.svg" />
+-}
 basisOpen : List (Vec2 Float) -> Path
 basisOpen points =
     let
@@ -245,7 +289,10 @@ basisOpen points =
                 []
 
 
-{-| -}
+{-|
+
+<img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/bundle.svg" />
+-}
 bundle : Float -> List (Vec2 Float) -> Path
 bundle beta points =
     case points of
@@ -292,7 +339,10 @@ cardinalPoint k p0 p1 p2 p =
     )
 
 
-{-| -}
+{-|
+
+<img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/cardinal.svg" />
+-}
 cardinal : Float -> List (Vec2 Float) -> Path
 cardinal tension points =
     let
@@ -321,7 +371,9 @@ cardinal tension points =
                 []
 
 
-{-| -}
+{-|
+<img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/cardinalOpen.svg" />
+-}
 cardinalOpen : Float -> List (Vec2 Float) -> Path
 cardinalOpen tension points =
     let
@@ -340,7 +392,9 @@ cardinalOpen tension points =
                 []
 
 
-{-| -}
+{-|
+<img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/cardinalClosed.svg" />
+-}
 cardinalClosed : Float -> List (Vec2 Float) -> Path
 cardinalClosed tension points =
     let
@@ -388,7 +442,9 @@ catmullRomDistance alpha p1 p2 =
         ( sqrt l23_2a, l23_2a )
 
 
-{-| -}
+{-|
+<img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/catmullRom.svg" />
+-}
 catmullRom : Float -> List (Vec2 Float) -> Path
 catmullRom alpha points =
     if alpha == 0 then
@@ -422,7 +478,9 @@ catmullRomHelper alpha ending points =
             []
 
 
-{-| -}
+{-|
+<img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/catmullRomOpen.svg" />
+-}
 catmullRomOpen : Float -> List (Vec2 Float) -> Path
 catmullRomOpen alpha points =
     if alpha == 0 then
@@ -443,7 +501,9 @@ catmullRomOpen alpha points =
                 []
 
 
-{-| -}
+{-|
+<img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/catmullRomClosed.svg" />
+-}
 catmullRomClosed : Float -> List (Vec2 Float) -> Path
 catmullRomClosed alpha points =
     if alpha == 0 then
@@ -572,7 +632,10 @@ monotonePoint ( x0, y0 ) ( x1, y1 ) t0 t1 =
         )
 
 
-{-| Note, does not deal well with coincident points
+{-| Draw a curve monotone in y assuming the points are monotone in x.
+<img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/monotoneX.svg" />
+
+Note, does not deal well with coincident points
 -}
 monotoneX : List (Vec2 Float) -> Path
 monotoneX points =
@@ -609,7 +672,9 @@ monotoneX points =
             []
 
 
-{-| -}
+{-| Draw a curve monotone in y assuming the points are monotone in x.
+<img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/monotoneY.svg" />
+-}
 monotoneY : List (Vec2 Float) -> Path
 monotoneY points =
     points
@@ -717,7 +782,9 @@ unsafeTail =
     Maybe.withDefault [] << List.tail
 
 
-{-| -}
+{-|
+<img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/natural.svg" />
+-}
 natural : List (Vec2 Float) -> Path
 natural points =
     case points of
@@ -757,7 +824,16 @@ naturalControlPoints points =
                 []
 
 
-{-| -}
+{-| Step goes some distance to the right, then to the y-coordinate of the next data point, and then draws to the next point.
+
+The first argument determines where the step is.
+
+* `step 1 points` is  `stepAfter`
+* `step 0 points` is `stepBefore`
+* `step 0.5 points` steps exactly in the middle
+
+<img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/step.svg" />
+-}
 step : Float -> List (Vec2 Float) -> Path
 step factor points =
     let
@@ -781,13 +857,17 @@ step factor points =
                     |> linear
 
 
-{-| -}
+{-|
+<img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/stepBefore.svg" />
+-}
 stepBefore : List (Vec2 Float) -> Path
 stepBefore =
     step 0
 
 
-{-| -}
+{-|
+<img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/stepAfter.svg" />
+-}
 stepAfter : List (Vec2 Float) -> Path
 stepAfter =
     step 1

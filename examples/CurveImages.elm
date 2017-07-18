@@ -182,15 +182,15 @@ linearClosed =
 
 
 step =
-    diagram "step" (Curve.step 0.5) points
+    diagram "step 0.5" (Curve.step 0.5) points
 
 
 stepBefore =
-    diagram "step before" (Curve.step 0) points
+    diagram "step before" Curve.stepBefore points
 
 
 stepAfter =
-    diagram "step after" (Curve.step 1) points
+    diagram "step after" Curve.stepAfter points
 
 
 basis =
@@ -242,7 +242,7 @@ monotoneY =
 
 
 radial =
-    diagram "radial" Curve.natural (Curve.toPolarWithCenter ( 500, 200 ) radialPoints)
+    diagram "radial" Curve.linear (Curve.toPolarWithCenter ( 500, 200 ) radialPoints)
 
 
 natural =
