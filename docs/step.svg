@@ -14,7 +14,7 @@
     <rect fill="url(#grid)" height="100%" width="100%">
     </rect>
     <text font-family="Verdana, sans-serif" font-size="20px" font-weight="bolder" x="25" y="30">
-        step
+        step 0.5
     </text>
     <path d="M50,300 L100,300 100,150 187.5,150 187.5,100 250,100 250,100 312.5,100 312.5,250 425,250 425,250 550,250 550,150 662.5,150 662.5,200 775,200 775,250 862.5,250 862.5,225 937.5,225 937.5,300 975,300" fill="none" stroke="black" stroke-width="2">
     </path>
