@@ -4,6 +4,7 @@ module ParserPrimitives exposing (..)
 -}
 
 import Parser exposing (..)
+import Char
 
 
 type alias Coordinate =
@@ -24,6 +25,7 @@ type Sign
 This parser is used to for example parse the comma or whitespace-delimited arguments for a horizontal move
 
     Parser.run (delimited { delimiter = optional commaWsp, item = number }) "1 2 3 4" == [1,2,3,4]
+
 -}
 delimited : { delimiter : Parser (), item : Parser a } -> Parser (List a)
 delimited { delimiter, item } =
@@ -59,7 +61,16 @@ sign =
 
 digitSequence : Parser Int
 digitSequence =
-    Parser.int
+    Parser.keep oneOrMore Char.isDigit
+        |> Parser.andThen
+            (\v ->
+                case String.toInt v of
+                    Err e ->
+                        Parser.fail e
+
+                    Ok v ->
+                        Parser.succeed v
+            )
 
 
 type Exponent
@@ -116,19 +127,20 @@ applyExponent float (Exponent exp) =
 floatingPointConstant : Parser Float
 floatingPointConstant =
     join <|
-        oneOf
-            [ succeed applyExponent
-                |= fractionalConstant
-                |= withDefault (Exponent 0) exponent
-            , succeed applyExponent
-                |= Parser.map toFloat digitSequence
-                |= exponent
-            ]
+        inContext "floatingPointConstant" <|
+            oneOf
+                [ succeed applyExponent
+                    |= fractionalConstant
+                    |= withDefault (Exponent 0) exponent
+                , succeed applyExponent
+                    |= Parser.map toFloat digitSequence
+                    |= exponent
+                ]
 
 
 integerConstant : Parser Int
 integerConstant =
-    Parser.int
+    digitSequence
 
 
 comma : Parser ()
