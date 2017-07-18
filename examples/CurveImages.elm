@@ -125,7 +125,13 @@ stacked name toPath points =
         labels =
             List.indexedMap label values
     in
-        Svg.svg [ width "1000", height "400", Html.Attributes.style [ ( "background-color", "#efefef" ) ] ] (svgGrid :: gridRect :: (labels ++ paths ++ nodes points))
+        Svg.svg
+            [ width "1000"
+            , Html.Attributes.attribute "xmlns" "http://www.w3.org/2000/svg"
+            , height "400"
+            , Html.Attributes.style [ ( "background-color", "#efefef" ) ]
+            ]
+            (svgGrid :: gridRect :: (labels ++ paths ++ nodes points))
 
 
 nodes points =
