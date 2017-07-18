@@ -291,6 +291,18 @@ primitives : Test
 primitives =
     describe "primitive value parsers"
         [ parseTest nonNegativeNumber "25" 25
+        , parseTest digitSequence "42" 42
+        , parseTest digitSequence "42X" 42
+        , parseTest digitSequence "42 " 42
+        , parseTest floatingPointConstant "42.0" 42
+        , parseTest floatingPointConstant "42.0X" 42
+        , parseTest floatingPointConstant "42.0 " 42
+        , parseTest floatingPointConstant "42e0" 42
+        , parseTest floatingPointConstant "42e1" 420
+        , parseTest floatingPointConstant "42e1X" 420
+        , parseTest (delimited { item = floatingPointConstant, delimiter = commaWsp }) "" []
+        , parseTest (delimited { item = floatingPointConstant, delimiter = commaWsp }) "45" [ 45 ]
+        , parseTest (delimited { item = floatingPointConstant, delimiter = commaWsp }) "45 45" [ 45, 45 ]
         ]
 
 
