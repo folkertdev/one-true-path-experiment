@@ -99,13 +99,8 @@ fractionalConstant =
     in
         join <|
             oneOf
-                [ succeed helper
-                    |= withDefault 0 digitSequence
-                    |. symbol "."
-                    |= digitSequence
-                , succeed (\left -> helper left 0)
-                    |= digitSequence
-                    |. symbol "."
+                [ delayedCommitMap helper (withDefault 0 digitSequence |. symbol ".") digitSequence
+                , delayedCommitMap helper (withDefault 0 digitSequence |. symbol ".") <| succeed 0
                 ]
 
 
@@ -133,7 +128,7 @@ floatingPointConstant =
                 |= withDefault (Exponent 0) exponent
             , succeed applyExponent
                 |= Parser.map toFloat digitSequence
-                |= exponent
+                |= withDefault (Exponent 0) exponent
             ]
 
 
@@ -200,11 +195,11 @@ number =
         oneOf
             [ succeed applySign
                 |= withDefault Plus sign
-                |= integerConstant
-                |> Parser.map toFloat
+                |= floatingPointConstant
             , succeed applySign
                 |= withDefault Plus sign
-                |= floatingPointConstant
+                |= integerConstant
+                |> Parser.map toFloat
             ]
 
 
