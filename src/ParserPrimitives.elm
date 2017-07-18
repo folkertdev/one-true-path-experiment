@@ -20,6 +20,21 @@ type Sign
 -- Primitives
 
 
+join : Parser (Parser a) -> Parser a
+join =
+    Parser.andThen identity
+
+
+resultToParser : Result String a -> Parser a
+resultToParser result =
+    case result of
+        Err e ->
+            Parser.fail e
+
+        Ok v ->
+            Parser.succeed v
+
+
 {-| Parse a sequence of values separated by a delimiter
 
 This parser is used to for example parse the comma or whitespace-delimited arguments for a horizontal move
@@ -62,15 +77,7 @@ sign =
 digitSequence : Parser Int
 digitSequence =
     Parser.keep oneOrMore Char.isDigit
-        |> Parser.andThen
-            (\v ->
-                case String.toInt v of
-                    Err e ->
-                        Parser.fail e
-
-                    Ok v ->
-                        Parser.succeed v
-            )
+        |> Parser.andThen (String.toInt >> resultToParser)
 
 
 type Exponent
@@ -90,33 +97,21 @@ fractionalConstant : Parser Float
 fractionalConstant =
     let
         helper left right =
-            case String.toFloat (toString left ++ "." ++ toString right) of
-                Err e ->
-                    fail e
-
-                Ok v ->
-                    succeed v
+            String.toFloat (toString left ++ "." ++ toString right)
+                |> resultToParser
     in
         join <|
             oneOf
+                -- only commit to a fractional when the '.' is parsed
                 [ delayedCommitMap helper (withDefault 0 digitSequence |. symbol ".") digitSequence
                 , delayedCommitMap helper (withDefault 0 digitSequence |. symbol ".") <| succeed 0
                 ]
 
 
-join : Parser (Parser a) -> Parser a
-join =
-    Parser.andThen identity
-
-
 applyExponent : Float -> Exponent -> Parser Float
 applyExponent float (Exponent exp) =
-    case String.toFloat (toString float ++ "e" ++ toString exp) of
-        Err e ->
-            fail e
-
-        Ok v ->
-            succeed v
+    String.toFloat (toString float ++ "e" ++ toString exp)
+        |> resultToParser
 
 
 floatingPointConstant : Parser Float
