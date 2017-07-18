@@ -127,15 +127,14 @@ applyExponent float (Exponent exp) =
 floatingPointConstant : Parser Float
 floatingPointConstant =
     join <|
-        inContext "floatingPointConstant" <|
-            oneOf
-                [ succeed applyExponent
-                    |= fractionalConstant
-                    |= withDefault (Exponent 0) exponent
-                , succeed applyExponent
-                    |= Parser.map toFloat digitSequence
-                    |= exponent
-                ]
+        oneOf
+            [ succeed applyExponent
+                |= fractionalConstant
+                |= withDefault (Exponent 0) exponent
+            , succeed applyExponent
+                |= Parser.map toFloat digitSequence
+                |= exponent
+            ]
 
 
 integerConstant : Parser Int
