@@ -69,38 +69,42 @@ pathTests =
 
 suite : Test
 suite =
-    let
-        serious =
-            """M600,350 l10,10 l20,20 Z
-            """
-    in
-        describe "svg path syntax parser in elm"
-            [ test "moveto drawto command group" <|
-                \_ ->
-                    Parser.run moveToDrawToCommandGroup serious
-                        |> Expect.equal (Ok { moveto = MoveTo Absolute ( 600, 350 ), drawtos = [ LineTo Relative [ ( 10, 10 ) ], LineTo Relative [ ( 20, 20 ) ], ClosePath ] })
-            , test "moveto drawto command groups" <|
-                \_ ->
-                    Parser.run moveToDrawToCommandGroups serious
-                        |> Expect.equal (Ok [ { moveto = MoveTo Absolute ( 600, 350 ), drawtos = [ LineTo Relative [ ( 10, 10 ) ], LineTo Relative [ ( 20, 20 ) ], ClosePath ] } ])
-            , test "svgPath" <|
-                \_ ->
-                    Parser.run svgMixedPath serious
-                        |> Expect.equal (Ok [ { moveto = MoveTo Absolute ( 600, 350 ), drawtos = [ LineTo Relative [ ( 10, 10 ) ], LineTo Relative [ ( 20, 20 ) ], ClosePath ] } ])
-            , test "relative moveto 0,0" <|
-                \_ ->
-                    Parser.run moveto "m 0,0"
-                        |> Expect.equal (Ok ( MoveTo Relative ( 0, 0 ), Nothing ))
-            , test "lineto argument sequence" <|
-                \_ ->
-                    Parser.run linetoArgumentSequence "10,10 20,20"
-                        |> Expect.equal
-                            (Ok [ ( 10, 10 ), ( 20, 20 ) ])
-            , test "lineto command with multiple arguments " <|
-                \_ ->
-                    Parser.run lineto "l 10,10 20,20"
-                        |> Expect.equal
-                            (Ok (LineTo Relative [ ( 10, 10 ), ( 20, 20 ) ]))
+    describe "svg path syntax parser in elm" <|
+        List.map
+            (\( label, serious ) ->
+                describe label
+                    [ test "moveto drawto command group" <|
+                        \_ ->
+                            Parser.run moveToDrawToCommandGroup serious
+                                |> Expect.equal (Ok { moveto = MoveTo Absolute ( 600, 350 ), drawtos = [ LineTo Relative [ ( 10, 10 ) ], LineTo Relative [ ( 20, 20 ) ], ClosePath ] })
+                    , test "moveto drawto command groups" <|
+                        \_ ->
+                            Parser.run moveToDrawToCommandGroups serious
+                                |> Expect.equal (Ok [ { moveto = MoveTo Absolute ( 600, 350 ), drawtos = [ LineTo Relative [ ( 10, 10 ) ], LineTo Relative [ ( 20, 20 ) ], ClosePath ] } ])
+                    , test "svgPath" <|
+                        \_ ->
+                            Parser.run svgMixedPath serious
+                                |> Expect.equal (Ok [ { moveto = MoveTo Absolute ( 600, 350 ), drawtos = [ LineTo Relative [ ( 10, 10 ) ], LineTo Relative [ ( 20, 20 ) ], ClosePath ] } ])
+                    , test "relative moveto 0,0" <|
+                        \_ ->
+                            Parser.run moveto "m 0,0"
+                                |> Expect.equal (Ok ( MoveTo Relative ( 0, 0 ), Nothing ))
+                    , test "lineto argument sequence" <|
+                        \_ ->
+                            Parser.run linetoArgumentSequence "10,10 20,20"
+                                |> Expect.equal
+                                    (Ok [ ( 10, 10 ), ( 20, 20 ) ])
+                    , test "lineto command with multiple arguments " <|
+                        \_ ->
+                            Parser.run lineto "l 10,10 20,20"
+                                |> Expect.equal
+                                    (Ok (LineTo Relative [ ( 10, 10 ), ( 20, 20 ) ]))
+                    ]
+            )
+            [ ( "no spacing", "M600,350l10,10l20,20Z" )
+            , ( "some spaces", "M600,350 l10,10 l20,20 Z" )
+            , ( "well spaced", "M 600, 350 l 10, 10 l 20, 20 Z" )
+            , ( "crazy spaced", "M   600  ,  350 l  10  , 10 l 20  , 20  Z" )
             ]
 
 
