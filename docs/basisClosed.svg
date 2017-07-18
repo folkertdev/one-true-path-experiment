@@ -1,0 +1,43 @@
+<svg style="background-color:#efefef;" height="400" width="1000" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <pattern height="25" id="smallGrid" patternUnits="userSpaceOnUse" width="25">
+            <path d="M25,0 L0,0 0,25" fill="none" stroke="white" stroke-width="1">
+            </path>
+        </pattern>
+        <pattern height="50" id="grid" patternUnits="userSpaceOnUse" width="50">
+            <rect fill="url(#smallGrid)" height="50" width="50">
+            </rect>
+            <path d="M50,0 L0,0 0,50" fill="none" stroke="white" stroke-width="1.5">
+            </path>
+        </pattern>
+    </defs>
+    <rect fill="url(#grid)" height="100%" width="100%">
+    </rect>
+    <text font-family="Verdana, sans-serif" font-size="20px" font-weight="bolder" x="25" y="30">
+        basis closed
+    </text>
+    <path d="M145.83333333333334,166.66666666666666 C175,133.33333333333334 200,116.66666666666667 220.83333333333334,108.33333333333333 241.66666666666666,100 258.3333333333333,100 279.1666666666667,125 300,150 325,200 362.5,225 400,250 450,250 491.6666666666667,233.33333333333334 533.3333333333334,216.66666666666666 566.6666666666666,183.33333333333334 604.1666666666666,175 641.6666666666666,166.66666666666666 683.3333333333334,183.33333333333334 720.8333333333334,200 758.3333333333334,216.66666666666666 791.6666666666666,233.33333333333334 820.8333333333334,237.5 850,241.66666666666666 875,233.33333333333334 900,241.66666666666666 925,250 950,275 808.3333333333334,287.5 666.6666666666666,300 358.3333333333333,300 220.83333333333334,275 83.33333333333333,250 116.66666666666667,200 145.83333333333334,166.66666666666666" fill="none" stroke="black" stroke-width="2">
+    </path>
+    <circle cx="50" cy="300" fill="white" r="4" stroke="black" stroke-width="2">
+    </circle>
+    <circle cx="150" cy="150" fill="white" r="4" stroke="black" stroke-width="2">
+    </circle>
+    <circle cx="225" cy="100" fill="white" r="4" stroke="black" stroke-width="2">
+    </circle>
+    <circle cx="275" cy="100" fill="white" r="4" stroke="black" stroke-width="2">
+    </circle>
+    <circle cx="350" cy="250" fill="white" r="4" stroke="black" stroke-width="2">
+    </circle>
+    <circle cx="500" cy="250" fill="white" r="4" stroke="black" stroke-width="2">
+    </circle>
+    <circle cx="600" cy="150" fill="white" r="4" stroke="black" stroke-width="2">
+    </circle>
+    <circle cx="725" cy="200" fill="white" r="4" stroke="black" stroke-width="2">
+    </circle>
+    <circle cx="825" cy="250" fill="white" r="4" stroke="black" stroke-width="2">
+    </circle>
+    <circle cx="900" cy="225" fill="white" r="4" stroke="black" stroke-width="2">
+    </circle>
+    <circle cx="975" cy="300" fill="white" r="4" stroke="black" stroke-width="2">
+    </circle>
+</svg>

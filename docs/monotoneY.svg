@@ -1,0 +1,35 @@
+<svg style="background-color:#efefef;" height="400" width="1000" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <pattern height="25" id="smallGrid" patternUnits="userSpaceOnUse" width="25">
+            <path d="M25,0 L0,0 0,25" fill="none" stroke="white" stroke-width="1">
+            </path>
+        </pattern>
+        <pattern height="50" id="grid" patternUnits="userSpaceOnUse" width="50">
+            <rect fill="url(#smallGrid)" height="50" width="50">
+            </rect>
+            <path d="M50,0 L0,0 0,50" fill="none" stroke="white" stroke-width="1.5">
+            </path>
+        </pattern>
+    </defs>
+    <rect fill="url(#grid)" height="100%" width="100%">
+    </rect>
+    <text font-family="Verdana, sans-serif" font-size="20px" font-weight="bolder" x="25" y="30">
+        monotoneY
+    </text>
+    <path d="M50,300 C50,300 350,300 350,300 400,283.3333333333333 425,266.6666666666667 425,250 425,233.33333333333334 425,216.66666666666666 425,200 425,183.33333333333334 375,166.66666666666666 375,150 375,133.33333333333334 441.66666666666663,116.66666666666667 575,100 575,100 975,100 975,100" fill="none" stroke="black" stroke-width="2">
+    </path>
+    <circle cx="50" cy="300" fill="white" r="4" stroke="black" stroke-width="2">
+    </circle>
+    <circle cx="350" cy="300" fill="white" r="4" stroke="black" stroke-width="2">
+    </circle>
+    <circle cx="425" cy="250" fill="white" r="4" stroke="black" stroke-width="2">
+    </circle>
+    <circle cx="425" cy="200" fill="white" r="4" stroke="black" stroke-width="2">
+    </circle>
+    <circle cx="375" cy="150" fill="white" r="4" stroke="black" stroke-width="2">
+    </circle>
+    <circle cx="575" cy="100" fill="white" r="4" stroke="black" stroke-width="2">
+    </circle>
+    <circle cx="975" cy="100" fill="white" r="4" stroke="black" stroke-width="2">
+    </circle>
+</svg>

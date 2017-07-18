@@ -1,0 +1,63 @@
+<svg style="background-color:#efefef;" height="400" width="1000">
+    <defs>
+        <pattern height="25" id="smallGrid" patternUnits="userSpaceOnUse" width="25">
+            <path d="M25,0 L0,0 0,25" fill="none" stroke="white" stroke-width="1">
+            </path>
+        </pattern>
+        <pattern height="50" id="grid" patternUnits="userSpaceOnUse" width="50">
+            <rect fill="url(#smallGrid)" height="50" width="50">
+            </rect>
+            <path d="M50,0 L0,0 0,50" fill="none" stroke="white" stroke-width="1.5">
+            </path>
+        </pattern>
+    </defs>
+    <rect fill="url(#grid)" height="100%" width="100%">
+    </rect>
+    <text fill="#ffc0cb" font-family="Verdana, sans-serif" font-size="20px" font-weight="bolder" x="25" y="30">
+        cardinal 0
+    </text>
+    <text fill="#fb82af" font-family="Verdana, sans-serif" font-size="20px" font-weight="bolder" x="25" y="52">
+        cardinal 0.25
+    </text>
+    <text fill="#e856a8" font-family="Verdana, sans-serif" font-size="20px" font-weight="bolder" x="25" y="74">
+        cardinal 0.5
+    </text>
+    <text fill="#d62aba" font-family="Verdana, sans-serif" font-size="20px" font-weight="bolder" x="25" y="96">
+        cardinal 0.75
+    </text>
+    <text fill="#9a1dae" font-family="Verdana, sans-serif" font-size="20px" font-weight="bolder" x="25" y="118">
+        cardinal 1
+    </text>
+    <path d="M50,300 C166.66666666666666,125 137.5,158.33333333333334 150,150 179.16666666666666,116.66666666666667 204.16666666666666,108.33333333333333 225,100 245.83333333333334,91.66666666666667 254.16666666666666,75 275,100 295.8333333333333,125 312.5,225 350,250 387.5,275 458.3333333333333,266.6666666666667 500,250 541.6666666666666,233.33333333333334 562.5,158.33333333333334 600,150 637.5,141.66666666666666 687.5,183.33333333333334 725,200 762.5,216.66666666666666 795.8333333333334,245.83333333333334 825,250 854.1666666666666,254.16666666666666 875,216.66666666666666 900,225 925,233.33333333333334 975,300 975,300" fill="none" stroke="#ffc0cb" stroke-width="2">
+    </path>
+    <path d="M50,300 C162.5,131.25 140.625,156.25 150,150 171.875,125 209.375,106.25 225,100 240.625,93.75 259.375,81.25 275,100 290.625,118.75 321.875,231.25 350,250 378.125,268.75 468.75,262.5 500,250 531.25,237.5 571.875,156.25 600,150 628.125,143.75 696.875,187.5 725,200 753.125,212.5 803.125,246.875 825,250 846.875,253.125 881.25,218.75 900,225 918.75,231.25 975,300 975,300" fill="none" stroke="#fb82af" stroke-width="2">
+    </path>
+    <path d="M50,300 C158.33333333333334,137.5 143.75,154.16666666666666 150,150 164.58333333333334,133.33333333333334 214.58333333333334,104.16666666666667 225,100 235.41666666666666,95.83333333333333 264.5833333333333,87.5 275,100 285.4166666666667,112.5 331.25,237.5 350,250 368.75,262.5 479.1666666666667,258.3333333333333 500,250 520.8333333333334,241.66666666666666 581.25,154.16666666666666 600,150 618.75,145.83333333333334 706.25,191.66666666666666 725,200 743.75,208.33333333333334 810.4166666666666,247.91666666666666 825,250 839.5833333333334,252.08333333333334 887.5,220.83333333333334 900,225 912.5,229.16666666666666 975,300 975,300" fill="none" stroke="#e856a8" stroke-width="2">
+    </path>
+    <path d="M50,300 C154.16666666666666,143.75 146.875,152.08333333333334 150,150 157.29166666666666,141.66666666666666 219.79166666666666,102.08333333333333 225,100 230.20833333333334,97.91666666666667 269.7916666666667,93.75 275,100 280.2083333333333,106.25 340.625,243.75 350,250 359.375,256.25 489.5833333333333,254.16666666666666 500,250 510.4166666666667,245.83333333333334 590.625,152.08333333333334 600,150 609.375,147.91666666666666 715.625,195.83333333333334 725,200 734.375,204.16666666666666 817.7083333333334,248.95833333333334 825,250 832.2916666666666,251.04166666666666 893.75,222.91666666666666 900,225 906.25,227.08333333333334 975,300 975,300" fill="none" stroke="#d62aba" stroke-width="2">
+    </path>
+    <path d="M50,300 C150,150 150,150 150,150 150,150 225,100 225,100 225,100 275,100 275,100 275,100 350,250 350,250 350,250 500,250 500,250 500,250 600,150 600,150 600,150 725,200 725,200 725,200 825,250 825,250 825,250 900,225 900,225 900,225 975,300 975,300" fill="none" stroke="#9a1dae" stroke-width="2">
+    </path>
+    <circle cx="50" cy="300" fill="white" r="4" stroke="black" stroke-width="2">
+    </circle>
+    <circle cx="150" cy="150" fill="white" r="4" stroke="black" stroke-width="2">
+    </circle>
+    <circle cx="225" cy="100" fill="white" r="4" stroke="black" stroke-width="2">
+    </circle>
+    <circle cx="275" cy="100" fill="white" r="4" stroke="black" stroke-width="2">
+    </circle>
+    <circle cx="350" cy="250" fill="white" r="4" stroke="black" stroke-width="2">
+    </circle>
+    <circle cx="500" cy="250" fill="white" r="4" stroke="black" stroke-width="2">
+    </circle>
+    <circle cx="600" cy="150" fill="white" r="4" stroke="black" stroke-width="2">
+    </circle>
+    <circle cx="725" cy="200" fill="white" r="4" stroke="black" stroke-width="2">
+    </circle>
+    <circle cx="825" cy="250" fill="white" r="4" stroke="black" stroke-width="2">
+    </circle>
+    <circle cx="900" cy="225" fill="white" r="4" stroke="black" stroke-width="2">
+    </circle>
+    <circle cx="975" cy="300" fill="white" r="4" stroke="black" stroke-width="2">
+    </circle>
+</svg>

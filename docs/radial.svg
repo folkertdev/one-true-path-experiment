@@ -1,0 +1,39 @@
+<svg style="background-color:#efefef;" height="400" width="1000" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <pattern height="25" id="smallGrid" patternUnits="userSpaceOnUse" width="25">
+            <path d="M25,0 L0,0 0,25" fill="none" stroke="white" stroke-width="1">
+            </path>
+        </pattern>
+        <pattern height="50" id="grid" patternUnits="userSpaceOnUse" width="50">
+            <rect fill="url(#smallGrid)" height="50" width="50">
+            </rect>
+            <path d="M50,0 L0,0 0,50" fill="none" stroke="white" stroke-width="1.5">
+            </path>
+        </pattern>
+    </defs>
+    <rect fill="url(#grid)" height="100%" width="100%">
+    </rect>
+    <text font-family="Verdana, sans-serif" font-size="20px" font-weight="bolder" x="25" y="30">
+        radial
+    </text>
+    <path d="M500,120 C528.0759859912083,124.99700989941915 556.1519719824166,129.9940197988383 556.5685424949238,143.4314575050762 556.985113007431,156.86889521131408 529.742268041237,178.74676072437074 530,200 530.257731958763,221.25323927562926 558.0160408424827,241.88185231383108 556.5685424949238,256.5685424949238 555.121044147365,271.25523267601653 524.4677385685279,280.00000000000006 500,280 475.5322614314721,279.99999999999994 457.25008987325356,271.25523267601653 443.4314575050762,256.5685424949238 429.61282513689883,241.88185231383108 420.25773195876286,221.25323927562928 420,200.00000000000003 419.74226804123714,178.74676072437077 428.5818973018474,156.8688952113141 443.4314575050762,143.4314575050762 458.281017708305,129.99401979883828 479.1405088541525,124.99700989941914 500,120" fill="none" stroke="black" stroke-width="2">
+    </path>
+    <circle cx="500" cy="120" fill="white" r="4" stroke="black" stroke-width="2">
+    </circle>
+    <circle cx="556.5685424949238" cy="143.4314575050762" fill="white" r="4" stroke="black" stroke-width="2">
+    </circle>
+    <circle cx="530" cy="200" fill="white" r="4" stroke="black" stroke-width="2">
+    </circle>
+    <circle cx="556.5685424949238" cy="256.5685424949238" fill="white" r="4" stroke="black" stroke-width="2">
+    </circle>
+    <circle cx="500" cy="280" fill="white" r="4" stroke="black" stroke-width="2">
+    </circle>
+    <circle cx="443.4314575050762" cy="256.5685424949238" fill="white" r="4" stroke="black" stroke-width="2">
+    </circle>
+    <circle cx="420" cy="200.00000000000003" fill="white" r="4" stroke="black" stroke-width="2">
+    </circle>
+    <circle cx="443.4314575050762" cy="143.4314575050762" fill="white" r="4" stroke="black" stroke-width="2">
+    </circle>
+    <circle cx="500" cy="120" fill="white" r="4" stroke="black" stroke-width="2">
+    </circle>
+</svg>
