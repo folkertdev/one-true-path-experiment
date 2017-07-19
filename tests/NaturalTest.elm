@@ -4,7 +4,9 @@ import Test exposing (..)
 import Expect
 import Fuzz exposing (..)
 import Curve exposing (..)
-import Path exposing (Coordinate, Path, lineTo, moveTo, subpath, cubicCurveTo)
+import Path exposing (Path, lineTo, moveTo, subpath, cubicCurveTo)
+import Vector2 exposing (Vec2)
+import Vector3 exposing (Vec3)
 
 
 last =
@@ -143,7 +145,7 @@ controlPoints points =
         ( a_, b_ )
 
 
-natural : List Coordinate -> Path
+natural : List (Vec2 Float) -> Path
 natural points =
     case points of
         [] ->
@@ -159,7 +161,7 @@ natural points =
             [ subpath (moveTo p) [ cubicCurveTo (naturalControlPoints points) ] ]
 
 
-naturalControlPoints : List Coordinate -> List (Triplet Coordinate)
+naturalControlPoints : List (Vec2 Float) -> List (Vec3 (Vec2 Float))
 naturalControlPoints points =
     let
         ( xs, ys ) =

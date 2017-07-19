@@ -2,14 +2,13 @@ module Path
     exposing
         ( Path
         , SubPath
-        , Coordinate
         , MoveTo(..)
         , DrawTo(..)
         , Direction
         , ArcFlag
         , EllipticalArcArgument
         , CursorState
-        , svgPath
+        , element
         , toString
         , parse
         , subpath
@@ -69,13 +68,16 @@ thus making sure  that there is always an absolute cursor position.
 
 The constructors are exposed, so if you need an escape hatch it is available. As always though, never reach for it when there are other options.
 
+The vector types are from [Zinggi/elm-webgl-math](http://package.elm-lang.org/packages/Zinggi/elm-webgl-math/latest). They are just type aliases for tuples.
+
 ## Example
 
 ```elm
+-- (Float, Float) is equivalent to Vec2 Float
 myPoints : List (Float, Float)
 
 -- connect all the points with a straight line
-linear : List Coordinate -> Path
+linear : List (Vec2 Float) -> Path
 linear points =
     case points of
         [] ->
@@ -87,18 +89,18 @@ linear points =
 
 main =
     Svg.svg [ width "400", height "400" ]
-        [ Path.svgPath (linear myPoints) [ fill "none" ]
+        [ Path.element (linear myPoints) [ fill "none" ]
         ]
 ```
 
 ## Data Structures
-@docs Coordinate, Path, SubPath
+@docs Path, SubPath
 
 ## Constructing Paths
 @docs subpath, parse
 
 ## Creating SVG
-@docs svgPath, toString
+@docs element, toString
 
 ## Modifying Paths
 @docs mapCoordinate, CursorState, mapWithCursorState, updateCursorState
@@ -137,12 +139,14 @@ import Svg
 import Svg.Attributes
 import Parser
 import MixedPath exposing (..)
+import Vector2 as Vec2 exposing (Vec2)
+import Vector3 as Vec3 exposing (Vec3)
 
 
 {-| Construct an svg path element from a `Path` with the given attributes
 -}
-svgPath : Path -> List (Svg.Attribute msg) -> Svg.Svg msg
-svgPath path attributes =
+element : Path -> List (Svg.Attribute msg) -> Svg.Svg msg
+element path attributes =
     Svg.path (Svg.Attributes.d (toString path) :: attributes) []
 
 
@@ -160,12 +164,6 @@ type alias SubPath =
     { moveto : MoveTo, drawtos : List DrawTo }
 
 
-{-| A 2-tuple of floats representing a position in space
--}
-type alias Coordinate =
-    ( Float, Float )
-
-
 {-| Construct a subpath
 
     subpath (moveTo (10,0)) [ lineTo [ (42, 73) ] ]
@@ -178,12 +176,12 @@ subpath =
 {-| Constructors for MoveTo instructions
 -}
 type MoveTo
-    = MoveTo Coordinate
+    = MoveTo (Vec2 Float)
 
 
 {-| Move to a position on the canvas without drawing.
 -}
-moveTo : Coordinate -> MoveTo
+moveTo : Vec2 Float -> MoveTo
 moveTo =
     MoveTo
 
@@ -191,13 +189,13 @@ moveTo =
 {-| Constructors for DrawTo instructions
 -}
 type DrawTo
-    = LineTo (List Coordinate)
+    = LineTo (List (Vec2 Float))
     | Horizontal (List Float)
     | Vertical (List Float)
-    | CurveTo (List ( Coordinate, Coordinate, Coordinate ))
-    | SmoothCurveTo (List ( Coordinate, Coordinate ))
-    | QuadraticBezierCurveTo (List ( Coordinate, Coordinate ))
-    | SmoothQuadraticBezierCurveTo (List Coordinate)
+    | CurveTo (List ( Vec2 Float, Vec2 Float, Vec2 Float ))
+    | SmoothCurveTo (List ( Vec2 Float, Vec2 Float ))
+    | QuadraticBezierCurveTo (List ( Vec2 Float, Vec2 Float ))
+    | SmoothQuadraticBezierCurveTo (List (Vec2 Float))
     | EllipticalArc (List EllipticalArcArgument)
     | ClosePath
 
@@ -209,7 +207,7 @@ type alias EllipticalArcArgument =
     , xAxisRotate : Float
     , arcFlag : ArcFlag
     , direction : Direction
-    , target : Coordinate
+    , target : Vec2 Float
     }
 
 
@@ -227,7 +225,7 @@ type alias ArcFlag =
 
 {-| Draw a series of line segments to absolute positions. The `L` instruction.
 -}
-lineTo : List Coordinate -> DrawTo
+lineTo : List (Vec2 Float) -> DrawTo
 lineTo =
     LineTo
 
@@ -255,28 +253,28 @@ closePath =
 
 {-| A quadratic bezier. The `Q` instruction.
 -}
-quadraticCurveTo : List ( Coordinate, Coordinate ) -> DrawTo
+quadraticCurveTo : List ( Vec2 Float, Vec2 Float ) -> DrawTo
 quadraticCurveTo =
     QuadraticBezierCurveTo
 
 
 {-| A smooth extension to a quadratic bezier segment. The `T` instruction.
 -}
-quadraticCurveExtendTo : List Coordinate -> DrawTo
+quadraticCurveExtendTo : List (Vec2 Float) -> DrawTo
 quadraticCurveExtendTo =
     SmoothQuadraticBezierCurveTo
 
 
 {-| A cubic bezier. The `C` instruction.
 -}
-cubicCurveTo : List ( Coordinate, Coordinate, Coordinate ) -> DrawTo
+cubicCurveTo : List ( Vec2 Float, Vec2 Float, Vec2 Float ) -> DrawTo
 cubicCurveTo =
     CurveTo
 
 
 {-| A smooth extension to a cubic bezier segment. The `S` instruction.
 -}
-cubicCurveExtendTo : List ( Coordinate, Coordinate ) -> DrawTo
+cubicCurveExtendTo : List ( Vec2 Float, Vec2 Float ) -> DrawTo
 cubicCurveExtendTo =
     SmoothCurveTo
 
@@ -319,14 +317,7 @@ smallestArc =
 {-| Contains the start of the current subpath and the current cursor position.
 -}
 type alias CursorState =
-    { start : Coordinate, cursor : Coordinate }
-
-
-{-| Exposed for testing
--}
-addCoordinates : Coordinate -> Coordinate -> Coordinate
-addCoordinates ( x1, y1 ) ( x2, y2 ) =
-    ( x1 + x2, y1 + y2 )
+    { start : Vec2 Float, cursor : Vec2 Float }
 
 
 {-| Turn a `MixedPath` into a `String`. The result is ready to be used with the `d` attribute.
@@ -363,7 +354,7 @@ parse =
         |> mapCoordinate (\(x,y) -> (2 * x, y))
              --> [ subpath (moveTo (20,0)) [ lineTo [ (84, 42) ] ] ]
 -}
-mapCoordinate : (Coordinate -> Coordinate) -> Path -> Path
+mapCoordinate : (Vec2 Float -> Vec2 Float) -> Path -> Path
 mapCoordinate f path =
     let
         helper : SubPath -> SubPath
@@ -599,7 +590,7 @@ toAbsoluteMoveTo { start, cursor } (MixedPath.MoveTo mode coordinate) =
         Relative ->
             let
                 newCoordinate =
-                    uncurry addCoordinates ( cursor, coordinate )
+                    uncurry Vec2.add ( cursor, coordinate )
             in
                 ( MoveTo newCoordinate, { start = newCoordinate, cursor = newCoordinate } )
 
@@ -656,7 +647,7 @@ toAbsoluteDrawTo ({ start, cursor } as state) drawto =
         MixedPath.CurveTo mode coordinates ->
             let
                 absoluteCoordinates =
-                    coordinatesToAbsolute mode (coordinateToAbsolute3 cursor) coordinates
+                    coordinatesToAbsolute mode (Vec3.map (coordinateToAbsolute cursor)) coordinates
             in
                 case last absoluteCoordinates of
                     Nothing ->
@@ -668,7 +659,7 @@ toAbsoluteDrawTo ({ start, cursor } as state) drawto =
         MixedPath.SmoothCurveTo mode coordinates ->
             let
                 absoluteCoordinates =
-                    coordinatesToAbsolute mode (coordinateToAbsolute2 cursor) coordinates
+                    coordinatesToAbsolute mode (Vec2.map (coordinateToAbsolute cursor)) coordinates
             in
                 case last absoluteCoordinates of
                     Nothing ->
@@ -680,7 +671,7 @@ toAbsoluteDrawTo ({ start, cursor } as state) drawto =
         MixedPath.QuadraticBezierCurveTo mode coordinates ->
             let
                 absoluteCoordinates =
-                    coordinatesToAbsolute mode (coordinateToAbsolute2 cursor) coordinates
+                    coordinatesToAbsolute mode (Vec2.map (coordinateToAbsolute cursor)) coordinates
             in
                 case last absoluteCoordinates of
                     Nothing ->
@@ -706,7 +697,7 @@ toAbsoluteDrawTo ({ start, cursor } as state) drawto =
         MixedPath.EllipticalArc mode arguments ->
             let
                 argumentToAbsolute cursor argument =
-                    { argument | target = addCoordinates cursor argument.target }
+                    { argument | target = Vec2.add cursor argument.target }
 
                 absoluteArguments =
                     coordinatesToAbsolute mode (argumentToAbsolute cursor) arguments
@@ -722,16 +713,9 @@ toAbsoluteDrawTo ({ start, cursor } as state) drawto =
             ( ClosePath, { state | cursor = start } )
 
 
+coordinateToAbsolute : Vec2 Float -> Vec2 Float -> Vec2 Float
 coordinateToAbsolute =
-    addCoordinates
-
-
-coordinateToAbsolute2 cursor ( p1, p2 ) =
-    ( addCoordinates cursor p1, addCoordinates cursor p2 )
-
-
-coordinateToAbsolute3 cursor ( p1, p2, p3 ) =
-    ( addCoordinates cursor p1, addCoordinates cursor p2, addCoordinates cursor p3 )
+    Vec2.add
 
 
 coordinatesToAbsolute : Mode -> (coords -> coords) -> List coords -> List coords

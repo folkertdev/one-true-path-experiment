@@ -24,12 +24,12 @@ import List.Extra as List
 For segments, the `xAxisRotate` field is in radians.
 -}
 type Segment
-    = LineSegment Coordinate Coordinate
-    | Quadratic Coordinate Coordinate Coordinate
-    | Cubic Coordinate Coordinate Coordinate Coordinate
+    = LineSegment (Vec2 Float) (Vec2 Float)
+    | Quadratic (Vec2 Float) (Vec2 Float) (Vec2 Float)
+    | Cubic (Vec2 Float) (Vec2 Float) (Vec2 Float) (Vec2 Float)
     | Arc
-        { start : Coordinate
-        , end : Coordinate
+        { start : Vec2 Float
+        , end : Vec2 Float
         , radii : ( Float, Float )
         , xAxisRotate : Float
         , arcFlag : ArcFlag
