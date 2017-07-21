@@ -30,10 +30,6 @@ module Path
         , counterClockwise
         , largestArc
         , smallestArc
-        , toAbsoluteMoveTo
-        , toAbsoluteDrawTo
-        , toMixedMoveTo
-        , toMixedDrawTo
         )
 
 {-| Low-level module for constructing svg paths.
@@ -128,10 +124,7 @@ main =
 ## Arcs
 @docs arcTo, EllipticalArcArgument, Direction, clockwise, counterClockwise, ArcFlag, largestArc, smallestArc
 
-## Internal
 
-Some internal functions that need to be exposed in order to use them in tests.
-@docs toAbsoluteMoveTo, toAbsoluteDrawTo, toMixedDrawTo, toMixedMoveTo
 
 -}
 
@@ -141,6 +134,7 @@ import Parser
 import MixedPath exposing (..)
 import Vector2 as Vec2 exposing (Vec2)
 import Vector3 as Vec3 exposing (Vec3)
+import List.Extra as List
 
 
 {-| Construct an svg path element from a `Path` with the given attributes
@@ -327,7 +321,7 @@ type alias CursorState =
 -}
 toString : Path -> String
 toString =
-    toMixedPath >> MixedPath.stringify
+    toMixedPath >> MixedPath.toString
 
 
 {-| Parse a path string into a `Path`
@@ -344,7 +338,51 @@ The error type is [`Parser.Error`](http://package.elm-lang.org/packages/elm-tool
 -}
 parse : String -> Result Parser.Error Path
 parse =
-    Result.map fromMixedPath << MixedPath.parse
+    Result.map absolutePathToPath << MixedPath.parse
+
+
+absolutePathToPath : MixedPath.AbsolutePath -> Path
+absolutePathToPath path =
+    let
+        helperMoveTo : AbstractMoveTo () -> MoveTo
+        helperMoveTo (MixedPath.MoveTo _ coordinate) =
+            MoveTo coordinate
+
+        helperDrawTo : MixedPath.AbstractDrawTo () -> DrawTo
+        helperDrawTo drawto =
+            case drawto of
+                MixedPath.LineTo _ arg ->
+                    LineTo arg
+
+                MixedPath.Horizontal _ arg ->
+                    Horizontal arg
+
+                MixedPath.Vertical _ arg ->
+                    Vertical arg
+
+                MixedPath.CurveTo _ arg ->
+                    CurveTo arg
+
+                MixedPath.SmoothCurveTo _ arg ->
+                    SmoothCurveTo arg
+
+                MixedPath.QuadraticBezierCurveTo _ arg ->
+                    QuadraticBezierCurveTo arg
+
+                MixedPath.SmoothQuadraticBezierCurveTo _ arg ->
+                    SmoothQuadraticBezierCurveTo arg
+
+                MixedPath.EllipticalArc _ arg ->
+                    EllipticalArc arg
+
+                MixedPath.ClosePath ->
+                    ClosePath
+
+        helperSubPath : MixedPath.AbsoluteSubPath -> SubPath
+        helperSubPath { moveto, drawtos } =
+            { moveto = helperMoveTo moveto, drawtos = List.map helperDrawTo drawtos }
+    in
+        List.map helperSubPath path
 
 
 {-| Manipulate the coordinates in your SVG. This can be useful for scaling the svg.
@@ -381,13 +419,13 @@ mapCoordinate f path =
                         |> Vertical
 
                 CurveTo coordinates ->
-                    CurveTo (List.map (mapTriplet f) coordinates)
+                    CurveTo (List.map (Vec3.map f) coordinates)
 
                 SmoothCurveTo coordinates ->
-                    SmoothCurveTo (List.map (mapTuple f) coordinates)
+                    SmoothCurveTo (List.map (Vec2.map f) coordinates)
 
                 QuadraticBezierCurveTo coordinates ->
-                    QuadraticBezierCurveTo (List.map (mapTuple f) coordinates)
+                    QuadraticBezierCurveTo (List.map (Vec2.map f) coordinates)
 
                 SmoothQuadraticBezierCurveTo coordinates ->
                     SmoothQuadraticBezierCurveTo (List.map f coordinates)
@@ -414,39 +452,39 @@ updateCursorState drawto state =
     in
         case drawto of
             LineTo coordinates ->
-                maybeUpdateCursor (last coordinates)
+                maybeUpdateCursor (List.last coordinates)
 
             Horizontal coordinates ->
-                last coordinates
+                List.last coordinates
                     |> Maybe.map (\x -> ( x, cursorY ))
                     |> maybeUpdateCursor
 
             Vertical coordinates ->
-                last coordinates
+                List.last coordinates
                     |> Maybe.map (\y -> ( cursorX, y ))
                     |> maybeUpdateCursor
 
             CurveTo coordinates ->
-                last coordinates
+                List.last coordinates
                     |> Maybe.map ((\( _, _, c ) -> c))
                     |> maybeUpdateCursor
 
             SmoothCurveTo coordinates ->
-                last coordinates
+                List.last coordinates
                     |> Maybe.map Tuple.second
                     |> maybeUpdateCursor
 
             QuadraticBezierCurveTo coordinates ->
-                last coordinates
+                List.last coordinates
                     |> Maybe.map Tuple.second
                     |> maybeUpdateCursor
 
             SmoothQuadraticBezierCurveTo coordinates ->
-                last coordinates
+                List.last coordinates
                     |> maybeUpdateCursor
 
             EllipticalArc arguments ->
-                last arguments
+                List.last arguments
                     |> Maybe.map .target
                     |> maybeUpdateCursor
 
@@ -482,33 +520,6 @@ mapWithCursorStateSubPath mapDrawTo { moveto, drawtos } =
         List.foldl folder ( { start = start, cursor = start }, [] ) drawtos
             |> Tuple.second
             |> List.reverse
-
-
-{-| Helpers for converting relative instructions to absolute ones
-
-This is possible on a path level, because the first move instruction will always be interpreted as absolute.
-Therefore, there is an anchor for subsequent relative commands.
--}
-fromMixedPath : MixedPath -> Path
-fromMixedPath subpaths =
-    case subpaths of
-        [] ->
-            []
-
-        ({ moveto } as sp) :: sps ->
-            case moveto of
-                MixedPath.MoveTo _ coordinate ->
-                    let
-                        initialState =
-                            { start = coordinate, cursor = coordinate }
-
-                        folder mixedSubPath ( cursorState, accum ) =
-                            toSubPath mixedSubPath cursorState
-                                |> Tuple.mapSecond (\item -> item :: accum)
-                    in
-                        List.foldl folder ( initialState, [] ) subpaths
-                            |> Tuple.second
-                            |> List.reverse
 
 
 {-| Exposed for testing purposes
@@ -554,187 +565,3 @@ toMixedMoveTo (MoveTo coordinates) =
 toMixedPath : Path -> MixedPath
 toMixedPath path =
     List.map (\{ moveto, drawtos } -> { moveto = toMixedMoveTo moveto, drawtos = List.map toMixedDrawTo drawtos }) path
-
-
-toSubPath : MixedPath.MixedSubPath -> CursorState -> ( CursorState, SubPath )
-toSubPath { moveto, drawtos } ({ start, cursor } as state) =
-    let
-        ( newStart, newState ) =
-            toAbsoluteMoveTo state moveto
-
-        swap ( a, b ) =
-            ( b, a )
-
-        folder mixedDrawTo ( cursorState, accum ) =
-            toAbsoluteDrawTo cursorState mixedDrawTo
-                |> swap
-                |> Tuple.mapSecond (\absoluteDrawTo -> absoluteDrawTo :: accum)
-
-        ( newerState, newDrawtos ) =
-            List.foldl folder ( newState, [] ) drawtos
-                |> Tuple.mapSecond List.reverse
-    in
-        ( newerState
-        , { moveto = newStart, drawtos = newDrawtos }
-        )
-
-
-{-| Exposed for testing
--}
-toAbsoluteMoveTo : CursorState -> MixedPath.MoveTo -> ( MoveTo, CursorState )
-toAbsoluteMoveTo { start, cursor } (MixedPath.MoveTo mode coordinate) =
-    case mode of
-        MixedPath.Absolute ->
-            ( MoveTo coordinate, { start = coordinate, cursor = coordinate } )
-
-        Relative ->
-            let
-                newCoordinate =
-                    uncurry Vec2.add ( cursor, coordinate )
-            in
-                ( MoveTo newCoordinate, { start = newCoordinate, cursor = newCoordinate } )
-
-
-{-| Exposed for testing
--}
-toAbsoluteDrawTo : CursorState -> MixedPath.DrawTo -> ( DrawTo, CursorState )
-toAbsoluteDrawTo ({ start, cursor } as state) drawto =
-    case drawto of
-        MixedPath.LineTo mode coordinates ->
-            let
-                absoluteCoordinates =
-                    coordinatesToAbsolute mode (coordinateToAbsolute cursor) coordinates
-            in
-                case last absoluteCoordinates of
-                    Nothing ->
-                        ( LineTo [], state )
-
-                    Just finalCoordinate ->
-                        ( LineTo absoluteCoordinates
-                        , { state | cursor = finalCoordinate }
-                        )
-
-        MixedPath.Horizontal mode xs ->
-            let
-                absoluteCoordinates =
-                    List.map (\x -> ( x, 0 )) xs
-                        |> coordinatesToAbsolute mode (coordinateToAbsolute cursor)
-            in
-                case last absoluteCoordinates of
-                    Nothing ->
-                        ( Horizontal [], state )
-
-                    Just ( finalX, _ ) ->
-                        ( Horizontal (List.map Tuple.first absoluteCoordinates)
-                        , { state | cursor = ( finalX, Tuple.second cursor ) }
-                        )
-
-        MixedPath.Vertical mode ys ->
-            let
-                absoluteCoordinates =
-                    List.map (\y -> ( 0, y )) ys
-                        |> coordinatesToAbsolute mode (coordinateToAbsolute cursor)
-            in
-                case last absoluteCoordinates of
-                    Nothing ->
-                        ( Vertical [], state )
-
-                    Just ( _, finalY ) ->
-                        ( Vertical (List.map Tuple.second absoluteCoordinates)
-                        , { state | cursor = ( Tuple.first cursor, finalY ) }
-                        )
-
-        MixedPath.CurveTo mode coordinates ->
-            let
-                absoluteCoordinates =
-                    coordinatesToAbsolute mode (Vec3.map (coordinateToAbsolute cursor)) coordinates
-            in
-                case last absoluteCoordinates of
-                    Nothing ->
-                        ( CurveTo [], state )
-
-                    Just ( _, _, target ) ->
-                        ( CurveTo absoluteCoordinates, { state | cursor = target } )
-
-        MixedPath.SmoothCurveTo mode coordinates ->
-            let
-                absoluteCoordinates =
-                    coordinatesToAbsolute mode (Vec2.map (coordinateToAbsolute cursor)) coordinates
-            in
-                case last absoluteCoordinates of
-                    Nothing ->
-                        ( SmoothCurveTo [], state )
-
-                    Just ( _, target ) ->
-                        ( SmoothCurveTo absoluteCoordinates, { state | cursor = target } )
-
-        MixedPath.QuadraticBezierCurveTo mode coordinates ->
-            let
-                absoluteCoordinates =
-                    coordinatesToAbsolute mode (Vec2.map (coordinateToAbsolute cursor)) coordinates
-            in
-                case last absoluteCoordinates of
-                    Nothing ->
-                        ( QuadraticBezierCurveTo [], state )
-
-                    Just ( _, target ) ->
-                        ( QuadraticBezierCurveTo absoluteCoordinates, { state | cursor = target } )
-
-        MixedPath.SmoothQuadraticBezierCurveTo mode coordinates ->
-            let
-                absoluteCoordinates =
-                    coordinatesToAbsolute mode (coordinateToAbsolute cursor) coordinates
-            in
-                case last absoluteCoordinates of
-                    Nothing ->
-                        ( SmoothQuadraticBezierCurveTo [], state )
-
-                    Just finalCoordinate ->
-                        ( SmoothQuadraticBezierCurveTo absoluteCoordinates
-                        , { state | cursor = finalCoordinate }
-                        )
-
-        MixedPath.EllipticalArc mode arguments ->
-            let
-                argumentToAbsolute cursor argument =
-                    { argument | target = Vec2.add cursor argument.target }
-
-                absoluteArguments =
-                    coordinatesToAbsolute mode (argumentToAbsolute cursor) arguments
-            in
-                case last absoluteArguments of
-                    Nothing ->
-                        ( EllipticalArc [], state )
-
-                    Just { target } ->
-                        ( EllipticalArc absoluteArguments, { state | cursor = target } )
-
-        MixedPath.ClosePath ->
-            ( ClosePath, { state | cursor = start } )
-
-
-coordinateToAbsolute : Vec2 Float -> Vec2 Float -> Vec2 Float
-coordinateToAbsolute =
-    Vec2.add
-
-
-coordinatesToAbsolute : Mode -> (coords -> coords) -> List coords -> List coords
-coordinatesToAbsolute mode toAbsolute coordinates =
-    case mode of
-        MixedPath.Absolute ->
-            coordinates
-
-        Relative ->
-            List.map toAbsolute coordinates
-
-
-last : List a -> Maybe a
-last =
-    List.foldr
-        (\element accum ->
-            if accum == Nothing then
-                Just element
-            else
-                accum
-        )
-        Nothing

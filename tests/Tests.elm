@@ -133,88 +133,73 @@ toAbsoluteConversion =
         describe "convert commands to absolute"
             [ test "lineto relative" <|
                 \_ ->
-                    Path.toAbsoluteDrawTo startConfig (LineTo Relative [ ( 10, 10 ) ])
-                        |> Tuple.mapFirst Path.toMixedDrawTo
-                        |> Expect.equal ( LineTo Absolute [ ( 110, 110 ) ], { startConfig | cursor = ( 110, 110 ) } )
+                    MixedPath.toAbsoluteDrawTo startConfig (LineTo Relative [ ( 10, 10 ) ])
+                        |> Expect.equal ( LineTo () [ ( 110, 110 ) ], { startConfig | cursor = ( 110, 110 ) } )
             , test "lineto absolute" <|
                 \_ ->
-                    Path.toAbsoluteDrawTo startConfig (LineTo Absolute [ ( 10, 10 ) ])
-                        |> Tuple.mapFirst Path.toMixedDrawTo
-                        |> Expect.equal ( LineTo Absolute [ ( 10, 10 ) ], { startConfig | cursor = ( 10, 10 ) } )
+                    MixedPath.toAbsoluteDrawTo startConfig (LineTo Absolute [ ( 10, 10 ) ])
+                        |> Expect.equal ( LineTo () [ ( 10, 10 ) ], { startConfig | cursor = ( 10, 10 ) } )
             , test "horizontal relative" <|
                 \_ ->
-                    Path.toAbsoluteDrawTo startConfig (Horizontal Relative [ 10 ])
-                        |> Tuple.mapFirst Path.toMixedDrawTo
-                        |> Expect.equal ( Horizontal Absolute [ 110 ], { startConfig | cursor = ( 110, 100 ) } )
+                    MixedPath.toAbsoluteDrawTo startConfig (Horizontal Relative [ 10 ])
+                        |> Expect.equal ( Horizontal () [ 110 ], { startConfig | cursor = ( 110, 100 ) } )
             , test "horizontal absolute" <|
                 \_ ->
-                    Path.toAbsoluteDrawTo startConfig (Horizontal Absolute [ 10 ])
-                        |> Tuple.mapFirst Path.toMixedDrawTo
-                        |> Expect.equal ( Horizontal Absolute [ 10 ], { startConfig | cursor = ( 10, 100 ) } )
+                    MixedPath.toAbsoluteDrawTo startConfig (Horizontal Absolute [ 10 ])
+                        |> Expect.equal ( Horizontal () [ 10 ], { startConfig | cursor = ( 10, 100 ) } )
             , test "vertical relative" <|
                 \_ ->
-                    Path.toAbsoluteDrawTo startConfig (Vertical Relative [ 10 ])
-                        |> Tuple.mapFirst Path.toMixedDrawTo
-                        |> Expect.equal ( Vertical Absolute [ 110 ], { startConfig | cursor = ( 100, 110 ) } )
+                    MixedPath.toAbsoluteDrawTo startConfig (Vertical Relative [ 10 ])
+                        |> Expect.equal ( Vertical () [ 110 ], { startConfig | cursor = ( 100, 110 ) } )
             , test "vertical absolute" <|
                 \_ ->
-                    Path.toAbsoluteDrawTo startConfig (Vertical Absolute [ 10 ])
-                        |> Tuple.mapFirst Path.toMixedDrawTo
-                        |> Expect.equal ( Vertical Absolute [ 10 ], { startConfig | cursor = ( 100, 10 ) } )
+                    MixedPath.toAbsoluteDrawTo startConfig (Vertical Absolute [ 10 ])
+                        |> Expect.equal ( Vertical () [ 10 ], { startConfig | cursor = ( 100, 10 ) } )
             , test "curveTo relative" <|
                 \_ ->
-                    Path.toAbsoluteDrawTo startConfig (CurveTo Relative [ ( ( 0, 5 ), ( 10, 5 ), ( 10, 10 ) ) ])
-                        |> Tuple.mapFirst Path.toMixedDrawTo
-                        |> Expect.equal ( CurveTo Absolute [ ( ( 100, 105 ), ( 110, 105 ), ( 110, 110 ) ) ], { startConfig | cursor = ( 110, 110 ) } )
+                    MixedPath.toAbsoluteDrawTo startConfig (CurveTo Relative [ ( ( 0, 5 ), ( 10, 5 ), ( 10, 10 ) ) ])
+                        |> Expect.equal ( CurveTo () [ ( ( 100, 105 ), ( 110, 105 ), ( 110, 110 ) ) ], { startConfig | cursor = ( 110, 110 ) } )
             , test "curveTo absolute" <|
                 \_ ->
-                    Path.toAbsoluteDrawTo startConfig (CurveTo Absolute [ ( ( 0, 5 ), ( 10, 5 ), ( 10, 10 ) ) ])
-                        |> Tuple.mapFirst Path.toMixedDrawTo
-                        |> Expect.equal ( CurveTo Absolute [ ( ( 0, 5 ), ( 10, 5 ), ( 10, 10 ) ) ], { startConfig | cursor = ( 10, 10 ) } )
+                    MixedPath.toAbsoluteDrawTo startConfig (CurveTo Absolute [ ( ( 0, 5 ), ( 10, 5 ), ( 10, 10 ) ) ])
+                        |> Expect.equal ( CurveTo () [ ( ( 0, 5 ), ( 10, 5 ), ( 10, 10 ) ) ], { startConfig | cursor = ( 10, 10 ) } )
             , test "smoothCurveTo relative" <|
                 \_ ->
-                    Path.toAbsoluteDrawTo startConfig (SmoothCurveTo Relative [ ( ( 10, 5 ), ( 10, 10 ) ) ])
-                        |> Tuple.mapFirst Path.toMixedDrawTo
-                        |> Expect.equal ( SmoothCurveTo Absolute [ ( ( 110, 105 ), ( 110, 110 ) ) ], { startConfig | cursor = ( 110, 110 ) } )
+                    MixedPath.toAbsoluteDrawTo startConfig (SmoothCurveTo Relative [ ( ( 10, 5 ), ( 10, 10 ) ) ])
+                        |> Expect.equal ( SmoothCurveTo () [ ( ( 110, 105 ), ( 110, 110 ) ) ], { startConfig | cursor = ( 110, 110 ) } )
             , test "smoothCurveTo absolute" <|
                 \_ ->
-                    Path.toAbsoluteDrawTo startConfig (SmoothCurveTo Absolute [ ( ( 10, 5 ), ( 10, 10 ) ) ])
-                        |> Tuple.mapFirst Path.toMixedDrawTo
-                        |> Expect.equal ( SmoothCurveTo Absolute [ ( ( 10, 5 ), ( 10, 10 ) ) ], { startConfig | cursor = ( 10, 10 ) } )
+                    MixedPath.toAbsoluteDrawTo startConfig (SmoothCurveTo Absolute [ ( ( 10, 5 ), ( 10, 10 ) ) ])
+                        |> Expect.equal ( SmoothCurveTo () [ ( ( 10, 5 ), ( 10, 10 ) ) ], { startConfig | cursor = ( 10, 10 ) } )
             , test "quadraticBezierCurveTo relative" <|
                 \_ ->
-                    Path.toAbsoluteDrawTo startConfig (QuadraticBezierCurveTo Relative [ ( ( 10, 5 ), ( 10, 10 ) ) ])
-                        |> Tuple.mapFirst Path.toMixedDrawTo
-                        |> Expect.equal ( QuadraticBezierCurveTo Absolute [ ( ( 110, 105 ), ( 110, 110 ) ) ], { startConfig | cursor = ( 110, 110 ) } )
+                    MixedPath.toAbsoluteDrawTo startConfig (QuadraticBezierCurveTo Relative [ ( ( 10, 5 ), ( 10, 10 ) ) ])
+                        |> Expect.equal ( QuadraticBezierCurveTo () [ ( ( 110, 105 ), ( 110, 110 ) ) ], { startConfig | cursor = ( 110, 110 ) } )
             , test "quadraticBezierCurveTo absolute" <|
                 \_ ->
-                    Path.toAbsoluteDrawTo startConfig (QuadraticBezierCurveTo Absolute [ ( ( 10, 5 ), ( 10, 10 ) ) ])
-                        |> Tuple.mapFirst Path.toMixedDrawTo
-                        |> Expect.equal ( QuadraticBezierCurveTo Absolute [ ( ( 10, 5 ), ( 10, 10 ) ) ], { startConfig | cursor = ( 10, 10 ) } )
+                    MixedPath.toAbsoluteDrawTo startConfig (QuadraticBezierCurveTo Absolute [ ( ( 10, 5 ), ( 10, 10 ) ) ])
+                        |> Expect.equal ( QuadraticBezierCurveTo () [ ( ( 10, 5 ), ( 10, 10 ) ) ], { startConfig | cursor = ( 10, 10 ) } )
             , test "ellipticalArc relative" <|
                 \_ ->
-                    Path.toAbsoluteDrawTo startConfig (EllipticalArc Relative [ ellipticalArcExample ])
-                        |> Tuple.mapFirst Path.toMixedDrawTo
-                        |> Expect.equal ( EllipticalArc Absolute [ { ellipticalArcExample | target = ( 110, 110 ) } ], { startConfig | cursor = ( 110, 110 ) } )
+                    MixedPath.toAbsoluteDrawTo startConfig (EllipticalArc Relative [ ellipticalArcExample ])
+                        |> Expect.equal ( EllipticalArc () [ { ellipticalArcExample | target = ( 110, 110 ) } ], { startConfig | cursor = ( 110, 110 ) } )
             , test "ellipticalArc absolute" <|
                 \_ ->
-                    Path.toAbsoluteDrawTo startConfig (EllipticalArc Absolute [ ellipticalArcExample ])
-                        |> Tuple.mapFirst Path.toMixedDrawTo
-                        |> Expect.equal ( EllipticalArc Absolute [ ellipticalArcExample ], { startConfig | cursor = ( 10, 10 ) } )
+                    MixedPath.toAbsoluteDrawTo startConfig (EllipticalArc Absolute [ ellipticalArcExample ])
+                        |> Expect.equal ( EllipticalArc () [ ellipticalArcExample ], { startConfig | cursor = ( 10, 10 ) } )
             , test "closepath" <|
                 \_ ->
-                    Path.toAbsoluteDrawTo startConfig ClosePath
-                        |> Tuple.mapFirst Path.toMixedDrawTo
+                    MixedPath.toAbsoluteDrawTo startConfig ClosePath
                         |> Expect.equal ( ClosePath, { startConfig | cursor = startConfig.start } )
             , test "foldl/traverse works with multiple subpaths" <|
                 \_ ->
                     "M10,10 L15,15 m20,20"
                         |> Path.parse
-                        |> Result.map (List.map (\{ moveto, drawtos } -> { moveto = Path.toMixedMoveTo moveto, drawtos = List.map Path.toMixedDrawTo drawtos }))
+                        |> Result.map (List.map (\{ moveto, drawtos } -> { moveto = moveto, drawtos = drawtos }))
                         |> Expect.equal
                             (Ok
-                                ([ { moveto = MoveTo Absolute ( 10, 10 ), drawtos = [ LineTo Absolute [ ( 15, 15 ) ] ] }
-                                 , { moveto = MoveTo Absolute ( 35, 35 ), drawtos = [] }
+                                ([ { moveto = Path.MoveTo ( 10, 10 ), drawtos = [ Path.LineTo [ ( 15, 15 ) ] ] }
+                                 , { moveto = Path.MoveTo ( 35, 35 ), drawtos = [] }
                                  ]
                                 )
                             )
@@ -247,9 +232,8 @@ toAbsoluteConversion =
                     in
                         coordinate
                             |> MoveTo mode
-                            |> Path.toAbsoluteMoveTo startConfig
-                            |> Tuple.mapFirst Path.toMixedMoveTo
-                            |> Expect.equal ( MoveTo Absolute newCursor, { startConfig | cursor = newCursor, start = newStart } )
+                            |> MixedPath.toAbsoluteMoveTo startConfig
+                            |> Expect.equal ( MoveTo () newCursor, { startConfig | cursor = newCursor, start = newStart } )
             ]
 
 
@@ -270,7 +254,7 @@ fuzzMode =
         bool
 
 
-fuzzCoordinate : Fuzzer MixedPath.Coordinate
+fuzzCoordinate : Fuzzer ( Float, Float )
 fuzzCoordinate =
     Fuzz.map2 (,)
         (Fuzz.map toFloat int)
