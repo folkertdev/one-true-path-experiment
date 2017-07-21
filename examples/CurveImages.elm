@@ -58,7 +58,7 @@ smallGrid dim =
             [ subpath (moveTo ( dim, 0 )) [ lineTo [ ( 0, 0 ), ( 0, dim ) ] ] ]
     in
         Svg.pattern [ id "smallGrid", width (Basics.toString dim), height (Basics.toString dim), patternUnits "userSpaceOnUse" ]
-            [ Path.svgPath p [ fill "none", stroke "white", strokeWidth "1" ] ]
+            [ Path.element p [ fill "none", stroke "white", strokeWidth "1" ] ]
 
 
 grid dim =
@@ -68,7 +68,7 @@ grid dim =
     in
         Svg.pattern [ id "grid", width (Basics.toString dim), height (Basics.toString dim), patternUnits "userSpaceOnUse" ]
             [ Svg.rect [ width (Basics.toString dim), height (Basics.toString dim), fill "url(#smallGrid)" ] []
-            , Path.svgPath p [ fill "none", stroke "white", strokeWidth "1.5" ]
+            , Path.element p [ fill "none", stroke "white", strokeWidth "1.5" ]
             ]
 
 
@@ -99,7 +99,7 @@ stacked name toPath points =
             [ 0, 0.25, 0.5, 0.75, 1 ]
 
         path value =
-            Path.svgPath (toPath value points)
+            Path.element (toPath value points)
                 [ stroke (colorAt value |> Color.colorToHex)
                 , strokeWidth "2"
                 , fill "none"
@@ -152,7 +152,7 @@ svgGrid =
 diagram name toPath points =
     let
         path =
-            Path.svgPath (toPath points)
+            Path.element (toPath points)
                 [ stroke "black"
                 , strokeWidth "2"
                 , fill "none"
