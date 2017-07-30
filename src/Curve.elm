@@ -21,6 +21,8 @@ module Curve
         , radial
         , toPolarWithCenter
         , naturalControlPoints
+        , repeatFirstPoint
+        , repeatFinalPoint
         )
 
 {-| Construct curves from a set of points.
@@ -72,6 +74,7 @@ A nice consequence is that there are no weird bumps in the curve between the dat
 
 ## Transformations
 
+@docs repeatFirstPoint , repeatFinalPoint
 @docs radial, toPolarWithCenter
 
 ## WIP TEST
@@ -871,3 +874,32 @@ stepBefore =
 stepAfter : List (Vec2 Float) -> Path
 stepAfter =
     step 1
+
+
+{-| Repeat the first element of a list
+
+This is sometimes useful for curves that don't go through their first control point (catmullRom, cardinal). Repeating the first point
+makes the curve actually hit the first control point.
+-}
+repeatFirstPoint : List a -> List a
+repeatFirstPoint items =
+    case items of
+        [] ->
+            []
+
+        x :: xs ->
+            x :: items
+
+
+{-| Repeat the final element of a list
+
+Similar to `repeatFirstPoint`, this can be used to make some curves hit their final control point.
+-}
+repeatFinalPoint : List a -> List a
+repeatFinalPoint items =
+    case List.last items of
+        Nothing ->
+            items
+
+        Just x ->
+            items ++ [ x ]
