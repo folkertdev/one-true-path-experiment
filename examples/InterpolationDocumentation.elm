@@ -4,7 +4,9 @@ import Svg
 import Svg.Attributes exposing (..)
 import Html exposing (..)
 import Html.Attributes
-import Path exposing (subpath, moveTo, lineTo, closePath)
+import LowLevel.Command exposing (moveTo, lineTo, closePath)
+import SubPath exposing (subpath)
+import Path
 import Curve exposing (..)
 import Color
 import Color.Interpolate as Color exposing (Space(LAB))
@@ -96,7 +98,7 @@ stacked name toPath points =
             [ 0, 0.25, 0.5, 0.75, 1 ]
 
         path value =
-            Path.element (toPath value points)
+            Path.element (List.singleton <| toPath value points)
                 [ stroke (colorAt value |> Color.colorToHex)
                 , strokeWidth "2"
                 , fill "none"
@@ -143,7 +145,7 @@ svgGrid =
 diagram name toPath points =
     let
         path =
-            Path.element (toPath points)
+            Path.element (List.singleton <| toPath points)
                 [ stroke "black"
                 , strokeWidth "2"
                 , fill "none"
@@ -158,9 +160,90 @@ diagram name toPath points =
         Svg.svg [ width "1000", height "400", Html.Attributes.style [ ( "background-color", "#efefef" ) ] ] (svgGrid :: gridRect :: label :: path :: nodes points)
 
 
+continuing : List ( Float, Float ) -> SubPath.SubPath
+continuing points =
+    let
+        down =
+            Curve.linear [ 10 => 0, 10 => 100 ]
+
+        right =
+            Curve.linear [ 10 => 0, 110 => 0 ]
+
+        up =
+            Curve.linear [ 10 => 100, 10 => 0 ]
+
+        slope =
+            Curve.linear [ 10 => 10, 110 => 110 ]
+
+        u =
+            down
+                |> SubPath.continue right
+                |> SubPath.continue up
+
+        n =
+            up
+                |> SubPath.continue right
+                |> SubPath.continue down
+    in
+        down
+            |> SubPath.continue right
+            |> SubPath.continueSmooth right
+            |> SubPath.continueSmooth slope
+            |> SubPath.continueSmooth up
+            |> SubPath.continueSmooth down
+            |> SubPath.continueSmooth u
+            |> SubPath.continueSmooth u
+            |> SubPath.continueSmooth up
+            |> SubPath.continueSmooth up
+
+
+
+{-
+   down
+       |> SubPath.continue right
+       |> SubPath.continue right
+       |> SubPath.continue u
+       |> SubPath.continue n
+       |> SubPath.continue u
+       |> SubPath.continue n
+-}
+
+
+test points =
+    let
+        down =
+            Curve.linear [ 10 => 0, 10 => 100 ]
+
+        up =
+            Curve.linear [ 10 => 100, 10 => 0 ]
+
+        u =
+            down
+                |> SubPath.continue right
+                |> SubPath.continue up
+
+        right =
+            Curve.linear [ 10 => 0, 110 => 0 ]
+
+        v =
+            8
+
+        front =
+            List.take v points
+
+        back =
+            List.drop (v - 1) points
+    in
+        front
+            |> linear
+            |> SubPath.continueSmooth (linear back)
+
+
 main =
     Html.div []
-        [ diagram "linear" linear points
+        [ diagram "wacky" test points
+        , diagram "wacky" continuing points
+        , diagram "linear" linear points
         , diagram "linear closed" linearClosed points
         , diagram "step" (step 0.5) points
         , diagram "step before" (step 0) points

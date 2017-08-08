@@ -7,7 +7,9 @@ and then used in the documentations
 import Svg
 import Svg.Attributes exposing (..)
 import Html.Attributes
-import Path exposing (subpath, moveTo, lineTo, closePath)
+import Path
+import SubPath exposing (subpath)
+import LowLevel.Command as LowLevel exposing (moveTo, lineTo, closePath)
 import Curve
 import Color
 import Color.Interpolate as Color exposing (Space(LAB))
@@ -99,7 +101,7 @@ stacked name toPath points =
             [ 0, 0.25, 0.5, 0.75, 1 ]
 
         path value =
-            Path.element (toPath value points)
+            Path.element (List.singleton <| toPath value points)
                 [ stroke (colorAt value |> Color.colorToHex)
                 , strokeWidth "2"
                 , fill "none"
@@ -152,7 +154,7 @@ svgGrid =
 diagram name toPath points =
     let
         path =
-            Path.element (toPath points)
+            Path.element (List.singleton <| toPath points)
                 [ stroke "black"
                 , strokeWidth "2"
                 , fill "none"

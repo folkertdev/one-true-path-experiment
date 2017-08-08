@@ -4,7 +4,7 @@ import Test exposing (..)
 import Expect
 import Fuzz exposing (..)
 import Curve exposing (..)
-import Path exposing (MoveTo(..), DrawTo(..))
+import LowLevel.Command exposing (MoveTo(..), DrawTo(..))
 
 
 (=>) =

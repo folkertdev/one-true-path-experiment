@@ -6,13 +6,15 @@ module Ellipse
         , endpointToCenter
         , at
         , atAngle
+        , derivativeAt
+        , tangentAt
         , approximateArcLength
         , mod2pi
         , tau
         , validateRadii
         )
 
-import Path exposing (ArcFlag, Direction, clockwise, counterClockwise, smallestArc, largestArc)
+import LowLevel.Command exposing (ArcFlag, Direction, clockwise, counterClockwise, smallestArc, largestArc)
 import Vector2 exposing (..)
 import Matrix2 exposing (..)
 
@@ -103,6 +105,32 @@ approximateArcLength { minDepth, error } parameterization =
 at : Float -> CenterParameterization -> Vec2 Float
 at t ({ startAngle, endAngle } as parameterization) =
     atAngle (startAngle + t * (mod2pi <| endAngle - startAngle)) parameterization
+
+
+derivativeAt : Float -> CenterParameterization -> Float
+derivativeAt t parameterization =
+    let
+        ( x1, y1 ) =
+            Vector2.sub parameterization.center (at t parameterization)
+
+        ( a, b ) =
+            parameterization.radii
+    in
+        (b ^ 2 / a ^ 2) * (x1 / y1)
+
+
+tangentAt : Float -> CenterParameterization -> Vec2 Float
+tangentAt t parameterization =
+    let
+        ( x1, y1 ) =
+            Vector2.sub parameterization.center (at t parameterization)
+
+        ( a, b ) =
+            parameterization.radii
+    in
+        Vector2.map2 (*) ( b ^ 2, a ^ 2 ) ( x1, y1 )
+            |> Vector2.normalize
+            |> Matrix2.mulVector (conversionMatrix (pi / 2))
 
 
 mod2pi : Float -> Float

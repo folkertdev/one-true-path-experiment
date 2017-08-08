@@ -3,7 +3,6 @@ module EllipseTest exposing (..)
 import Test exposing (..)
 import Expect
 import Fuzz exposing (..)
-import Parser
 import Ellipse exposing (..)
 import Path exposing (clockwise, counterClockwise, largestArc, smallestArc)
 import Random
@@ -100,6 +99,77 @@ tests =
                 angle
                     |> mod2pi
                     |> Expect.equal angle
+        , test "derivative is sensible" <|
+            \_ ->
+                let
+                    input =
+                        { start = ( 100, 100 ), end = ( 200, 100 ), radii = ( 50, 50 ), arcFlag = largestArc, direction = clockwise, xAxisRotate = 0 }
+                in
+                    input
+                        |> validateRadii
+                        |> endpointToCenter
+                        |> Ellipse.derivativeAt 0.5
+                        |> Expect.equal 0
+        , test "derivative is infinity at 0" <|
+            \_ ->
+                let
+                    input =
+                        { start = ( 100, 100 ), end = ( 200, 100 ), radii = ( 50, 50 ), arcFlag = largestArc, direction = clockwise, xAxisRotate = 0 }
+                in
+                    -- infinity
+                    input
+                        |> validateRadii
+                        |> endpointToCenter
+                        |> Ellipse.derivativeAt 0
+                        |> Expect.equal (1 / 0)
+        , test "derivative is minus infinity at 1" <|
+            \_ ->
+                let
+                    input =
+                        { start = ( 100, 100 ), end = ( 200, 100 ), radii = ( 50, 50 ), arcFlag = largestArc, direction = clockwise, xAxisRotate = 0 }
+                in
+                    -- infinity
+                    input
+                        |> validateRadii
+                        |> endpointToCenter
+                        |> Ellipse.derivativeAt 1
+                        |> Expect.equal (-1 / 0)
+        , test "tangent points up at 0" <|
+            \_ ->
+                let
+                    input =
+                        { start = ( 100, 100 ), end = ( 200, 100 ), radii = ( 50, 50 ), arcFlag = largestArc, direction = clockwise, xAxisRotate = 0 }
+                in
+                    -- infinity
+                    input
+                        |> validateRadii
+                        |> endpointToCenter
+                        |> Ellipse.tangentAt 0
+                        |> Expect.equal ( 0, 1 )
+        , test "tangent points down at 0" <|
+            \_ ->
+                let
+                    input =
+                        { start = ( 100, 100 ), end = ( 200, 100 ), radii = ( 50, 50 ), arcFlag = largestArc, direction = clockwise, xAxisRotate = 0 }
+                in
+                    -- infinity
+                    input
+                        |> validateRadii
+                        |> endpointToCenter
+                        |> Ellipse.tangentAt 1
+                        |> Expect.equal ( 0, -1 )
+        , test "tangent points right at 0.5" <|
+            \_ ->
+                let
+                    input =
+                        { start = ( 100, 100 ), end = ( 200, 100 ), radii = ( 50, 50 ), arcFlag = largestArc, direction = clockwise, xAxisRotate = 0 }
+                in
+                    -- infinity
+                    input
+                        |> validateRadii
+                        |> endpointToCenter
+                        |> Ellipse.tangentAt 0.5
+                        |> Expect.equal ( 1, 0 )
         ]
 
 

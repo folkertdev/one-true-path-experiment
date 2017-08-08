@@ -1,4 +1,16 @@
-module Segment exposing (fromPath, toPath, Segment(..), length, lengthWithOptions, at)
+module Segment
+    exposing
+        ( Segment(..)
+        , length
+        , lengthWithOptions
+        , at
+        , derivativeAtFinal
+        , derivativeAtFirst
+        , angle
+        , startingPoint
+        , toDrawTo
+        , toSegment
+        )
 
 {-| An alternative interpretation of paths that is convenient for mathematical operations.
 
@@ -6,17 +18,20 @@ Here, a path is viewed as a list of segments with a start and end point.
 
 @docs Segment
 
-@docs fromPath, toPath
-
 # Operations
 @docs at, length, lengthWithOptions
+@docs derivativeAtFirst, derivativeAtFinal, angle
+@docs startingPoint
+
+# Conversion
+@docs toDrawTo, toSegment
+
 -}
 
-import Path exposing (..)
-import Vector2 exposing (Vec2, Float2)
+import Vector2 as Vec2 exposing (Vec2, Float2)
 import Ellipse
 import CubicBezier exposing (..)
-import List.Extra as List
+import LowLevel.Command exposing (..)
 
 
 {-| The four types of segments.
@@ -37,6 +52,8 @@ type Segment
         }
 
 
+{-| Convert a segment to a drawto instruction.
+-}
 toDrawTo : Segment -> DrawTo
 toDrawTo segment =
     case segment of
@@ -53,52 +70,8 @@ toDrawTo segment =
             EllipticalArc [ { target = end, radii = radii, xAxisRotate = degrees xAxisRotate, arcFlag = arcFlag, direction = direction } ]
 
 
-{-| Convert a list of segments to a path
-
-It is assumed that for every two adjacent segments in the list, the first segment's end point is the second segment's starting point
+{-| Extract the starting point from a segment
 -}
-toPath : List Segment -> Path
-toPath segments =
-    case segments of
-        [] ->
-            []
-
-        segment :: rest ->
-            [ subpath (moveTo (startingPoint segment)) (List.map toDrawTo segments) ]
-
-
-{-| Create segments from a path
--}
-fromPath : Path -> List Segment
-fromPath =
-    List.concatMap subpathToSegments
-
-
-subpathToSegments : SubPath -> List Segment
-subpathToSegments { moveto, drawtos } =
-    case moveto of
-        MoveTo coordinate ->
-            let
-                cursorState =
-                    { start = coordinate, cursor = coordinate }
-
-                -- fake segment to get the fold going, not part of the final result
-                initial =
-                    LineSegment coordinate coordinate
-
-                folder drawto ( previousSegment, accum ) =
-                    let
-                        newSegments =
-                            toSegment previousSegment drawto
-
-                        finalNewSegment =
-                            Maybe.withDefault previousSegment (List.last newSegments)
-                    in
-                        ( finalNewSegment, newSegments ++ accum )
-            in
-                traverse folder initial drawtos
-
-
 startingPoint : Segment -> Vec2 Float
 startingPoint segment =
     case segment of
@@ -115,6 +88,10 @@ startingPoint segment =
             start
 
 
+{-| Convert a drawto into a segment
+
+This function needs the previous segment to the starting point and (for bezier curves) the control points
+-}
 toSegment : Segment -> DrawTo -> List Segment
 toSegment previous drawto =
     let
@@ -155,7 +132,7 @@ toSegment previous drawto =
                         case previous of
                             Cubic _ _ ( cx, cy ) _ ->
                                 -- reflect the previous control point in the end point
-                                Vector2.add start ( startX - cx, startY - cy )
+                                Vec2.add start ( startX - cx, startY - cy )
 
                             _ ->
                                 start
@@ -186,8 +163,8 @@ toSegment previous drawto =
                         let
                             controlPoint =
                                 -- reflect c in segmentStart
-                                Vector2.sub segmentStart previousControlPoint
-                                    |> Vector2.add point
+                                Vec2.sub segmentStart previousControlPoint
+                                    |> Vec2.add point
                         in
                             ( ( controlPoint, point ), Quadratic segmentStart controlPoint point :: accum )
                 in
@@ -227,8 +204,8 @@ at : Float -> Segment -> ( Float, Float )
 at t segment =
     case segment of
         LineSegment start end ->
-            Vector2.directionFromTo start end
-                |> Vector2.scale t
+            Vec2.directionFromTo start end
+                |> Vec2.scale t
 
         Quadratic start c1 end ->
             CubicBezier.fromQuadratic start c1 end
@@ -247,6 +224,74 @@ at t segment =
 derivativeAt : Float -> Segment -> Maybe ( Float, Float )
 derivativeAt t segment =
     Debug.crash ""
+
+
+{-| The derivative at the starting point of the segment
+-}
+derivativeAtFirst : Segment -> Float2
+derivativeAtFirst segment =
+    case segment of
+        LineSegment a b ->
+            a
+                |> Vec2.directionFromTo b
+
+        Quadratic a control b ->
+            derivativeAtFirst (LineSegment a control)
+
+        Cubic a control1 control2 b ->
+            derivativeAtFirst (LineSegment a control1)
+
+        Arc params ->
+            Ellipse.tangentAt 0 (Ellipse.endpointToCenter params)
+
+
+{-| The derivative at the ending point of the segment
+-}
+derivativeAtFinal : Segment -> Float2
+derivativeAtFinal segment =
+    case segment of
+        LineSegment a b ->
+            a
+                |> Vec2.directionFromTo b
+
+        Quadratic a control b ->
+            derivativeAtFinal (LineSegment control b)
+
+        Cubic a control1 control2 b ->
+            derivativeAtFinal (LineSegment control2 b)
+
+        Arc params ->
+            Ellipse.tangentAt 1 (Ellipse.endpointToCenter params)
+
+
+{-| The angle between the end of segment1 and the start of segment2
+-}
+angle : Segment -> Segment -> Float
+angle seg1 seg2 =
+    signedAngle (Vec2.negate <| derivativeAtFinal seg1) (Vec2.negate <| derivativeAtFirst seg2)
+
+
+{-| A signed angle between two vectors (the standard implementation is unsigned)
+-}
+signedAngle : Vec2 Float -> Vec2 Float -> Float
+signedAngle u v =
+    let
+        ( ux, uy ) =
+            u
+
+        ( vx, vy ) =
+            v
+
+        sign =
+            if ux * vy - uy * vx < 0 then
+                -1
+            else
+                1
+
+        q =
+            acos (Vec2.dot u v / (Vec2.length u * Vec2.length v))
+    in
+        sign * abs q
 
 
 {-| The approximate length of a segment
