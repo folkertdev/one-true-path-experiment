@@ -2,6 +2,10 @@ module Curve
     exposing
         ( linear
         , linearClosed
+        , cubicBezier
+        , smoothCubicBezier
+        , quadraticBezier
+        , smoothQuadraticBezier
         , step
         , stepBefore
         , stepAfter
@@ -35,6 +39,9 @@ Supports all the curves defined by [D3 Shape](https://github.com/d3/d3-shape#cur
 ## Linear
 
 @docs linear, linearClosed
+
+## Bezier
+@docs cubicBezier , smoothCubicBezier , quadraticBezier , smoothQuadraticBezier
 
 ## Step
 
@@ -137,6 +144,54 @@ linear points =
 
         x :: xs ->
             subpath (moveTo x) [ lineTo xs ]
+
+
+{-| Shorthand to draw a sequence of cubic bezier segments
+-}
+cubicBezier : Vec2 Float -> List (Vec3 (Vec2 Float)) -> SubPath
+cubicBezier start points =
+    case points of
+        [] ->
+            empty
+
+        x :: xs ->
+            subpath (moveTo start) [ cubicCurveTo points ]
+
+
+{-| Shorthand to draw a sequence of smooth cubic bezier segments
+-}
+smoothCubicBezier : Vec2 Float -> Vec3 (Vec2 Float) -> List (Vec2 (Vec2 Float)) -> SubPath
+smoothCubicBezier start first points =
+    case points of
+        [] ->
+            empty
+
+        x :: xs ->
+            subpath (moveTo start) [ cubicCurveTo [ first ], cubicCurveExtendTo points ]
+
+
+{-| Shorthand to draw a sequence of quadratic bezier segments
+-}
+quadraticBezier : Vec2 Float -> List (Vec2 (Vec2 Float)) -> SubPath
+quadraticBezier start points =
+    case points of
+        [] ->
+            empty
+
+        x :: xs ->
+            subpath (moveTo start) [ quadraticCurveTo points ]
+
+
+{-| Shorthand to draw a sequence of smooth quadratic bezier segments
+-}
+smoothQuadraticBezier : Vec2 Float -> Vec2 (Vec2 Float) -> List (Vec2 Float) -> SubPath
+smoothQuadraticBezier start first points =
+    case points of
+        [] ->
+            empty
+
+        x :: xs ->
+            subpath (moveTo start) [ quadraticCurveTo [ first ], quadraticCurveExtendTo points ]
 
 
 {-| Draw a straigt line between the data points, connecting the ends.
