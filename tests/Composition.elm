@@ -7,6 +7,7 @@ import Segment exposing (Segment(..))
 import Curve
 import SubPath
 import Vector2 as Vec2
+import LowLevel.Command exposing (moveTo, lineTo, quadraticCurveTo)
 
 
 down =
@@ -43,7 +44,18 @@ n =
 
 tests =
     describe "composition tests"
-        [ test "right smooth right produces a straight line" <|
+        [ test "unwrap << subpath does not change the order of drawtos" <|
+            \_ ->
+                let
+                    drawtos =
+                        [ lineTo [ ( 1, 2 ) ], quadraticCurveTo [ ( ( 1, 2 ), ( 3, 5 ) ) ] ]
+                in
+                    drawtos
+                        |> SubPath.subpath (moveTo ( 0, 0 ))
+                        |> SubPath.unwrap
+                        |> Maybe.map .drawtos
+                        |> Expect.equal (Just drawtos)
+        , test "right smooth right produces a straight line" <|
             \_ ->
                 right
                     |> SubPath.continueSmooth right
@@ -75,7 +87,7 @@ tests =
                     |> Expect.equal [ LineSegment ( 0, 0 ) ( 100, 0 ), LineSegment ( 100, 0 ) ( 200, 0 ) ]
         , test "toSegments returns segments in the correct order" <|
             \_ ->
-                u
+                SubPath.subpath (moveTo ( 0, 0 )) [ lineTo [ ( 0, 100 ), ( 100, 100 ), ( 100, 0 ) ] ]
                     |> SubPath.toSegments
                     |> Expect.equal [ LineSegment ( 0, 0 ) ( 0, 100 ), LineSegment ( 0, 100 ) ( 100, 100 ), LineSegment ( 100, 100 ) ( 100, 0 ) ]
         , test "continue produces segments in the correct order" <|

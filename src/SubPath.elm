@@ -352,13 +352,9 @@ toSegments subpath =
                                     Maybe.withDefault previousSegment (List.last newSegments)
                             in
                                 ( finalNewSegment, accum ++ newSegments )
-
-                        traverse : (a -> ( b, List c ) -> ( b, List c )) -> b -> List a -> List c
-                        traverse folder initial elements =
-                            List.foldl folder ( initial, [] ) elements
-                                |> Tuple.second
                     in
-                        traverse folder initial (Deque.toList drawtos)
+                        List.foldl folder ( initial, [] ) (Deque.toList drawtos)
+                            |> Tuple.second
 
 
 {-| Translate the subpath by a vector

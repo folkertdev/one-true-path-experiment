@@ -8,6 +8,19 @@ import LowLevel.Command exposing (clockwise, counterClockwise, largestArc, small
 import Random
 
 
+-- attempt to round to "nice" floats for fuzz tests
+
+
+cleanFloat v =
+    round (v * 1.0e12)
+        |> toFloat
+        |> (\v -> v * 1.0e-12)
+
+
+cleanVec2 ( x, y ) =
+    ( cleanFloat x, cleanFloat y )
+
+
 tests =
     describe "ellipse tests"
         [ {- fuzz fuzzEndpointParameterization "centerToEndpoint << endpointToCenter = identity" <|
@@ -145,6 +158,7 @@ tests =
                         |> validateRadii
                         |> endpointToCenter
                         |> Ellipse.tangentAt 0
+                        |> cleanVec2
                         |> Expect.equal ( 0, 1 )
         , test "tangent points down at 0" <|
             \_ ->
@@ -157,6 +171,7 @@ tests =
                         |> validateRadii
                         |> endpointToCenter
                         |> Ellipse.tangentAt 1
+                        |> cleanVec2
                         |> Expect.equal ( 0, -1 )
         , test "tangent points right at 0.5" <|
             \_ ->
@@ -169,6 +184,7 @@ tests =
                         |> validateRadii
                         |> endpointToCenter
                         |> Ellipse.tangentAt 0.5
+                        |> cleanVec2
                         |> Expect.equal ( 1, 0 )
         ]
 

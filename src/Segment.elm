@@ -115,7 +115,7 @@ toSegment : Segment -> DrawTo -> List Segment
 toSegment previous drawto =
     let
         start =
-            firstPoint previous
+            finalPoint previous
 
         ( startX, startY ) =
             start
