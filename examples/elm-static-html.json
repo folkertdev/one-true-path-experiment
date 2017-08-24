@@ -1,29 +1,90 @@
-{"files": {"CurveImages.elm": 
+{
+	"files": {
+		"CurveImages.elm":
 
-    [         
+			[
+			    {		"output": "../docs/subpath-composition.svg",
+					"viewFunction": "composition"
+                } ,
 
-        { "output": "../docs/linear.svg", "viewFunction": "linear" } ,              
-        { "output": "../docs/linearClosed.svg", "viewFunction": "linearClosed" } ,                        
-        { "output": "../docs/step.svg", "viewFunction": "step" } ,              
-        { "output": "../docs/stepBefore.svg", "viewFunction": "stepBefore" } ,                        
-        { "output": "../docs/stepAfter.svg", "viewFunction": "stepAfter" } ,                        
-        { "output": "../docs/basis.svg", "viewFunction": "basis" } ,             
-        { "output": "../docs/basisClosed.svg", "viewFunction": "basisClosed" } ,                       
-        { "output": "../docs/basisOpen.svg", "viewFunction": "basisOpen" } ,                       
-        { "output": "../docs/bundle.svg", "viewFunction": "bundle" } ,              
-        { "output": "../docs/cardinal.svg", "viewFunction": "cardinal" } ,                        
-        { "output": "../docs/cardinalClosed.svg", "viewFunction": "cardinalClosed" } ,                        
-        { "output": "../docs/cardinalOpen.svg", "viewFunction": "cardinalOpen" } ,                        
-        { "output": "../docs/catmullRom.svg", "viewFunction": "catmullRom" } ,                        
-        { "output": "../docs/catmullRomClosed.svg", "viewFunction": "catmullRomClosed" } ,                        
-        { "output": "../docs/catmullRomOpen.svg", "viewFunction": "catmullRomOpen" } ,                        
-        { "output": "../docs/monotoneX.svg", "viewFunction": "monotoneX" } ,                        
-        { "output": "../docs/monotoneY.svg", "viewFunction": "monotoneY" } ,                        
-        { "output": "../docs/radial.svg", "viewFunction": "radial" } ,              
-        { "output": "../docs/natural.svg", "viewFunction": "natural" } 
-        
-        ]
+				{
+					"output": "../docs/linear.svg",
+					"viewFunction": "linear"
+				},
+				{
+					"output": "../docs/linearClosed.svg",
+					"viewFunction": "linearClosed"
+				},
+				{
+					"output": "../docs/step.svg",
+					"viewFunction": "step"
+				},
+				{
+					"output": "../docs/stepBefore.svg",
+					"viewFunction": "stepBefore"
+				},
+				{
+					"output": "../docs/stepAfter.svg",
+					"viewFunction": "stepAfter"
+				},
+				{
+					"output": "../docs/basis.svg",
+					"viewFunction": "basis"
+				},
+				{
+					"output": "../docs/basisClosed.svg",
+					"viewFunction": "basisClosed"
+				},
+				{
+					"output": "../docs/basisOpen.svg",
+					"viewFunction": "basisOpen"
+				},
+				{
+					"output": "../docs/bundle.svg",
+					"viewFunction": "bundle"
+				},
+				{
+					"output": "../docs/cardinal.svg",
+					"viewFunction": "cardinal"
+				},
+				{
+					"output": "../docs/cardinalClosed.svg",
+					"viewFunction": "cardinalClosed"
+				},
+				{
+					"output": "../docs/cardinalOpen.svg",
+					"viewFunction": "cardinalOpen"
+				},
+				{
+					"output": "../docs/catmullRom.svg",
+					"viewFunction": "catmullRom"
+				},
+				{
+					"output": "../docs/catmullRomClosed.svg",
+					"viewFunction": "catmullRomClosed"
+				},
+				{
+					"output": "../docs/catmullRomOpen.svg",
+					"viewFunction": "catmullRomOpen"
+				},
+				{
+					"output": "../docs/monotoneX.svg",
+					"viewFunction": "monotoneX"
+				},
+				{
+					"output": "../docs/monotoneY.svg",
+					"viewFunction": "monotoneY"
+				},
+				{
+					"output": "../docs/radial.svg",
+					"viewFunction": "radial"
+				},
+				{
+					"output": "../docs/natural.svg",
+					"viewFunction": "natural"
+				}
+
+			]
+	}
+
 }
-}
-
-

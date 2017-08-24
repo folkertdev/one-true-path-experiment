@@ -7,6 +7,7 @@ and then used in the documentations
 import Svg
 import Svg.Attributes exposing (..)
 import Html.Attributes
+import Html
 import Path
 import SubPath exposing (subpath)
 import LowLevel.Command as LowLevel exposing (moveTo, lineTo, closePath)
@@ -15,6 +16,86 @@ import Color
 import Color.Interpolate as Color exposing (Space(LAB))
 import Color.Convert as Color
 import Color.Manipulate as Color
+
+
+composition : Svg.Svg msg
+composition =
+    let
+        right =
+            Curve.quadraticBezier ( 0, 0 ) [ ( ( 0.5, -0.5 ), ( 1.0, 0 ) ) ]
+                |> SubPath.translate ( 50, 100 )
+                |> SubPath.scale ( 100, 100 )
+
+        down =
+            Curve.linear [ ( 0, 0 ), ( 0, 1 ) ]
+                |> SubPath.translate ( 250, 100 )
+                |> SubPath.scale ( 100, 100 )
+
+        start =
+            let
+                subpaths =
+                    [ right
+                    , down
+                    ]
+            in
+                render "None" subpaths
+
+        connect =
+            let
+                subpaths =
+                    [ right
+                        |> SubPath.connect down
+                    ]
+            in
+                render "Connect" subpaths
+
+        continue =
+            let
+                subpaths =
+                    [ right
+                        |> SubPath.continue down
+                    ]
+            in
+                render "Continue" subpaths
+
+        continueSmooth =
+            let
+                subpaths =
+                    [ right
+                        |> SubPath.continueSmooth down
+                    ]
+            in
+                render "Continue Smooth" subpaths
+
+        render name subpaths =
+            let
+                path =
+                    Path.element subpaths
+                        [ stroke "black"
+                        , strokeWidth "2"
+                        , fill "none"
+                        ]
+
+                label =
+                    Svg.text_ [ x "25", y "30", fontSize "20px", fontWeight "bolder", fontFamily "Verdana, sans-serif" ] [ Svg.text name ]
+
+                gridRect =
+                    Svg.rect [ width "100%", height "100%", fill "url(#grid)" ] []
+            in
+                Svg.svg
+                    [ width "300"
+                    , height "300"
+                    , Html.Attributes.attribute "xmlns" "http://www.w3.org/2000/svg"
+                    , Html.Attributes.style [ ( "background-color", "#efefef" ) ]
+                    ]
+                    (svgGrid :: gridRect :: label :: path :: [])
+    in
+        Html.div []
+            [ start
+            , connect
+            , continue
+            , continueSmooth
+            ]
 
 
 (=>) =

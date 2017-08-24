@@ -1,0 +1,86 @@
+<div>
+    <svg style="background-color:#efefef;" height="300" width="300" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <pattern height="25" id="smallGrid" patternUnits="userSpaceOnUse" width="25">
+                <path d="M25,0 L0,0 0,25" fill="none" stroke="white" stroke-width="1">
+                </path>
+            </pattern>
+            <pattern height="50" id="grid" patternUnits="userSpaceOnUse" width="50">
+                <rect fill="url(#smallGrid)" height="50" width="50">
+                </rect>
+                <path d="M50,0 L0,0 0,50" fill="none" stroke="white" stroke-width="1.5">
+                </path>
+            </pattern>
+        </defs>
+        <rect fill="url(#grid)" height="100%" width="100%">
+        </rect>
+        <text font-family="Verdana, sans-serif" font-size="20px" font-weight="bolder" x="25" y="30">
+            None
+        </text>
+        <path d="M50,100 Q100,50 150,100 M250,100 L250,200" fill="none" stroke="black" stroke-width="2">
+        </path>
+    </svg>
+    <svg style="background-color:#efefef;" height="300" width="300" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <pattern height="25" id="smallGrid" patternUnits="userSpaceOnUse" width="25">
+                <path d="M25,0 L0,0 0,25" fill="none" stroke="white" stroke-width="1">
+                </path>
+            </pattern>
+            <pattern height="50" id="grid" patternUnits="userSpaceOnUse" width="50">
+                <rect fill="url(#smallGrid)" height="50" width="50">
+                </rect>
+                <path d="M50,0 L0,0 0,50" fill="none" stroke="white" stroke-width="1.5">
+                </path>
+            </pattern>
+        </defs>
+        <rect fill="url(#grid)" height="100%" width="100%">
+        </rect>
+        <text font-family="Verdana, sans-serif" font-size="20px" font-weight="bolder" x="25" y="30">
+            Connect
+        </text>
+        <path d="M50,100 Q100,50 150,100 L250,100 L250,200" fill="none" stroke="black" stroke-width="2">
+        </path>
+    </svg>
+    <svg style="background-color:#efefef;" height="300" width="300" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <pattern height="25" id="smallGrid" patternUnits="userSpaceOnUse" width="25">
+                <path d="M25,0 L0,0 0,25" fill="none" stroke="white" stroke-width="1">
+                </path>
+            </pattern>
+            <pattern height="50" id="grid" patternUnits="userSpaceOnUse" width="50">
+                <rect fill="url(#smallGrid)" height="50" width="50">
+                </rect>
+                <path d="M50,0 L0,0 0,50" fill="none" stroke="white" stroke-width="1.5">
+                </path>
+            </pattern>
+        </defs>
+        <rect fill="url(#grid)" height="100%" width="100%">
+        </rect>
+        <text font-family="Verdana, sans-serif" font-size="20px" font-weight="bolder" x="25" y="30">
+            Continue
+        </text>
+        <path d="M50,100 Q100,50 150,100 L150,200" fill="none" stroke="black" stroke-width="2">
+        </path>
+    </svg>
+    <svg style="background-color:#efefef;" height="300" width="300" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <pattern height="25" id="smallGrid" patternUnits="userSpaceOnUse" width="25">
+                <path d="M25,0 L0,0 0,25" fill="none" stroke="white" stroke-width="1">
+                </path>
+            </pattern>
+            <pattern height="50" id="grid" patternUnits="userSpaceOnUse" width="50">
+                <rect fill="url(#smallGrid)" height="50" width="50">
+                </rect>
+                <path d="M50,0 L0,0 0,50" fill="none" stroke="white" stroke-width="1.5">
+                </path>
+            </pattern>
+        </defs>
+        <rect fill="url(#grid)" height="100%" width="100%">
+        </rect>
+        <text font-family="Verdana, sans-serif" font-size="20px" font-weight="bolder" x="25" y="30">
+            Continue Smooth
+        </text>
+        <path d="M50,100 Q100,50 150,100 L220.71067811865498,170.71067811865498" fill="none" stroke="black" stroke-width="2">
+        </path>
+    </svg>
+</div>
