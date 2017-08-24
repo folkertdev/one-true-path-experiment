@@ -7,7 +7,8 @@ module Segment
         , derivativeAtFinal
         , derivativeAtFirst
         , angle
-        , startingPoint
+        , firstPoint
+        , finalPoint
         , toDrawTo
         , toSegment
         )
@@ -21,7 +22,7 @@ Here, a path is viewed as a list of segments with a start and end point.
 # Operations
 @docs at, length, lengthWithOptions
 @docs derivativeAtFirst, derivativeAtFinal, angle
-@docs startingPoint
+@docs firstPoint, finalPoint
 
 # Conversion
 @docs toDrawTo, toSegment
@@ -70,10 +71,28 @@ toDrawTo segment =
             EllipticalArc [ { target = end, radii = radii, xAxisRotate = degrees xAxisRotate, arcFlag = arcFlag, direction = direction } ]
 
 
-{-| Extract the starting point from a segment
+{-| Extract the first point from a segment
 -}
-startingPoint : Segment -> Vec2 Float
-startingPoint segment =
+firstPoint : Segment -> Vec2 Float
+firstPoint segment =
+    case segment of
+        LineSegment p _ ->
+            p
+
+        Quadratic p _ _ ->
+            p
+
+        Cubic p _ _ _ ->
+            p
+
+        Arc { start } ->
+            start
+
+
+{-| Extract the final point from a segment
+-}
+finalPoint : Segment -> Vec2 Float
+finalPoint segment =
     case segment of
         LineSegment _ p ->
             p
@@ -84,8 +103,8 @@ startingPoint segment =
         Cubic _ _ _ p ->
             p
 
-        Arc { start } ->
-            start
+        Arc { end } ->
+            end
 
 
 {-| Convert a drawto into a segment
@@ -96,7 +115,7 @@ toSegment : Segment -> DrawTo -> List Segment
 toSegment previous drawto =
     let
         start =
-            startingPoint previous
+            firstPoint previous
 
         ( startX, startY ) =
             start
