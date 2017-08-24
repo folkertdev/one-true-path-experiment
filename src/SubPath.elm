@@ -32,6 +32,9 @@ module SubPath
 @docs element, toString, toSegments, parse, unwrap
 
 ## Composition
+
+<img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/subpath-composition.svg" />
+
 @docs continue , connect, continueSmooth, close
 
 ## Mapping

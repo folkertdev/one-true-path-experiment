@@ -38,7 +38,7 @@ composition =
                     , down
                     ]
             in
-                render "None" subpaths
+                render "" subpaths
 
         connect =
             let
@@ -78,23 +78,28 @@ composition =
 
                 label =
                     Svg.text_ [ x "25", y "30", fontSize "20px", fontWeight "bolder", fontFamily "Verdana, sans-serif" ] [ Svg.text name ]
-
-                gridRect =
-                    Svg.rect [ width "100%", height "100%", fill "url(#grid)" ] []
             in
-                Svg.svg
+                Svg.g
                     [ width "300"
                     , height "300"
-                    , Html.Attributes.attribute "xmlns" "http://www.w3.org/2000/svg"
-                    , Html.Attributes.style [ ( "background-color", "#efefef" ) ]
                     ]
-                    (svgGrid :: gridRect :: label :: path :: [])
+                    (label :: path :: [])
+
+        gridRect =
+            Svg.rect [ width "100%", height "100%", fill "url(#grid)" ] []
     in
-        Html.div []
-            [ start
-            , connect
-            , continue
-            , continueSmooth
+        Svg.svg
+            [ width "1200"
+            , height "300"
+            , Html.Attributes.attribute "xmlns" "http://www.w3.org/2000/svg"
+            , Html.Attributes.style [ ( "background-color", "#efefef" ) ]
+            ]
+            [ svgGrid
+            , gridRect
+            , start
+            , Svg.g [ transform "translate(300, 0)" ] [ connect ]
+            , Svg.g [ transform "translate(600, 0)" ] [ continue ]
+            , Svg.g [ transform "translate(900, 0)" ] [ continueSmooth ]
             ]
 
 
