@@ -2,11 +2,39 @@ module SegmentTest exposing (..)
 
 import Test exposing (..)
 import Expect
-import Fuzz exposing (..)
 import Segment exposing (Segment(..))
-import LowLevel.Command exposing (moveTo, lineTo)
+import LowLevel.Command exposing (moveTo, lineTo, largestArc, clockwise)
 import Curve
 import SubPath
+
+
+(=>) =
+    (,)
+
+
+segments =
+    [ "line" => LineSegment ( 0, 42 ) ( 42, 0 )
+    , "quadratic" => Quadratic ( 0, 42 ) ( 0, 0 ) ( 42, 0 )
+    , "cubic" => Cubic ( 0, 42 ) ( 0, 0 ) ( 0, 0 ) ( 42, 0 )
+    , "arc" => Arc { start = ( 0, 42 ), end = ( 42, 0 ), radii = ( 1, 1 ), xAxisRotate = 0, arcFlag = largestArc, direction = clockwise }
+    ]
+
+
+startAndEnd =
+    let
+        createTests name value =
+            [ test (name ++ "- first point is (0, 42)") <|
+                \_ ->
+                    Segment.firstPoint value
+                        |> Expect.equal ( 0, 42 )
+            , test (name ++ "- final point is (42, 0)") <|
+                \_ ->
+                    Segment.finalPoint value
+                        |> Expect.equal ( 42, 0 )
+            ]
+    in
+        describe "start and end points" <|
+            List.concatMap (uncurry createTests) segments
 
 
 angle =

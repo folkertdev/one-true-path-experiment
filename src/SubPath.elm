@@ -322,7 +322,7 @@ fromSegments segments =
             Empty
 
         segment :: rest ->
-            subpath (moveTo (Segment.startingPoint segment)) (List.map Segment.toDrawTo segments)
+            subpath (moveTo (Segment.firstPoint segment)) (List.map Segment.toDrawTo segments)
 
 
 {-| -}
