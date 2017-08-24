@@ -10,7 +10,8 @@
         "Path",
         "SubPath",
         "Curve",
-        "Segment"
+        "Segment",
+        "LowLevel.Command"
     ],
     "dependencies": {
         "Zinggi/elm-webgl-math": "1.0.5 <= v < 2.0.0",
@@ -19,7 +20,7 @@
         "elm-lang/html": "2.0.0 <= v < 3.0.0",
         "elm-lang/svg": "2.0.0 <= v < 3.0.0",
         "elm-tools/parser": "2.0.1 <= v < 3.0.0",
-        "folkertdev/elm-deque": "1.1.0 <= v < 2.0.0"
+        "folkertdev/elm-deque": "2.0.0 <= v < 3.0.0"
     },
     "elm-version": "0.18.0 <= v < 0.19.0"
 }

@@ -4,6 +4,8 @@ module SubPath
         , subpath
         , empty
         , toString
+        , parse
+        , element
         , continue
         , connect
         , continueSmooth
@@ -19,24 +21,27 @@ module SubPath
 
 {-|
 
-
 ## Types
-@docs SubPath, empty, subpath, toString
+@docs SubPath
+
+
+## Construction
+@docs subpath, empty, parse
+
+## Conversion
+@docs element, toString, toSegments, parse, unwrap
 
 ## Composition
 @docs continue , connect, continueSmooth, close
 
 ## Mapping
-@docs mapCoordinate, mapWithCursorState
 @docs translate, rotate, scale
-
-## Conversion
-@docs toSegments, unwrap
-
-
+@docs mapCoordinate, mapWithCursorState
 
 -}
 
+import Svg
+import Svg.Attributes
 import Deque exposing (Deque)
 import Vector2 as Vec2 exposing (Vec2)
 import Vector3 as Vec3 exposing (Vec3)
@@ -44,7 +49,9 @@ import Matrix4 as Mat4
 import List.Extra as List
 import Segment exposing (Segment)
 import LowLevel.Command as LowLevel exposing (DrawTo(..), MoveTo(..), CursorState, lineTo, closePath, moveTo)
-import MixedPath
+import LowLevel.MixedSubPath as MixedSubPath
+import LowLevel.Convert as Convert
+import Parser
 
 
 {-| Type representing a subpath
@@ -134,7 +141,7 @@ mapWithCursorState mapDrawTo subpath =
                     , mapDrawTo cursorState drawto :: accum
                     )
             in
-                List.foldl folder ( { start = start, cursor = start }, [] ) (Deque.toList drawtos)
+                Deque.foldl folder ( { start = start, cursor = start }, [] ) drawtos
                     |> Tuple.second
                     |> List.reverse
 
@@ -158,12 +165,11 @@ continue =
 
                 newRight =
                     b.drawtos
-                        |> Deque.toList
-                        |> List.map (mapCoordinateDrawTo (Vec2.add distance))
+                        |> Deque.map (mapCoordinateDrawTo (Vec2.add distance))
             in
                 SubPath
                     { moveto = a.moveto
-                    , drawtos = List.foldl Deque.pushBack a.drawtos newRight
+                    , drawtos = Deque.append a.drawtos newRight
                     }
         )
 
@@ -358,7 +364,7 @@ translate vec subpath =
     mapCoordinate (Vec2.add vec) subpath
 
 
-{-| Rotate a subpath around its starting point by an angle (in degrees).
+{-| Rotate a subpath around its starting point by an angle (in radians).
 -}
 rotate : Float -> SubPath -> SubPath
 rotate angle subpath =
@@ -371,6 +377,7 @@ rotate angle subpath =
                 (MoveTo firstPoint) =
                     moveto
 
+                -- attempt to round to "nice" floats for fuzz tests
                 cleanFloat v =
                     round (v * 1.0e12)
                         |> toFloat
@@ -399,7 +406,9 @@ rotate angle subpath =
                     }
 
 
-{-| Rotate a subpath around its starting point by an angle (in degrees).
+{-| Scale the subpath in the x and y direction
+
+For more complex scaling operations, define a transformation matrix and use `mapCoordinate`.
 -}
 scale : Vec2 Float -> SubPath -> SubPath
 scale vec subpath =
@@ -436,46 +445,27 @@ toString subpath =
             ""
 
         SubPath { moveto, drawtos } ->
-            { moveto = toMixedMoveTo moveto, drawtos = List.map toMixedDrawTo (Deque.toList drawtos) }
-                |> List.singleton
-                |> MixedPath.toString
+            { moveto = Convert.toMixedMoveTo moveto, drawtos = List.map Convert.toMixedDrawTo (Deque.toList drawtos) }
+                |> MixedSubPath.toString
 
 
-{-| Exposed for testing purposes
+{-| Parse a single subpath
+
+This parser will fail if there are multiple subpaths, use the parser in `Path` instead if multiple subpaths in your input are possible.
 -}
-toMixedMoveTo : MoveTo -> MixedPath.MoveTo
-toMixedMoveTo (MoveTo coordinates) =
-    MixedPath.MoveTo MixedPath.Absolute coordinates
+parse : String -> Result Parser.Error SubPath
+parse string =
+    case MixedSubPath.parseSubPath string of
+        Ok { moveto, drawtos } ->
+            subpath (Convert.fromMixedMoveTo moveto) (List.map Convert.fromMixedDrawTo drawtos)
+                |> Ok
+
+        Err e ->
+            Err e
 
 
-{-| Exposed for testing purposes
+{-| Construct an svg path element from a `Path` with the given attributes
 -}
-toMixedDrawTo : DrawTo -> MixedPath.DrawTo
-toMixedDrawTo drawto =
-    case drawto of
-        LineTo coordinates ->
-            MixedPath.LineTo MixedPath.Absolute coordinates
-
-        Horizontal coordinates ->
-            MixedPath.Horizontal MixedPath.Absolute coordinates
-
-        Vertical coordinates ->
-            MixedPath.Vertical MixedPath.Absolute coordinates
-
-        CurveTo coordinates ->
-            MixedPath.CurveTo MixedPath.Absolute coordinates
-
-        SmoothCurveTo coordinates ->
-            MixedPath.SmoothCurveTo MixedPath.Absolute coordinates
-
-        QuadraticBezierCurveTo coordinates ->
-            MixedPath.QuadraticBezierCurveTo MixedPath.Absolute coordinates
-
-        SmoothQuadraticBezierCurveTo coordinates ->
-            MixedPath.SmoothQuadraticBezierCurveTo MixedPath.Absolute coordinates
-
-        EllipticalArc arguments ->
-            MixedPath.EllipticalArc MixedPath.Absolute arguments
-
-        ClosePath ->
-            MixedPath.ClosePath
+element : SubPath -> List (Svg.Attribute msg) -> Svg.Svg msg
+element path attributes =
+    Svg.path (Svg.Attributes.d (toString path) :: attributes) []

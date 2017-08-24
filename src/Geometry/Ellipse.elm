@@ -1,4 +1,4 @@
-module Ellipse
+module Geometry.Ellipse
     exposing
         ( CenterParameterization
         , EndpointParameterization

@@ -29,8 +29,8 @@ Here, a path is viewed as a list of segments with a start and end point.
 -}
 
 import Vector2 as Vec2 exposing (Vec2, Float2)
-import Ellipse
-import CubicBezier exposing (..)
+import Geometry.Ellipse as Ellipse
+import Geometry.CubicBezier as CubicBezier exposing (..)
 import LowLevel.Command exposing (..)
 
 

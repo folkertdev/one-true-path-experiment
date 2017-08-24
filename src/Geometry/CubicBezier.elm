@@ -1,4 +1,4 @@
-module CubicBezier exposing (CubicBezier, fromQuadratic, fromPoints, at, arcLength)
+module Geometry.CubicBezier exposing (CubicBezier, fromQuadratic, fromPoints, at, arcLength)
 
 {-|
 
@@ -65,10 +65,6 @@ diagonal =
 epsilon : Float
 epsilon =
     1.0e-12
-
-
-x =
-    Debug.log "arcLength" (arcLength 1.0 1.0e-6 diagonal)
 
 
 arcLength : Float -> Float -> CubicBezier -> Float

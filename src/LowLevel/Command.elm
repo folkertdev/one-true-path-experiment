@@ -28,11 +28,18 @@ module LowLevel.Command
 
 As the name implies, this is a low-level module that you probably shouldn't deal with.
 
+## Threading State
+@docs CursorState, updateCursorState
+
 ## Moving the cursor
 
-@docs moveTo
+@docs MoveTo, moveTo
 
 ## Drawing on the canvas
+
+## Type
+
+@docs DrawTo
 
 ## Straight lines
 @docs lineTo, horizontalTo, verticalTo
@@ -48,11 +55,12 @@ As the name implies, this is a low-level module that you probably shouldn't deal
 
 ## Arcs
 @docs arcTo, EllipticalArcArgument, clockwise, counterClockwise, largestArc, smallestArc
+@docs ArcFlag, Direction
 
 -}
 
 import Vector2 as Vec2 exposing (Vec2)
-import MixedPath exposing (..)
+import LowLevel.MixedCommand as MixedCommand exposing (..)
 import List.Extra as List
 
 
@@ -90,13 +98,13 @@ type alias EllipticalArcArgument =
 {-| Determine which arc to draw
 -}
 type alias Direction =
-    MixedPath.Direction
+    MixedCommand.Direction
 
 
 {-| Determine which arc to draw
 -}
 type alias ArcFlag =
-    MixedPath.ArcFlag
+    MixedCommand.ArcFlag
 
 
 {-| Corresponds to a sweep flag of 1
@@ -203,6 +211,8 @@ type alias CursorState =
     { start : Vec2 Float, cursor : Vec2 Float }
 
 
+{-| Simulate the effect of a drawto command on the cursor position
+-}
 updateCursorState : DrawTo -> CursorState -> CursorState
 updateCursorState drawto state =
     let

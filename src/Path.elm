@@ -85,8 +85,13 @@ import Svg
 import Svg.Attributes
 import Parser
 import Vector2 as Vec2 exposing (Vec2)
-import LowLevel.Command as LowLevel exposing (MoveTo(..), DrawTo(..), EllipticalArcArgument, Direction, ArcFlag, CursorState)
-import MixedPath exposing (AbstractMoveTo, AbstractDrawTo, MixedPath)
+import LowLevel.Command as LowLevel exposing (DrawTo, CursorState)
+import LowLevel.MixedSubPath as MixedSubPath
+import LowLevel.Convert as Convert
+
+
+--import MixedPath exposing (AbstractMoveTo, AbstractDrawTo, MixedPath)
+
 import SubPath exposing (SubPath, subpath)
 
 
@@ -125,53 +130,14 @@ The types and constructors in the output are described [here](#internal-data-use
 The parser uses [`elm-tools/parser`](http://package.elm-lang.org/packages/elm-tools/parser/2.0.1/).
 The error type is [`Parser.Error`](http://package.elm-lang.org/packages/elm-tools/parser/2.0.1/Parser#Error).
 -}
-parse : String -> Result Parser.Error Path
+parse : String -> Result Parser.Error (List SubPath)
 parse =
-    Result.map absolutePathToPath << MixedPath.parse
-
-
-absolutePathToPath : MixedPath.AbsolutePath -> Path
-absolutePathToPath path =
     let
-        helperMoveTo : AbstractMoveTo () -> MoveTo
-        helperMoveTo (MixedPath.MoveTo _ coordinate) =
-            MoveTo coordinate
-
-        helperDrawTo : MixedPath.AbstractDrawTo () -> DrawTo
-        helperDrawTo drawto =
-            case drawto of
-                MixedPath.LineTo _ arg ->
-                    LineTo arg
-
-                MixedPath.Horizontal _ arg ->
-                    Horizontal arg
-
-                MixedPath.Vertical _ arg ->
-                    Vertical arg
-
-                MixedPath.CurveTo _ arg ->
-                    CurveTo arg
-
-                MixedPath.SmoothCurveTo _ arg ->
-                    SmoothCurveTo arg
-
-                MixedPath.QuadraticBezierCurveTo _ arg ->
-                    QuadraticBezierCurveTo arg
-
-                MixedPath.SmoothQuadraticBezierCurveTo _ arg ->
-                    SmoothQuadraticBezierCurveTo arg
-
-                MixedPath.EllipticalArc _ arg ->
-                    EllipticalArc arg
-
-                MixedPath.ClosePath ->
-                    ClosePath
-
-        helpersubpath : MixedPath.AbsoluteSubPath -> SubPath
-        helpersubpath { moveto, drawtos } =
-            subpath (helperMoveTo moveto) (List.map helperDrawTo drawtos)
+        convert { moveto, drawtos } =
+            subpath (Convert.fromMixedMoveTo moveto) (List.map Convert.fromMixedDrawTo drawtos)
     in
-        List.map helpersubpath path
+        MixedSubPath.parse
+            >> Result.map (List.map convert)
 
 
 {-| Manipulate the coordinates in your SVG. This can be useful for scaling the svg.
@@ -195,36 +161,3 @@ when mapping.
 mapWithCursorState : (CursorState -> DrawTo -> b) -> Path -> List b
 mapWithCursorState f =
     List.concatMap (SubPath.mapWithCursorState f)
-
-
-{-| Exposed for testing purposes
--}
-toMixedDrawTo : DrawTo -> MixedPath.DrawTo
-toMixedDrawTo drawto =
-    case drawto of
-        LineTo coordinates ->
-            MixedPath.LineTo MixedPath.Absolute coordinates
-
-        Horizontal coordinates ->
-            MixedPath.Horizontal MixedPath.Absolute coordinates
-
-        Vertical coordinates ->
-            MixedPath.Vertical MixedPath.Absolute coordinates
-
-        CurveTo coordinates ->
-            MixedPath.CurveTo MixedPath.Absolute coordinates
-
-        SmoothCurveTo coordinates ->
-            MixedPath.SmoothCurveTo MixedPath.Absolute coordinates
-
-        QuadraticBezierCurveTo coordinates ->
-            MixedPath.QuadraticBezierCurveTo MixedPath.Absolute coordinates
-
-        SmoothQuadraticBezierCurveTo coordinates ->
-            MixedPath.SmoothQuadraticBezierCurveTo MixedPath.Absolute coordinates
-
-        EllipticalArc arguments ->
-            MixedPath.EllipticalArc MixedPath.Absolute arguments
-
-        ClosePath ->
-            MixedPath.ClosePath
