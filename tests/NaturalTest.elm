@@ -4,7 +4,9 @@ import Test exposing (..)
 import Expect
 import Fuzz exposing (..)
 import Curve exposing (..)
-import Path exposing (Path, lineTo, moveTo, subpath, cubicCurveTo)
+import Path exposing (Path)
+import SubPath exposing (subpath)
+import LowLevel.Command exposing (lineTo, moveTo, cubicCurveTo)
 import Vector2 exposing (Vec2)
 import Vector3 exposing (Vec3)
 

@@ -3,8 +3,8 @@ module EllipseTest exposing (..)
 import Test exposing (..)
 import Expect
 import Fuzz exposing (..)
-import Ellipse exposing (..)
-import Path exposing (clockwise, counterClockwise, largestArc, smallestArc)
+import Geometry.Ellipse as Ellipse exposing (..)
+import LowLevel.Command exposing (clockwise, counterClockwise, largestArc, smallestArc)
 import Random
 
 
