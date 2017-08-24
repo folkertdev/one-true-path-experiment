@@ -16,6 +16,7 @@ module SubPath
         , rotate
         , scale
         , toSegments
+        , fromSegments
         , unwrap
         )
 
@@ -29,7 +30,7 @@ module SubPath
 @docs subpath, empty, parse
 
 ## Conversion
-@docs element, toString, toSegments, parse, unwrap
+@docs element, toString, toSegments, fromSegments, parse, unwrap
 
 ## Composition
 
