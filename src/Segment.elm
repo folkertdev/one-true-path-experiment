@@ -2,6 +2,7 @@ module Segment
     exposing
         ( Segment(..)
         , length
+        , reverse
         , lengthWithOptions
         , at
         , derivativeAtFinal
@@ -11,6 +12,8 @@ module Segment
         , finalPoint
         , toDrawTo
         , toSegment
+        , arcLengthParameterization
+        , toChordLengths
         )
 
 {-| An alternative interpretation of paths that is convenient for mathematical operations.
@@ -20,9 +23,9 @@ Here, a path is viewed as a list of segments with a start and end point.
 @docs Segment
 
 # Operations
-@docs at, length, lengthWithOptions
-@docs derivativeAtFirst, derivativeAtFinal, angle
-@docs firstPoint, finalPoint
+@docs at, length, lengthWithOptions, angle, arcLengthParameterization, toChordLengths
+@docs derivativeAtFirst, derivativeAtFinal
+@docs firstPoint, finalPoint, reverse
 
 # Conversion
 @docs toDrawTo, toSegment
@@ -105,6 +108,106 @@ finalPoint segment =
 
         Arc { end } ->
             end
+
+
+{-| Reverse a line segment
+-}
+reverse : Segment -> Segment
+reverse segment =
+    case segment of
+        LineSegment start end ->
+            LineSegment end start
+
+        Quadratic start c1 end ->
+            Quadratic end c1 start
+
+        Cubic start c1 c2 end ->
+            Cubic end c2 c1 start
+
+        Arc params ->
+            let
+                flipDirection d =
+                    if d == clockwise then
+                        counterClockwise
+                    else
+                        clockwise
+            in
+                Arc { params | end = params.start, start = params.end, direction = flipDirection params.direction }
+
+
+{-| Get the (x,y) coorindate arrived at when following the curve for some amount.
+
+
+
+-}
+arcLengthParameterization : Segment -> Float -> Maybe ( Float, Float )
+arcLengthParameterization segment =
+    let
+        approximate _ =
+            let
+                lines =
+                    toChordLengths 50 segment
+
+                matchingSegment s =
+                    List.map (uncurry Vec2.distance) lines
+                        |> List.scanl (+) 0
+                        |> List.map2 (,) lines
+                        |> List.filter (\( _, v ) -> v <= s)
+                        |> List.reverse
+                        |> List.head
+                        |> Debug.log "matching segment"
+            in
+                -- \s -> go s chords
+                \s ->
+                    case matchingSegment s of
+                        Nothing ->
+                            Nothing
+
+                        Just ( ( start, end ), lengthSoFar ) ->
+                            let
+                                size =
+                                    Vec2.distance start end
+                            in
+                                (Vec2.scale ((Debug.log "delta" <| s - lengthSoFar) / size) (Vec2.sub end start))
+                                    |> Vec2.add start
+                                    |> Just
+    in
+        case segment of
+            LineSegment start end ->
+                approximate ()
+
+            Arc ({ radii } as parameterization) ->
+                if Tuple.first radii == Tuple.second radii then
+                    -- for a circle we can be exact
+                    Ellipse.arcLengthParameterizationCircle (Ellipse.endpointToCenter parameterization)
+                else
+                    Ellipse.arcLengthParameterizationEllipse (parameterization)
+
+            _ ->
+                approximate ()
+
+
+{-| toChordLengths
+-}
+toChordLengths : Int -> Segment -> List ( Vec2 Float, Vec2 Float )
+toChordLengths maxDepth segment =
+    case segment of
+        LineSegment start end ->
+            [ ( start, end ) ]
+
+        Quadratic start c1 end ->
+            CubicBezier.fromQuadratic start c1 end
+                |> CubicBezier.chunks maxDepth
+                |> List.map CubicBezier.chord
+
+        Cubic start c1 c2 end ->
+            CubicBezier.fromPoints start c1 c2 end
+                |> CubicBezier.chunks maxDepth
+                |> List.map CubicBezier.chord
+
+        Arc params ->
+            Ellipse.chunks maxDepth params
+                |> List.map Ellipse.chord
 
 
 {-| Convert a drawto into a segment
@@ -337,11 +440,11 @@ lengthWithOptions config segment =
 
         Quadratic start c1 end ->
             CubicBezier.fromQuadratic start c1 end
-                |> arcLength 1.0 config.error
+                |> arcLength 1.0
 
         Cubic start c1 c2 end ->
             CubicBezier.fromPoints start c1 c2 end
-                |> arcLength 1.0 config.error
+                |> arcLength 1.0
 
         Arc args ->
             Ellipse.approximateArcLength config args
