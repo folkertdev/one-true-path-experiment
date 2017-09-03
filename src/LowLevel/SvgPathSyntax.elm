@@ -1,6 +1,7 @@
 module LowLevel.SvgPathSyntax exposing (..)
 
 import Char
+import Geometry.Ellipse as Ellipse
 import LowLevel.MixedCommand exposing (..)
 
 
@@ -89,19 +90,17 @@ isEmpty command =
 
 stringifyEllipticalArcArgument : EllipticalArcArgument -> String
 stringifyEllipticalArcArgument { radii, xAxisRotate, arcFlag, direction, target } =
-    String.join " "
-        [ stringifyCoordinate radii
-        , Basics.toString xAxisRotate
-        , if arcFlag == LargestArc then
-            "1"
-          else
-            "0"
-        , if direction == Clockwise then
-            "1"
-          else
-            "0"
-        , stringifyCoordinate target
-        ]
+    let
+        ( arc, sweep ) =
+            Ellipse.encodeFlags ( arcFlag, direction )
+    in
+        String.join " "
+            [ stringifyCoordinate radii
+            , Basics.toString xAxisRotate
+            , Basics.toString arc
+            , Basics.toString sweep
+            , stringifyCoordinate target
+            ]
 
 
 stringifyCharacter : Mode -> Char -> String

@@ -60,7 +60,7 @@ As the name implies, this is a low-level module that you probably shouldn't deal
 -}
 
 import Vector2 as Vec2 exposing (Vec2)
-import LowLevel.MixedCommand as MixedCommand exposing (..)
+import Geometry.Ellipse as Ellipse exposing (ArcFlag(..), Direction(..))
 import List.Extra as List
 
 
@@ -98,13 +98,13 @@ type alias EllipticalArcArgument =
 {-| Determine which arc to draw
 -}
 type alias Direction =
-    MixedCommand.Direction
+    Ellipse.Direction
 
 
 {-| Determine which arc to draw
 -}
 type alias ArcFlag =
-    MixedCommand.ArcFlag
+    Ellipse.ArcFlag
 
 
 {-| Corresponds to a sweep flag of 1

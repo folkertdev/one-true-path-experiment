@@ -1,8 +1,9 @@
 module LowLevel.SvgPathParse exposing (..)
 
 import Parser exposing (Parser, (|.), (|=), oneOrMore, zeroOrMore, inContext, oneOf, symbol, succeed)
-import ParserPrimitives exposing (delimited, isWhitespace, (|-), wsp, withDefault, coordinatePair, nonNegativeNumber, number, commaWsp, optional, flag)
+import ParserPrimitives exposing (delimited, isWhitespace, (|-), wsp, withDefault, coordinatePair, nonNegativeNumber, number, commaWsp, optional, flag, join)
 import LowLevel.MixedCommand exposing (..)
+import Geometry.Ellipse as Ellipse
 import Char
 
 
@@ -261,21 +262,19 @@ ellipticalArcArgumentSequence =
 ellipticalArcArgument : Parser EllipticalArcArgument
 ellipticalArcArgument =
     let
-        helper rx ry xAxisRotate arcFlag direction target =
-            { radii = ( rx, ry )
-            , xAxisRotate = xAxisRotate
-            , arcFlag =
-                if arcFlag then
-                    LargestArc
-                else
-                    SmallestArc
-            , direction =
-                if direction then
-                    Clockwise
-                else
-                    CounterClockwise
-            , target = target
-            }
+        helper rx ry xAxisRotate arc sweep target =
+            case Ellipse.decodeFlags ( arc, sweep ) of
+                Just ( arcFlag, direction ) ->
+                    Parser.succeed
+                        { radii = ( rx, ry )
+                        , xAxisRotate = xAxisRotate
+                        , arcFlag = arcFlag
+                        , direction = direction
+                        , target = target
+                        }
+
+                Nothing ->
+                    Parser.fail "could not parse the arc and sweep flags"
     in
         succeed helper
             |= nonNegativeNumber
@@ -289,6 +288,7 @@ ellipticalArcArgument =
             |= flag
             |. withDefault () commaWsp
             |= coordinatePair
+            |> join
 
 
 {-| Construct both the absolute and relative parser for a command.

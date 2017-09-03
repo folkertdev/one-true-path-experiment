@@ -163,14 +163,14 @@ commaWsp =
             ]
 
 
-flag : Parser Bool
+flag : Parser Int
 flag =
     inContext "flag" <|
         oneOf
             [ symbol "1"
-                |> Parser.map (\_ -> True)
+                |> Parser.map (\_ -> 1)
             , symbol "0"
-                |> Parser.map (\_ -> False)
+                |> Parser.map (\_ -> 0)
             ]
 
 

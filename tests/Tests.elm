@@ -5,7 +5,8 @@ import Expect
 import Fuzz exposing (..)
 import Parser
 import LowLevel.Command as LowLevel
-import LowLevel.MixedCommand as MixedCommand exposing (AbstractMoveTo(..), AbstractDrawTo(..), DrawTo, MoveTo, Mode(..), Direction(..), ArcFlag(..))
+import LowLevel.MixedCommand as MixedCommand exposing (AbstractMoveTo(..), AbstractDrawTo(..), DrawTo, MoveTo, Mode(..))
+import Geometry.Ellipse exposing (Direction(..), ArcFlag(..))
 import Vector2 as Vec2
 import ParserPrimitives exposing (..)
 import LowLevel.SvgPathParse exposing (..)

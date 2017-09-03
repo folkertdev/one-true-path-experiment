@@ -59,46 +59,49 @@ segment =
         ]
 
 
-arcLengthParameterization =
-    describe "arc length parameterization"
-        [ test "f 2 with LineSegment (0,0) (4,0) is (2,0)" <|
-            \_ ->
-                LineSegment ( 0, 0 ) ( 4, 0 )
-                    |> flip Segment.arcLengthParameterization 2
-                    |> Expect.equal (Just ( 2, 0 ))
-        , test "f 2 with LineSegment (0,0) (0,4) is (0,2)" <|
-            \_ ->
-                LineSegment ( 0, 0 ) ( 0, 4 )
-                    |> flip Segment.arcLengthParameterization 2
-                    |> Expect.equal (Just ( 0, 2 ))
-        , test "f 2 with CubicSegment (0,0) (0,4) is (0,2)" <|
-            \_ ->
-                Cubic ( 0, 0 ) ( 0, 0 ) ( 4, 0 ) ( 4, 0 )
-                    |> flip Segment.arcLengthParameterization 2
-                    |> Expect.equal (Just ( 2, 0 ))
-        , test "f 2 with Ellipse (1,0) (0,1) is ( cos (pi / 4), sin (pi / 4))" <|
-            \_ ->
-                let
-                    arc =
-                        { start = ( 1, 0 ), end = ( -1, 0 ), radii = ( 1, 1 ), xAxisRotate = 0, arcFlag = largestArc, direction = counterClockwise }
 
-                    lines =
-                        Segment.toChordLengths 50 (Arc arc)
+{-
+   arcLengthParameterization =
+       describe "arc length parameterization"
+           [ test "f 2 with LineSegment (0,0) (4,0) is (2,0)" <|
+               \_ ->
+                   LineSegment ( 0, 0 ) ( 4, 0 )
+                       |> flip Segment.arcLengthParameterization 2
+                       |> Expect.equal (Just ( 2, 0 ))
+           , test "f 2 with LineSegment (0,0) (0,4) is (0,2)" <|
+               \_ ->
+                   LineSegment ( 0, 0 ) ( 0, 4 )
+                       |> flip Segment.arcLengthParameterization 2
+                       |> Expect.equal (Just ( 0, 2 ))
+           , test "f 2 with CubicSegment (0,0) (0,4) is (0,2)" <|
+               \_ ->
+                   Cubic ( 0, 0 ) ( 0, 0 ) ( 4, 0 ) ( 4, 0 )
+                       |> flip Segment.arcLengthParameterization 2
+                       |> Expect.equal (Just ( 2, 0 ))
+           , test "f 2 with Ellipse (1,0) (0,1) is ( cos (pi / 4), sin (pi / 4))" <|
+               \_ ->
+                   let
+                       arc =
+                           { start = ( 1, 0 ), end = ( -1, 0 ), radii = ( 1, 1 ), xAxisRotate = 0, arcFlag = largestArc, direction = counterClockwise }
 
-                    _ =
-                        List.map (uncurry Vec2.distance) lines
-                            |> List.scanl (+) 0
-                            |> List.drop 1
-                            |> List.filter (\v -> v <= pi / 2)
-                            |> List.map2 (,) lines
-                            |> List.reverse
-                            |> List.head
-                in
-                    Arc arc
-                        |> flip Segment.arcLengthParameterization (pi / 2)
-                        |> Maybe.map cleanVec2
-                        |> Expect.equal (Just ( 0, 1 ))
-        ]
+                       lines =
+                           Segment.toChordLengths 50 (Arc arc)
+
+                       _ =
+                           List.map (uncurry Vec2.distance) lines
+                               |> List.scanl (+) 0
+                               |> List.drop 1
+                               |> List.filter (\v -> v <= pi / 2)
+                               |> List.map2 (,) lines
+                               |> List.reverse
+                               |> List.head
+                   in
+                       Arc arc
+                           |> flip Segment.arcLengthParameterization (pi / 2)
+                           |> Maybe.map cleanVec2
+                           |> Expect.equal (Just ( 0, 1 ))
+           ]
+-}
 
 
 arc =
@@ -191,18 +194,11 @@ reverse =
                         Segment.at 0.5 s
 
                     difference =
-                        Vec2.distance given expected
+                        Vec2.sub expected given |> Vec2.length
                 in
-                    if difference > 1.0 then
-                        let
-                            _ =
-                                Debug.log "given, expected" ( given, expected, s, Segment.reverse s )
-                        in
-                            difference
-                                |> Expect.atMost 1.0e-6
-                    else
-                        difference
-                            |> Expect.atMost 1.0e-6
+                    difference
+                        |> Expect.atMost 1.0e-6
+          {- -}
           {-
              , fuzz segment "reverse does not change a segment's length" <|
                  \s ->

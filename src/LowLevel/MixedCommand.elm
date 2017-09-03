@@ -3,6 +3,7 @@ module LowLevel.MixedCommand exposing (..)
 {-| Commands that can be relative and/or absolute
 -}
 
+import Geometry.Ellipse exposing (ArcFlag(..), Direction(..))
 import Vector2 as Vec2 exposing (Vec2)
 import Vector3 as Vec3
 
@@ -55,20 +56,6 @@ type alias EllipticalArcArgument =
     , direction : Direction
     , target : Coordinate
     }
-
-
-{-| Determine which arc to draw
--}
-type ArcFlag
-    = SmallestArc
-    | LargestArc
-
-
-{-| Determine which arc to draw
--}
-type Direction
-    = Clockwise
-    | CounterClockwise
 
 
 {-| Corresponds to a sweep flag of 1

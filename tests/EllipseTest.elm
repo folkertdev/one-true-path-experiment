@@ -188,6 +188,29 @@ tests =
                 in
                     at 0.5 (endpointToCenter arc)
                         |> expectDistanceAtMost epsilon expected
+        , test "reversing a segment does not change its length" <|
+            \_ ->
+                let
+                    arc =
+                        { start = ( 2, 1 ), end = ( 0, 1.0 ), radii = ( 1, 1 ), arcFlag = SmallestArc, direction = CounterClockwise, xAxisRotate = 0 }
+                in
+                    (Ellipse.approximateArcLength arc - Ellipse.approximateArcLength (Ellipse.reverse arc))
+                        |> abs
+                        |> Expect.atMost 1.0e-6
+        , test "reversing a segment with float imprecision does not change its length" <|
+            \_ ->
+                let
+                    arc =
+                        { start = ( 2, 1 ), end = ( 0, 1.0000000000000002 ), radii = ( 1, 1 ), arcFlag = SmallestArc, direction = CounterClockwise, xAxisRotate = 0 }
+                in
+                    (Ellipse.approximateArcLength arc - Ellipse.approximateArcLength (Ellipse.reverse arc))
+                        |> abs
+                        |> Expect.atMost 1.0e-4
+        , fuzz fuzzEndpointParameterization "fuzz reversing a segment with float imprecision does not change its length" <|
+            \arc ->
+                (Ellipse.approximateArcLength arc - Ellipse.approximateArcLength (Ellipse.reverse arc))
+                    |> abs
+                    |> Expect.atMost 1.0e-4
           {-
 
              , test "endpoint to center - smallestArc counterClockwise" <|
@@ -363,8 +386,11 @@ fuzzRadii =
 
 fuzzEndpointParameterization =
     let
+        reasonableInt =
+            Fuzz.intRange -10000 10000
+
         fuzzFloat2 =
-            Fuzz.map2 (,) (Fuzz.map toFloat Fuzz.int) (Fuzz.map toFloat Fuzz.int)
+            Fuzz.map2 (,) (Fuzz.map toFloat reasonableInt) (Fuzz.map toFloat reasonableInt)
 
         fuzzArcFlag =
             Fuzz.map
@@ -390,7 +416,7 @@ fuzzEndpointParameterization =
             |> andMap fuzzFloat2
             |> andMap fuzzFloat2
             |> andMap fuzzRadii
-            |> andMap (Fuzz.floatRange 0 (2 * pi))
+            |> andMap (Fuzz.intRange 0 360 |> Fuzz.map (toFloat >> degrees))
             |> andMap fuzzArcFlag
             |> andMap fuzzDirection
             |> Fuzz.map validateRadii

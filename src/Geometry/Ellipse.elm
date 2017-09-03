@@ -2,6 +2,10 @@ module Geometry.Ellipse
     exposing
         ( CenterParameterization
         , EndpointParameterization
+        , ArcFlag(..)
+        , Direction(..)
+        , encodeFlags
+        , decodeFlags
         , centerToEndpoint
         , endpointToCenter
         , at
@@ -15,11 +19,11 @@ module Geometry.Ellipse
         , chunks
         , chord
         , splitEllipse
+        , reverse
         , arcLengthParameterizationCircle
         , arcLengthParameterizationEllipse
         )
 
-import LowLevel.MixedCommand exposing (ArcFlag(..), Direction(..))
 import Vector2 exposing (..)
 import Vector2 as Vec2 exposing (..)
 import Matrix2 exposing (..)
@@ -30,6 +34,20 @@ import Geometry.Approximate as Approximate
 tau : Float
 tau =
     2 * pi
+
+
+{-| Determine which arc to draw
+-}
+type ArcFlag
+    = SmallestArc
+    | LargestArc
+
+
+{-| Determine which arc to draw
+-}
+type Direction
+    = Clockwise
+    | CounterClockwise
 
 
 encodeFlags : ( ArcFlag, Direction ) -> ( Int, Int )
@@ -65,6 +83,21 @@ decodeFlags ( arcFlag, sweepFlag ) =
 
         _ ->
             Nothing
+
+
+reverse : EndpointParameterization -> EndpointParameterization
+reverse ({ start, end, direction } as parameterization) =
+    { parameterization
+        | start = end
+        , end = start
+        , direction =
+            case direction of
+                Clockwise ->
+                    CounterClockwise
+
+                CounterClockwise ->
+                    Clockwise
+    }
 
 
 type alias EndpointParameterization =
@@ -113,8 +146,8 @@ normalize ({ startAngle, deltaTheta, xAxisRotate } as parameterization) =
     }
 
 
-approximateArcLength : { a | minDepth : Int, error : Float } -> EndpointParameterization -> Float
-approximateArcLength { minDepth, error } ({ start, end } as parameterization) =
+approximateArcLength : EndpointParameterization -> Float
+approximateArcLength ({ start, end } as parameterization) =
     if start == end then
         0
     else
@@ -142,7 +175,7 @@ arcLengthParameterizationEllipse ({ start, end } as parameterization) s =
             , lowerBound = chordLength
             , percentageError = 0.01
             , baseCase = \{ start, end } -> Line.lengthParameterization start end s
-            , length = approximateArcLength { minDepth = 10, error = 1.0e12 }
+            , length = approximateArcLength
             }
     in
         Approximate.approximate config parameterization s

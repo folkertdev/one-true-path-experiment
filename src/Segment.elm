@@ -125,14 +125,7 @@ reverse segment =
             Cubic end c2 c1 start
 
         Arc params ->
-            let
-                flipDirection d =
-                    if d == clockwise then
-                        counterClockwise
-                    else
-                        clockwise
-            in
-                Arc { params | end = params.start, start = params.end, direction = flipDirection params.direction }
+            Arc (Ellipse.reverse params)
 
 
 {-| Get the (x,y) coorindate arrived at when following the curve for some amount.
@@ -155,7 +148,6 @@ arcLengthParameterization segment =
                         |> List.filter (\( _, v ) -> v <= s)
                         |> List.reverse
                         |> List.head
-                        |> Debug.log "matching segment"
             in
                 -- \s -> go s chords
                 \s ->
@@ -168,7 +160,7 @@ arcLengthParameterization segment =
                                 size =
                                     Vec2.distance start end
                             in
-                                (Vec2.scale ((Debug.log "delta" <| s - lengthSoFar) / size) (Vec2.sub end start))
+                                (Vec2.scale ((s - lengthSoFar) / size) (Vec2.sub end start))
                                     |> Vec2.add start
                                     |> Just
     in
@@ -447,7 +439,7 @@ lengthWithOptions config segment =
                 |> arcLength 1.0
 
         Arc args ->
-            Ellipse.approximateArcLength config args
+            Ellipse.approximateArcLength args
 
 
 {-| Give the (x,y) locations of the intersections between two segments
