@@ -10,13 +10,11 @@ module LowLevel.Command
         , clockwise
         , closePath
         , counterClockwise
-        , cubicCurveExtendTo
         , cubicCurveTo
         , horizontalTo
         , largestArc
         , lineTo
         , moveTo
-        , quadraticCurveExtendTo
         , quadraticCurveTo
         , smallestArc
           --
@@ -57,14 +55,9 @@ As the name implies, this is a low-level module that you probably shouldn't deal
 @docs closePath
 
 
-## Quadratic Beziers
+## Beziers
 
-@docs quadraticCurveTo, quadraticCurveExtendTo
-
-
-## Cubic Beziers
-
-@docs cubicCurveTo, cubicCurveExtendTo
+@docs quadraticCurveTo, cubicCurveTo
 
 
 ## Arcs
@@ -93,9 +86,7 @@ type DrawTo
     | Horizontal (List Float)
     | Vertical (List Float)
     | CurveTo (List ( Vec2 Float, Vec2 Float, Vec2 Float ))
-    | SmoothCurveTo (List ( Vec2 Float, Vec2 Float ))
     | QuadraticBezierCurveTo (List ( Vec2 Float, Vec2 Float ))
-    | SmoothQuadraticBezierCurveTo (List (Vec2 Float))
     | EllipticalArc (List EllipticalArcArgument)
     | ClosePath
 
@@ -194,25 +185,11 @@ quadraticCurveTo =
     QuadraticBezierCurveTo
 
 
-{-| A smooth extension to a quadratic bezier segment. The `T` instruction.
--}
-quadraticCurveExtendTo : List (Vec2 Float) -> DrawTo
-quadraticCurveExtendTo =
-    SmoothQuadraticBezierCurveTo
-
-
 {-| A cubic bezier. The `C` instruction.
 -}
 cubicCurveTo : List ( Vec2 Float, Vec2 Float, Vec2 Float ) -> DrawTo
 cubicCurveTo =
     CurveTo
-
-
-{-| A smooth extension to a cubic bezier segment. The `S` instruction.
--}
-cubicCurveExtendTo : List ( Vec2 Float, Vec2 Float ) -> DrawTo
-cubicCurveExtendTo =
-    SmoothCurveTo
 
 
 {-| An elliptical arc. The `A` instruction.
@@ -238,11 +215,6 @@ last =
                 accum
         )
         Nothing
-
-
-advanceCursorState : ( Float, Float ) -> Maybe ( Float, Float ) -> CursorState -> CursorState
-advanceCursorState newPoint newControlPoint state =
-    { state | cursor = newPoint, previousControlPoint = newControlPoint }
 
 
 fromLowLevelDrawTos : List LowLevel.DrawTo -> CursorState -> List DrawTo
@@ -457,18 +429,9 @@ updateCursorState drawto state =
                 |> Maybe.map (\( _, _, c ) -> c)
                 |> maybeUpdateCursor
 
-        SmoothCurveTo coordinates ->
-            List.last coordinates
-                |> Maybe.map Tuple.second
-                |> maybeUpdateCursor
-
         QuadraticBezierCurveTo coordinates ->
             List.last coordinates
                 |> Maybe.map Tuple.second
-                |> maybeUpdateCursor
-
-        SmoothQuadraticBezierCurveTo coordinates ->
-            List.last coordinates
                 |> maybeUpdateCursor
 
         EllipticalArc arguments ->
