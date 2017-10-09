@@ -1,36 +1,42 @@
 module SubPath
     exposing
         ( SubPath
-        , subpath
-        , empty
-        , toString
-        , parse
-        , element
-        , continue
-        , connect
-        , continueSmooth
         , close
+        , connect
+        , continue
+        , continueSmooth
+        , element
+        , empty
+        , fromSegments
         , mapCoordinate
         , mapWithCursorState
-        , translate
+        , parse
         , rotate
         , scale
+        , subpath
         , toSegments
-        , fromSegments
+        , toString
+        , translate
         , unwrap
         )
 
 {-|
 
+
 ## Types
+
 @docs SubPath
 
 
 ## Construction
+
 @docs subpath, empty, parse
 
+
 ## Conversion
+
 @docs element, toString, toSegments, fromSegments, parse, unwrap
+
 
 ## Composition
 
@@ -38,29 +44,37 @@ module SubPath
 
 @docs continue , connect, continueSmooth, close
 
+
 ## Mapping
+
 @docs translate, rotate, scale
 @docs mapCoordinate, mapWithCursorState
 
 -}
 
+import Deque exposing (Deque)
+import List.Extra as List
+import LowLevel.Convert as Convert
+import LowLevel.MixedSubPath as MixedSubPath
+import Matrix4 as Mat4
+import Parser
+import Path.LowLevel as LowLevel
+import Segment exposing (Segment)
 import Svg
 import Svg.Attributes
-import Deque exposing (Deque)
 import Vector2 as Vec2 exposing (Vec2)
 import Vector3 as Vec3 exposing (Vec3)
-import Matrix4 as Mat4
-import List.Extra as List
-import Segment exposing (Segment)
-import LowLevel.Command as LowLevel exposing (DrawTo(..), MoveTo(..), CursorState, lineTo, closePath, moveTo)
-import LowLevel.MixedSubPath as MixedSubPath
-import LowLevel.Convert as Convert
-import Parser
+
+
+fromLowLevel : List LowLevel.SubPath -> List SubPath
+fromLowLevel lowlevels =
+    []
 
 
 {-| Type representing a subpath
 
 A subpath is one moveto command followed by an arbitrary number of drawto commands.
+
 -}
 type SubPath
     = SubPath { moveto : MoveTo, drawtos : Deque DrawTo }
@@ -123,10 +137,15 @@ map2 f sub1 sub2 =
             f a b
 
 
+type alias CursorState =
+    { start : ( Float, Float ), cursor : ( Float, Float ), previousCursor : Maybe ( Float, Float ) }
+
+
 {-| Map over each drawto with the CursorState available.
 
 The CursorState contains the subpath start position and the current cursor position at the
 current DrawTo
+
 -}
 mapWithCursorState : (CursorState -> DrawTo -> b) -> SubPath -> List b
 mapWithCursorState mapDrawTo subpath =
@@ -141,13 +160,17 @@ mapWithCursorState mapDrawTo subpath =
 
                 folder : DrawTo -> ( CursorState, List b ) -> ( CursorState, List b )
                 folder drawto ( cursorState, accum ) =
-                    ( LowLevel.updateCursorState drawto cursorState
+                    ( let
+                        { newStart, newCursor } =
+                            LowLevel.updateCursorState drawto { start = cursorState.start, cursor = cursorState.cursor }
+                      in
+                      { start = newStart, cursor = newCursor, previousCursor = Just cursorState.cursor }
                     , mapDrawTo cursorState drawto :: accum
                     )
             in
-                Deque.foldl folder ( { start = start, cursor = start }, [] ) drawtos
-                    |> Tuple.second
-                    |> List.reverse
+            Deque.foldl folder ( { start = start, cursor = start, previousCursor = Nothing }, [] ) drawtos
+                |> Tuple.second
+                |> List.reverse
 
 
 {-| Start the second subpath where the first one ends
@@ -171,10 +194,10 @@ continue =
                     b.drawtos
                         |> Deque.map (mapCoordinateDrawTo (Vec2.add distance))
             in
-                SubPath
-                    { moveto = a.moveto
-                    , drawtos = Deque.append a.drawtos newRight
-                    }
+            SubPath
+                { moveto = a.moveto
+                , drawtos = Deque.append a.drawtos newRight
+                }
         )
 
 
@@ -196,8 +219,8 @@ continueSmooth b a =
                     Segment.angle final first
                         |> negate
             in
-                a
-                    |> continue (rotate angle b)
+            a
+                |> continue (rotate angle b)
 
         ( _, Nothing ) ->
             a
@@ -216,13 +239,13 @@ connect =
                 (MoveTo secondStart) =
                     b.moveto
             in
-                SubPath
-                    { moveto = a.moveto
-                    , drawtos =
-                        a.drawtos
-                            |> Deque.pushBack (LowLevel.lineTo [ secondStart ])
-                            |> flip Deque.append b.drawtos
-                    }
+            SubPath
+                { moveto = a.moveto
+                , drawtos =
+                    a.drawtos
+                        |> Deque.pushBack (LowLevel.lineTo [ secondStart ])
+                        |> flip Deque.append b.drawtos
+                }
         )
 
 
@@ -303,17 +326,18 @@ finalCursorState { moveto, drawtos } =
         initial =
             { start = start, cursor = start }
     in
-        case Deque.popBack drawtos of
-            ( Just drawto, _ ) ->
-                LowLevel.updateCursorState drawto initial
+    case Deque.popBack drawtos of
+        ( Just drawto, _ ) ->
+            LowLevel.updateCursorState drawto initial
 
-            _ ->
-                initial
+        _ ->
+            initial
 
 
 {-| Convert a list of segments to a path
 
 It is assumed that for every two adjacent segments in the list, the first segment's end point is the second segment's starting point
+
 -}
 fromSegments : List Segment -> SubPath
 fromSegments segments =
@@ -351,10 +375,10 @@ toSegments subpath =
                                 finalNewSegment =
                                     Maybe.withDefault previousSegment (List.last newSegments)
                             in
-                                ( finalNewSegment, accum ++ newSegments )
+                            ( finalNewSegment, accum ++ newSegments )
                     in
-                        List.foldl folder ( initial, [] ) (Deque.toList drawtos)
-                            |> Tuple.second
+                    List.foldl folder ( initial, [] ) (Deque.toList drawtos)
+                        |> Tuple.second
 
 
 {-| Translate the subpath by a vector
@@ -400,15 +424,16 @@ rotate angle subpath =
                         |> cleanVec2
                         |> Vec2.add firstPoint
             in
-                SubPath
-                    { moveto = moveto
-                    , drawtos = Deque.map (mapCoordinateDrawTo transform) drawtos
-                    }
+            SubPath
+                { moveto = moveto
+                , drawtos = Deque.map (mapCoordinateDrawTo transform) drawtos
+                }
 
 
 {-| Scale the subpath in the x and y direction
 
 For more complex scaling operations, define a transformation matrix and use `mapCoordinate`.
+
 -}
 scale : Vec2 Float -> SubPath -> SubPath
 scale vec subpath =
@@ -429,14 +454,13 @@ scale vec subpath =
                         |> (\( x, y, z ) -> ( x, y ))
                         |> Vec2.add firstPoint
             in
-                SubPath
-                    { moveto = moveto
-                    , drawtos = Deque.map (mapCoordinateDrawTo transform) drawtos
-                    }
+            SubPath
+                { moveto = moveto
+                , drawtos = Deque.map (mapCoordinateDrawTo transform) drawtos
+                }
 
 
 {-| Convert a subpath into SVG path notation
-
 -}
 toString : SubPath -> String
 toString subpath =
@@ -452,6 +476,7 @@ toString subpath =
 {-| Parse a single subpath
 
 This parser will fail if there are multiple subpaths, use the parser in `Path` instead if multiple subpaths in your input are possible.
+
 -}
 parse : String -> Result Parser.Error SubPath
 parse string =

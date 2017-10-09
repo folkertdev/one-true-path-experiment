@@ -3,7 +3,7 @@ module LowLevel.MixedCommand exposing (..)
 {-| Commands that can be relative and/or absolute
 -}
 
-import Geometry.Ellipse exposing (ArcFlag(..), Direction(..))
+import Path.LowLevel as LowLevel exposing (ArcFlag(..), Direction(..))
 import Vector2 as Vec2 exposing (Vec2)
 import Vector3 as Vec3
 
@@ -145,7 +145,7 @@ toAbsoluteMoveTo { start, cursor } (MoveTo mode coordinate) =
                 newCoordinate =
                     uncurry Vec2.add ( cursor, coordinate )
             in
-                ( MoveTo () newCoordinate, { start = newCoordinate, cursor = newCoordinate } )
+            ( MoveTo () newCoordinate, { start = newCoordinate, cursor = newCoordinate } )
 
 
 {-| Exposed for testing
@@ -158,14 +158,14 @@ toAbsoluteDrawTo ({ start, cursor } as state) drawto =
                 absoluteCoordinates =
                     coordinatesToAbsolute mode (coordinateToAbsolute cursor) coordinates
             in
-                case last absoluteCoordinates of
-                    Nothing ->
-                        ( LineTo () [], state )
+            case last absoluteCoordinates of
+                Nothing ->
+                    ( LineTo () [], state )
 
-                    Just finalCoordinate ->
-                        ( LineTo () absoluteCoordinates
-                        , { state | cursor = finalCoordinate }
-                        )
+                Just finalCoordinate ->
+                    ( LineTo () absoluteCoordinates
+                    , { state | cursor = finalCoordinate }
+                    )
 
         Horizontal mode xs ->
             let
@@ -173,14 +173,14 @@ toAbsoluteDrawTo ({ start, cursor } as state) drawto =
                     List.map (\x -> ( x, 0 )) xs
                         |> coordinatesToAbsolute mode (coordinateToAbsolute cursor)
             in
-                case last absoluteCoordinates of
-                    Nothing ->
-                        ( Horizontal () [], state )
+            case last absoluteCoordinates of
+                Nothing ->
+                    ( Horizontal () [], state )
 
-                    Just ( finalX, _ ) ->
-                        ( Horizontal () (List.map Tuple.first absoluteCoordinates)
-                        , { state | cursor = ( finalX, Tuple.second cursor ) }
-                        )
+                Just ( finalX, _ ) ->
+                    ( Horizontal () (List.map Tuple.first absoluteCoordinates)
+                    , { state | cursor = ( finalX, Tuple.second cursor ) }
+                    )
 
         Vertical mode ys ->
             let
@@ -188,64 +188,64 @@ toAbsoluteDrawTo ({ start, cursor } as state) drawto =
                     List.map (\y -> ( 0, y )) ys
                         |> coordinatesToAbsolute mode (coordinateToAbsolute cursor)
             in
-                case last absoluteCoordinates of
-                    Nothing ->
-                        ( Vertical () [], state )
+            case last absoluteCoordinates of
+                Nothing ->
+                    ( Vertical () [], state )
 
-                    Just ( _, finalY ) ->
-                        ( Vertical () (List.map Tuple.second absoluteCoordinates)
-                        , { state | cursor = ( Tuple.first cursor, finalY ) }
-                        )
+                Just ( _, finalY ) ->
+                    ( Vertical () (List.map Tuple.second absoluteCoordinates)
+                    , { state | cursor = ( Tuple.first cursor, finalY ) }
+                    )
 
         CurveTo mode coordinates ->
             let
                 absoluteCoordinates =
                     coordinatesToAbsolute mode (Vec3.map (coordinateToAbsolute cursor)) coordinates
             in
-                case last absoluteCoordinates of
-                    Nothing ->
-                        ( CurveTo () [], state )
+            case last absoluteCoordinates of
+                Nothing ->
+                    ( CurveTo () [], state )
 
-                    Just ( _, _, target ) ->
-                        ( CurveTo () absoluteCoordinates, { state | cursor = target } )
+                Just ( _, _, target ) ->
+                    ( CurveTo () absoluteCoordinates, { state | cursor = target } )
 
         SmoothCurveTo mode coordinates ->
             let
                 absoluteCoordinates =
                     coordinatesToAbsolute mode (Vec2.map (coordinateToAbsolute cursor)) coordinates
             in
-                case last absoluteCoordinates of
-                    Nothing ->
-                        ( SmoothCurveTo () [], state )
+            case last absoluteCoordinates of
+                Nothing ->
+                    ( SmoothCurveTo () [], state )
 
-                    Just ( _, target ) ->
-                        ( SmoothCurveTo () absoluteCoordinates, { state | cursor = target } )
+                Just ( _, target ) ->
+                    ( SmoothCurveTo () absoluteCoordinates, { state | cursor = target } )
 
         QuadraticBezierCurveTo mode coordinates ->
             let
                 absoluteCoordinates =
                     coordinatesToAbsolute mode (Vec2.map (coordinateToAbsolute cursor)) coordinates
             in
-                case last absoluteCoordinates of
-                    Nothing ->
-                        ( QuadraticBezierCurveTo () [], state )
+            case last absoluteCoordinates of
+                Nothing ->
+                    ( QuadraticBezierCurveTo () [], state )
 
-                    Just ( _, target ) ->
-                        ( QuadraticBezierCurveTo () absoluteCoordinates, { state | cursor = target } )
+                Just ( _, target ) ->
+                    ( QuadraticBezierCurveTo () absoluteCoordinates, { state | cursor = target } )
 
         SmoothQuadraticBezierCurveTo mode coordinates ->
             let
                 absoluteCoordinates =
                     coordinatesToAbsolute mode (coordinateToAbsolute cursor) coordinates
             in
-                case last absoluteCoordinates of
-                    Nothing ->
-                        ( SmoothQuadraticBezierCurveTo () [], state )
+            case last absoluteCoordinates of
+                Nothing ->
+                    ( SmoothQuadraticBezierCurveTo () [], state )
 
-                    Just finalCoordinate ->
-                        ( SmoothQuadraticBezierCurveTo () absoluteCoordinates
-                        , { state | cursor = finalCoordinate }
-                        )
+                Just finalCoordinate ->
+                    ( SmoothQuadraticBezierCurveTo () absoluteCoordinates
+                    , { state | cursor = finalCoordinate }
+                    )
 
         EllipticalArc mode arguments ->
             let
@@ -255,12 +255,12 @@ toAbsoluteDrawTo ({ start, cursor } as state) drawto =
                 absoluteArguments =
                     coordinatesToAbsolute mode (argumentToAbsolute cursor) arguments
             in
-                case last absoluteArguments of
-                    Nothing ->
-                        ( EllipticalArc () [], state )
+            case last absoluteArguments of
+                Nothing ->
+                    ( EllipticalArc () [], state )
 
-                    Just { target } ->
-                        ( EllipticalArc () absoluteArguments, { state | cursor = target } )
+                Just { target } ->
+                    ( EllipticalArc () absoluteArguments, { state | cursor = target } )
 
         ClosePath ->
             ( ClosePath, { state | cursor = start } )

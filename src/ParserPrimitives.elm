@@ -3,8 +3,8 @@ module ParserPrimitives exposing (..)
 {-| Helpers for parsing the primitives of SVG path syntax, based on [this W3C grammar](https://www.w3.org/TR/SVG/paths.html#PathDataBNF).
 -}
 
-import Parser exposing (..)
 import Char
+import Parser exposing (..)
 
 
 type alias Coordinate =
@@ -57,11 +57,11 @@ delimitedEndForbidden parseItem delimiter revItems =
         chompRest item =
             delimitedEndForbidden parseItem delimiter (item :: revItems)
     in
-        oneOf
-            [ delayedCommit delimiter <|
-                andThen chompRest parseItem
-            , succeed (List.reverse revItems)
-            ]
+    oneOf
+        [ delayedCommit delimiter <|
+            andThen chompRest parseItem
+        , succeed (List.reverse revItems)
+        ]
 
 
 sign : Parser Sign
@@ -100,12 +100,12 @@ fractionalConstant =
             String.toFloat (toString left ++ "." ++ toString right)
                 |> resultToParser
     in
-        join <|
-            oneOf
-                -- only commit to a fractional when the '.' is parsed
-                [ delayedCommitMap helper (withDefault 0 digitSequence |. symbol ".") digitSequence
-                , delayedCommitMap helper (withDefault 0 digitSequence |. symbol ".") <| succeed 0
-                ]
+    join <|
+        oneOf
+            -- only commit to a fractional when the '.' is parsed
+            [ delayedCommitMap helper (withDefault 0 digitSequence |. symbol ".") digitSequence
+            , delayedCommitMap helper (withDefault 0 digitSequence |. symbol ".") <| succeed 0
+            ]
 
 
 applyExponent : Float -> Exponent -> Parser Float

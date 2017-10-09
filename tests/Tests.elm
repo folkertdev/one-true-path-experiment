@@ -1,18 +1,18 @@
 module Tests exposing (..)
 
-import Test exposing (..)
+import Curve
 import Expect
 import Fuzz exposing (..)
-import Parser
+import Geometry.Ellipse exposing (ArcFlag(..), Direction(..))
 import LowLevel.Command as LowLevel
-import LowLevel.MixedCommand as MixedCommand exposing (AbstractMoveTo(..), AbstractDrawTo(..), DrawTo, MoveTo, Mode(..))
-import Geometry.Ellipse exposing (Direction(..), ArcFlag(..))
-import Vector2 as Vec2
-import ParserPrimitives exposing (..)
+import LowLevel.MixedCommand as MixedCommand exposing (AbstractDrawTo(..), AbstractMoveTo(..), DrawTo, Mode(..), MoveTo)
 import LowLevel.SvgPathParse exposing (..)
-import SubPath
+import Parser
+import ParserPrimitives exposing (..)
 import Path
-import Curve
+import SubPath
+import Test exposing (..)
+import Vector2 as Vec2
 
 
 (=>) =
@@ -31,8 +31,8 @@ toStringTests =
                 \_ ->
                     SubPath.toString subpath |> Expect.equal expected
     in
-        describe "pretty printing tests" <|
-            List.map (uncurry createTest) cases
+    describe "pretty printing tests" <|
+        List.map (uncurry createTest) cases
 
 
 pathLowLevel =
@@ -49,7 +49,7 @@ pathTests =
                     |> Path.mapWithCursorState (\{ cursor } _ -> cursor)
                     |> Expect.equal
                         (if rest /= [] then
-                            start :: (List.take (List.length rest - 1) rest)
+                            start :: List.take (List.length rest - 1) rest
                          else
                             []
                         )
@@ -96,40 +96,40 @@ suite =
             serious =
                 "M600,350 l10,10 l20,20 Z"
         in
-            [ test "moveto drawto command group" <|
-                \_ ->
-                    Parser.run moveToDrawToCommandGroup serious
-                        |> Expect.equal
-                            (Ok
-                                ( MoveTo Absolute ( 600, 350 )
-                                , [ LineTo Relative [ ( 10, 10 ) ], LineTo Relative [ ( 20, 20 ) ], ClosePath ]
-                                )
+        [ test "moveto drawto command group" <|
+            \_ ->
+                Parser.run moveToDrawToCommandGroup serious
+                    |> Expect.equal
+                        (Ok
+                            ( MoveTo Absolute ( 600, 350 )
+                            , [ LineTo Relative [ ( 10, 10 ) ], LineTo Relative [ ( 20, 20 ) ], ClosePath ]
                             )
-            , test "moveto drawto command groups" <|
-                \_ ->
-                    Parser.run moveToDrawToCommandGroups serious
-                        |> Expect.equal
-                            (Ok
-                                [ ( MoveTo Absolute ( 600, 350 )
-                                  , [ LineTo Relative [ ( 10, 10 ) ], LineTo Relative [ ( 20, 20 ) ], ClosePath ]
-                                  )
-                                ]
-                            )
-            , test "relative moveto 0,0" <|
-                \_ ->
-                    Parser.run moveto "m 0,0"
-                        |> Expect.equal (Ok ( MoveTo Relative ( 0, 0 ), Nothing ))
-            , test "lineto argument sequence" <|
-                \_ ->
-                    Parser.run linetoArgumentSequence "10,10 20,20"
-                        |> Expect.equal
-                            (Ok [ ( 10, 10 ), ( 20, 20 ) ])
-            , test "lineto command with multiple arguments " <|
-                \_ ->
-                    Parser.run lineto "l 10,10 20,20"
-                        |> Expect.equal
-                            (Ok (LineTo Relative [ ( 10, 10 ), ( 20, 20 ) ]))
-            ]
+                        )
+        , test "moveto drawto command groups" <|
+            \_ ->
+                Parser.run moveToDrawToCommandGroups serious
+                    |> Expect.equal
+                        (Ok
+                            [ ( MoveTo Absolute ( 600, 350 )
+                              , [ LineTo Relative [ ( 10, 10 ) ], LineTo Relative [ ( 20, 20 ) ], ClosePath ]
+                              )
+                            ]
+                        )
+        , test "relative moveto 0,0" <|
+            \_ ->
+                Parser.run moveto "m 0,0"
+                    |> Expect.equal (Ok ( MoveTo Relative ( 0, 0 ), Nothing ))
+        , test "lineto argument sequence" <|
+            \_ ->
+                Parser.run linetoArgumentSequence "10,10 20,20"
+                    |> Expect.equal
+                        (Ok [ ( 10, 10 ), ( 20, 20 ) ])
+        , test "lineto command with multiple arguments " <|
+            \_ ->
+                Parser.run lineto "l 10,10 20,20"
+                    |> Expect.equal
+                        (Ok (LineTo Relative [ ( 10, 10 ), ( 20, 20 ) ]))
+        ]
 
 
 whitespaceParsing : Test
@@ -169,110 +169,109 @@ toAbsoluteConversion =
             , target = ( 10, 10 )
             }
     in
-        describe "convert commands to absolute"
-            [ test "lineto relative" <|
-                \_ ->
-                    MixedCommand.toAbsoluteDrawTo startConfig (LineTo Relative [ ( 10, 10 ) ])
-                        |> Expect.equal ( LineTo () [ ( 110, 110 ) ], { startConfig | cursor = ( 110, 110 ) } )
-            , test "lineto absolute" <|
-                \_ ->
-                    MixedCommand.toAbsoluteDrawTo startConfig (LineTo Absolute [ ( 10, 10 ) ])
-                        |> Expect.equal ( LineTo () [ ( 10, 10 ) ], { startConfig | cursor = ( 10, 10 ) } )
-            , test "horizontal relative" <|
-                \_ ->
-                    MixedCommand.toAbsoluteDrawTo startConfig (Horizontal Relative [ 10 ])
-                        |> Expect.equal ( Horizontal () [ 110 ], { startConfig | cursor = ( 110, 100 ) } )
-            , test "horizontal absolute" <|
-                \_ ->
-                    MixedCommand.toAbsoluteDrawTo startConfig (Horizontal Absolute [ 10 ])
-                        |> Expect.equal ( Horizontal () [ 10 ], { startConfig | cursor = ( 10, 100 ) } )
-            , test "vertical relative" <|
-                \_ ->
-                    MixedCommand.toAbsoluteDrawTo startConfig (Vertical Relative [ 10 ])
-                        |> Expect.equal ( Vertical () [ 110 ], { startConfig | cursor = ( 100, 110 ) } )
-            , test "vertical absolute" <|
-                \_ ->
-                    MixedCommand.toAbsoluteDrawTo startConfig (Vertical Absolute [ 10 ])
-                        |> Expect.equal ( Vertical () [ 10 ], { startConfig | cursor = ( 100, 10 ) } )
-            , test "curveTo relative" <|
-                \_ ->
-                    MixedCommand.toAbsoluteDrawTo startConfig (CurveTo Relative [ ( ( 0, 5 ), ( 10, 5 ), ( 10, 10 ) ) ])
-                        |> Expect.equal ( CurveTo () [ ( ( 100, 105 ), ( 110, 105 ), ( 110, 110 ) ) ], { startConfig | cursor = ( 110, 110 ) } )
-            , test "curveTo absolute" <|
-                \_ ->
-                    MixedCommand.toAbsoluteDrawTo startConfig (CurveTo Absolute [ ( ( 0, 5 ), ( 10, 5 ), ( 10, 10 ) ) ])
-                        |> Expect.equal ( CurveTo () [ ( ( 0, 5 ), ( 10, 5 ), ( 10, 10 ) ) ], { startConfig | cursor = ( 10, 10 ) } )
-            , test "smoothCurveTo relative" <|
-                \_ ->
-                    MixedCommand.toAbsoluteDrawTo startConfig (SmoothCurveTo Relative [ ( ( 10, 5 ), ( 10, 10 ) ) ])
-                        |> Expect.equal ( SmoothCurveTo () [ ( ( 110, 105 ), ( 110, 110 ) ) ], { startConfig | cursor = ( 110, 110 ) } )
-            , test "smoothCurveTo absolute" <|
-                \_ ->
-                    MixedCommand.toAbsoluteDrawTo startConfig (SmoothCurveTo Absolute [ ( ( 10, 5 ), ( 10, 10 ) ) ])
-                        |> Expect.equal ( SmoothCurveTo () [ ( ( 10, 5 ), ( 10, 10 ) ) ], { startConfig | cursor = ( 10, 10 ) } )
-            , test "quadraticBezierCurveTo relative" <|
-                \_ ->
-                    MixedCommand.toAbsoluteDrawTo startConfig (QuadraticBezierCurveTo Relative [ ( ( 10, 5 ), ( 10, 10 ) ) ])
-                        |> Expect.equal ( QuadraticBezierCurveTo () [ ( ( 110, 105 ), ( 110, 110 ) ) ], { startConfig | cursor = ( 110, 110 ) } )
-            , test "quadraticBezierCurveTo absolute" <|
-                \_ ->
-                    MixedCommand.toAbsoluteDrawTo startConfig (QuadraticBezierCurveTo Absolute [ ( ( 10, 5 ), ( 10, 10 ) ) ])
-                        |> Expect.equal ( QuadraticBezierCurveTo () [ ( ( 10, 5 ), ( 10, 10 ) ) ], { startConfig | cursor = ( 10, 10 ) } )
-            , test "ellipticalArc relative" <|
-                \_ ->
-                    MixedCommand.toAbsoluteDrawTo startConfig (EllipticalArc Relative [ ellipticalArcExample ])
-                        |> Expect.equal ( EllipticalArc () [ { ellipticalArcExample | target = ( 110, 110 ) } ], { startConfig | cursor = ( 110, 110 ) } )
-            , test "ellipticalArc absolute" <|
-                \_ ->
-                    MixedCommand.toAbsoluteDrawTo startConfig (EllipticalArc Absolute [ ellipticalArcExample ])
-                        |> Expect.equal ( EllipticalArc () [ ellipticalArcExample ], { startConfig | cursor = ( 10, 10 ) } )
-            , test "closepath" <|
-                \_ ->
-                    MixedCommand.toAbsoluteDrawTo startConfig ClosePath
-                        |> Expect.equal ( ClosePath, { startConfig | cursor = startConfig.start } )
-            , test "foldl/traverse works with multiple subpaths" <|
-                \_ ->
-                    "M10,10 L15,15 m20,20"
-                        |> Path.parse
-                        |> Expect.equal
-                            (Ok
-                                ([ SubPath.subpath (LowLevel.MoveTo ( 10, 10 )) [ LowLevel.LineTo [ ( 15, 15 ) ] ]
-                                 , SubPath.subpath (LowLevel.MoveTo ( 35, 35 )) []
-                                 ]
-                                )
+    describe "convert commands to absolute"
+        [ test "lineto relative" <|
+            \_ ->
+                MixedCommand.toAbsoluteDrawTo startConfig (LineTo Relative [ ( 10, 10 ) ])
+                    |> Expect.equal ( LineTo () [ ( 110, 110 ) ], { startConfig | cursor = ( 110, 110 ) } )
+        , test "lineto absolute" <|
+            \_ ->
+                MixedCommand.toAbsoluteDrawTo startConfig (LineTo Absolute [ ( 10, 10 ) ])
+                    |> Expect.equal ( LineTo () [ ( 10, 10 ) ], { startConfig | cursor = ( 10, 10 ) } )
+        , test "horizontal relative" <|
+            \_ ->
+                MixedCommand.toAbsoluteDrawTo startConfig (Horizontal Relative [ 10 ])
+                    |> Expect.equal ( Horizontal () [ 110 ], { startConfig | cursor = ( 110, 100 ) } )
+        , test "horizontal absolute" <|
+            \_ ->
+                MixedCommand.toAbsoluteDrawTo startConfig (Horizontal Absolute [ 10 ])
+                    |> Expect.equal ( Horizontal () [ 10 ], { startConfig | cursor = ( 10, 100 ) } )
+        , test "vertical relative" <|
+            \_ ->
+                MixedCommand.toAbsoluteDrawTo startConfig (Vertical Relative [ 10 ])
+                    |> Expect.equal ( Vertical () [ 110 ], { startConfig | cursor = ( 100, 110 ) } )
+        , test "vertical absolute" <|
+            \_ ->
+                MixedCommand.toAbsoluteDrawTo startConfig (Vertical Absolute [ 10 ])
+                    |> Expect.equal ( Vertical () [ 10 ], { startConfig | cursor = ( 100, 10 ) } )
+        , test "curveTo relative" <|
+            \_ ->
+                MixedCommand.toAbsoluteDrawTo startConfig (CurveTo Relative [ ( ( 0, 5 ), ( 10, 5 ), ( 10, 10 ) ) ])
+                    |> Expect.equal ( CurveTo () [ ( ( 100, 105 ), ( 110, 105 ), ( 110, 110 ) ) ], { startConfig | cursor = ( 110, 110 ) } )
+        , test "curveTo absolute" <|
+            \_ ->
+                MixedCommand.toAbsoluteDrawTo startConfig (CurveTo Absolute [ ( ( 0, 5 ), ( 10, 5 ), ( 10, 10 ) ) ])
+                    |> Expect.equal ( CurveTo () [ ( ( 0, 5 ), ( 10, 5 ), ( 10, 10 ) ) ], { startConfig | cursor = ( 10, 10 ) } )
+        , test "smoothCurveTo relative" <|
+            \_ ->
+                MixedCommand.toAbsoluteDrawTo startConfig (SmoothCurveTo Relative [ ( ( 10, 5 ), ( 10, 10 ) ) ])
+                    |> Expect.equal ( SmoothCurveTo () [ ( ( 110, 105 ), ( 110, 110 ) ) ], { startConfig | cursor = ( 110, 110 ) } )
+        , test "smoothCurveTo absolute" <|
+            \_ ->
+                MixedCommand.toAbsoluteDrawTo startConfig (SmoothCurveTo Absolute [ ( ( 10, 5 ), ( 10, 10 ) ) ])
+                    |> Expect.equal ( SmoothCurveTo () [ ( ( 10, 5 ), ( 10, 10 ) ) ], { startConfig | cursor = ( 10, 10 ) } )
+        , test "quadraticBezierCurveTo relative" <|
+            \_ ->
+                MixedCommand.toAbsoluteDrawTo startConfig (QuadraticBezierCurveTo Relative [ ( ( 10, 5 ), ( 10, 10 ) ) ])
+                    |> Expect.equal ( QuadraticBezierCurveTo () [ ( ( 110, 105 ), ( 110, 110 ) ) ], { startConfig | cursor = ( 110, 110 ) } )
+        , test "quadraticBezierCurveTo absolute" <|
+            \_ ->
+                MixedCommand.toAbsoluteDrawTo startConfig (QuadraticBezierCurveTo Absolute [ ( ( 10, 5 ), ( 10, 10 ) ) ])
+                    |> Expect.equal ( QuadraticBezierCurveTo () [ ( ( 10, 5 ), ( 10, 10 ) ) ], { startConfig | cursor = ( 10, 10 ) } )
+        , test "ellipticalArc relative" <|
+            \_ ->
+                MixedCommand.toAbsoluteDrawTo startConfig (EllipticalArc Relative [ ellipticalArcExample ])
+                    |> Expect.equal ( EllipticalArc () [ { ellipticalArcExample | target = ( 110, 110 ) } ], { startConfig | cursor = ( 110, 110 ) } )
+        , test "ellipticalArc absolute" <|
+            \_ ->
+                MixedCommand.toAbsoluteDrawTo startConfig (EllipticalArc Absolute [ ellipticalArcExample ])
+                    |> Expect.equal ( EllipticalArc () [ ellipticalArcExample ], { startConfig | cursor = ( 10, 10 ) } )
+        , test "closepath" <|
+            \_ ->
+                MixedCommand.toAbsoluteDrawTo startConfig ClosePath
+                    |> Expect.equal ( ClosePath, { startConfig | cursor = startConfig.start } )
+        , test "foldl/traverse works with multiple subpaths" <|
+            \_ ->
+                "M10,10 L15,15 m20,20"
+                    |> Path.parse
+                    |> Expect.equal
+                        (Ok
+                            [ SubPath.subpath (LowLevel.MoveTo ( 10, 10 )) [ LowLevel.LineTo [ ( 15, 15 ) ] ]
+                            , SubPath.subpath (LowLevel.MoveTo ( 35, 35 )) []
+                            ]
+                        )
+        , test "finalPoint documentation example" <|
+            \_ ->
+                let
+                    finalPoint =
+                        Path.mapWithCursorState (flip LowLevel.updateCursorState)
+                in
+                [ SubPath.subpath (LowLevel.MoveTo ( 10, 10 )) [ LowLevel.LineTo [ ( 15, 15 ) ] ]
+                , SubPath.subpath (LowLevel.MoveTo ( 35, 35 )) []
+                ]
+                    |> finalPoint
+                    |> List.reverse
+                    |> List.head
+                    |> Maybe.map .cursor
+                    |> Expect.equal (Just ( 15, 15 ))
+        , fuzz fuzzMoveTo "a moveto always changes the CursorState starting position" <|
+            \(MoveTo mode coordinate) ->
+                let
+                    ( newCursor, newStart ) =
+                        if mode == Relative then
+                            ( Vec2.add startConfig.cursor coordinate
+                            , Vec2.add startConfig.start coordinate
                             )
-            , test "finalPoint documentation example" <|
-                \_ ->
-                    let
-                        finalPoint =
-                            Path.mapWithCursorState (flip LowLevel.updateCursorState)
-                    in
-                        [ SubPath.subpath (LowLevel.MoveTo ( 10, 10 )) [ LowLevel.LineTo [ ( 15, 15 ) ] ]
-                        , SubPath.subpath (LowLevel.MoveTo ( 35, 35 )) []
-                        ]
-                            |> finalPoint
-                            |> List.reverse
-                            |> List.head
-                            |> Maybe.map .cursor
-                            |> Expect.equal (Just ( 15, 15 ))
-            , fuzz fuzzMoveTo "a moveto always changes the CursorState starting position" <|
-                \(MoveTo mode coordinate) ->
-                    let
-                        ( newCursor, newStart ) =
-                            if mode == Relative then
-                                ( Vec2.add startConfig.cursor coordinate
-                                , Vec2.add startConfig.start coordinate
-                                )
-                            else
-                                ( coordinate
-                                , coordinate
-                                )
-                    in
-                        coordinate
-                            |> MoveTo mode
-                            |> MixedCommand.toAbsoluteMoveTo startConfig
-                            |> Expect.equal ( MoveTo () newCursor, { startConfig | cursor = newCursor, start = newStart } )
-            ]
+                        else
+                            ( coordinate
+                            , coordinate
+                            )
+                in
+                coordinate
+                    |> MoveTo mode
+                    |> MixedCommand.toAbsoluteMoveTo startConfig
+                    |> Expect.equal ( MoveTo () newCursor, { startConfig | cursor = newCursor, start = newStart } )
+        ]
 
 
 fuzzMoveTo : Fuzzer MoveTo
@@ -339,28 +338,28 @@ commands =
             , target = ( 50, -25 )
             }
     in
-        describe "parsing individual commands"
-            [ parseTest moveto "M0,0" ( MoveTo Absolute ( 0, 0 ), Nothing )
-            , parseTest moveto "M0.3,0" ( MoveTo Absolute ( 0.3, 0 ), Nothing )
-            , parseTest moveto "m0,0" ( MoveTo Relative ( 0, 0 ), Nothing )
-            , parseTest moveto "M0,0 20,20" ( MoveTo Absolute ( 0, 0 ), Just (LineTo Absolute [ ( 20, 20 ) ]) )
-            , parseTest moveto "m0,0 20,20" ( MoveTo Relative ( 0, 0 ), Just (LineTo Relative [ ( 20, 20 ) ]) )
-            , parseTest lineto "L0,0" (LineTo Absolute [ ( 0, 0 ) ])
-            , parseTest lineto "l0,0" (LineTo Relative [ ( 0, 0 ) ])
-            , parseTest horizontalLineto "H0 1 2 3" (Horizontal Absolute [ 0, 1, 2, 3 ])
-            , parseTest horizontalLineto "h0 1 2 3" (Horizontal Relative [ 0, 1, 2, 3 ])
-            , parseTest verticalLineto "V0 1 2 3" (Vertical Absolute [ 0, 1, 2, 3 ])
-            , parseTest verticalLineto "v0 1 2 3" (Vertical Relative [ 0, 1, 2, 3 ])
-            , parseTest closepath "Z" ClosePath
-            , parseTest closepath "z" ClosePath
-            , parseTest curveto "C100,100 250,100 250,200" (CurveTo Absolute [ ( ( 100, 100 ), ( 250, 100 ), ( 250, 200 ) ) ])
-            , parseTest curveto "c100,100 250,100 250,200" (CurveTo Relative [ ( ( 100, 100 ), ( 250, 100 ), ( 250, 200 ) ) ])
-            , parseTest smoothCurveto "S400,300 400,200" (SmoothCurveTo Absolute [ ( ( 400, 300 ), ( 400, 200 ) ) ])
-            , parseTest smoothCurveto "s400,300 400,200" (SmoothCurveTo Relative [ ( ( 400, 300 ), ( 400, 200 ) ) ])
-            , parseTest quadraticBezierCurveto "Q400,50 600,300" (QuadraticBezierCurveTo Absolute [ ( ( 400, 50 ), ( 600, 300 ) ) ])
-            , parseTest quadraticBezierCurveto "q400,50 600,300" (QuadraticBezierCurveTo Relative [ ( ( 400, 50 ), ( 600, 300 ) ) ])
-            , parseTest smoothQuadraticBezierCurveto "T1000,300" (SmoothQuadraticBezierCurveTo Absolute [ ( 1000, 300 ) ])
-            , parseTest smoothQuadraticBezierCurveto "t1000,300" (SmoothQuadraticBezierCurveTo Relative [ ( 1000, 300 ) ])
-            , parseTest ellipticalArc "A25,25 -30 0,1 50,-25" (EllipticalArc Absolute [ ellipticalArcExample ])
-            , parseTest ellipticalArc "a25,25 -30 0,1 50,-25" (EllipticalArc Relative [ ellipticalArcExample ])
-            ]
+    describe "parsing individual commands"
+        [ parseTest moveto "M0,0" ( MoveTo Absolute ( 0, 0 ), Nothing )
+        , parseTest moveto "M0.3,0" ( MoveTo Absolute ( 0.3, 0 ), Nothing )
+        , parseTest moveto "m0,0" ( MoveTo Relative ( 0, 0 ), Nothing )
+        , parseTest moveto "M0,0 20,20" ( MoveTo Absolute ( 0, 0 ), Just (LineTo Absolute [ ( 20, 20 ) ]) )
+        , parseTest moveto "m0,0 20,20" ( MoveTo Relative ( 0, 0 ), Just (LineTo Relative [ ( 20, 20 ) ]) )
+        , parseTest lineto "L0,0" (LineTo Absolute [ ( 0, 0 ) ])
+        , parseTest lineto "l0,0" (LineTo Relative [ ( 0, 0 ) ])
+        , parseTest horizontalLineto "H0 1 2 3" (Horizontal Absolute [ 0, 1, 2, 3 ])
+        , parseTest horizontalLineto "h0 1 2 3" (Horizontal Relative [ 0, 1, 2, 3 ])
+        , parseTest verticalLineto "V0 1 2 3" (Vertical Absolute [ 0, 1, 2, 3 ])
+        , parseTest verticalLineto "v0 1 2 3" (Vertical Relative [ 0, 1, 2, 3 ])
+        , parseTest closepath "Z" ClosePath
+        , parseTest closepath "z" ClosePath
+        , parseTest curveto "C100,100 250,100 250,200" (CurveTo Absolute [ ( ( 100, 100 ), ( 250, 100 ), ( 250, 200 ) ) ])
+        , parseTest curveto "c100,100 250,100 250,200" (CurveTo Relative [ ( ( 100, 100 ), ( 250, 100 ), ( 250, 200 ) ) ])
+        , parseTest smoothCurveto "S400,300 400,200" (SmoothCurveTo Absolute [ ( ( 400, 300 ), ( 400, 200 ) ) ])
+        , parseTest smoothCurveto "s400,300 400,200" (SmoothCurveTo Relative [ ( ( 400, 300 ), ( 400, 200 ) ) ])
+        , parseTest quadraticBezierCurveto "Q400,50 600,300" (QuadraticBezierCurveTo Absolute [ ( ( 400, 50 ), ( 600, 300 ) ) ])
+        , parseTest quadraticBezierCurveto "q400,50 600,300" (QuadraticBezierCurveTo Relative [ ( ( 400, 50 ), ( 600, 300 ) ) ])
+        , parseTest smoothQuadraticBezierCurveto "T1000,300" (SmoothQuadraticBezierCurveTo Absolute [ ( 1000, 300 ) ])
+        , parseTest smoothQuadraticBezierCurveto "t1000,300" (SmoothQuadraticBezierCurveTo Relative [ ( 1000, 300 ) ])
+        , parseTest ellipticalArc "A25,25 -30 0,1 50,-25" (EllipticalArc Absolute [ ellipticalArcExample ])
+        , parseTest ellipticalArc "a25,25 -30 0,1 50,-25" (EllipticalArc Relative [ ellipticalArcExample ])
+        ]

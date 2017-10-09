@@ -1,67 +1,83 @@
 module LowLevel.Command
     exposing
-        ( MoveTo(..)
-        , DrawTo(..)
-        , Direction
-        , ArcFlag
-        , EllipticalArcArgument
+        ( ArcFlag
         , CursorState
-        , updateCursorState
+        , Direction
+        , DrawTo(..)
+        , EllipticalArcArgument
+        , MoveTo(..)
+        , arcTo
         , clockwise
+        , closePath
         , counterClockwise
+        , cubicCurveExtendTo
+        , cubicCurveTo
+        , horizontalTo
         , largestArc
+        , lineTo
+        , moveTo
+        , quadraticCurveExtendTo
+        , quadraticCurveTo
         , smallestArc
           --
-        , moveTo
-        , lineTo
-        , horizontalTo
+        , updateCursorState
         , verticalTo
-        , quadraticCurveTo
-        , quadraticCurveExtendTo
-        , cubicCurveTo
-        , cubicCurveExtendTo
-        , arcTo
-        , closePath
         )
 
 {-| Low-level access to absolute svg drawing commands.
 
 As the name implies, this is a low-level module that you probably shouldn't deal with.
 
+
 ## Threading State
+
 @docs CursorState, updateCursorState
+
 
 ## Moving the cursor
 
 @docs MoveTo, moveTo
 
+
 ## Drawing on the canvas
+
 
 ## Type
 
 @docs DrawTo
 
+
 ## Straight lines
+
 @docs lineTo, horizontalTo, verticalTo
 
+
 ## Close Path
+
 @docs closePath
 
+
 ## Quadratic Beziers
+
 @docs quadraticCurveTo, quadraticCurveExtendTo
 
+
 ## Cubic Beziers
+
 @docs cubicCurveTo, cubicCurveExtendTo
 
+
 ## Arcs
+
 @docs arcTo, EllipticalArcArgument, clockwise, counterClockwise, largestArc, smallestArc
 @docs ArcFlag, Direction
 
 -}
 
-import Vector2 as Vec2 exposing (Vec2)
-import Geometry.Ellipse as Ellipse exposing (ArcFlag(..), Direction(..))
 import List.Extra as List
+import Path.LowLevel as LowLevel exposing (ArcFlag(..), Direction(..), Mode(..))
+import Vector2 as Vec2 exposing (Vec2)
+import Vector3 as Vec3 exposing (Vec3)
 
 
 {-| Constructors for MoveTo instructions
@@ -89,8 +105,8 @@ type DrawTo
 type alias EllipticalArcArgument =
     { radii : ( Float, Float )
     , xAxisRotate : Float
-    , arcFlag : ArcFlag
-    , direction : Direction
+    , arcFlag : LowLevel.ArcFlag
+    , direction : LowLevel.Direction
     , target : Vec2 Float
     }
 
@@ -98,13 +114,13 @@ type alias EllipticalArcArgument =
 {-| Determine which arc to draw
 -}
 type alias Direction =
-    Ellipse.Direction
+    LowLevel.Direction
 
 
 {-| Determine which arc to draw
 -}
 type alias ArcFlag =
-    Ellipse.ArcFlag
+    LowLevel.ArcFlag
 
 
 {-| Corresponds to a sweep flag of 1
@@ -122,6 +138,7 @@ counterClockwise =
 
 
 {-| Corresponds to an arc flag of 1
+thDefault
 -}
 largestArc : ArcFlag
 largestArc =
@@ -208,7 +225,206 @@ arcTo =
 {-| Contains the start of the current subpath and the current cursor position.
 -}
 type alias CursorState =
-    { start : Vec2 Float, cursor : Vec2 Float }
+    { start : Vec2 Float, cursor : Vec2 Float, previousControlPoint : Maybe ( Float, Float ) }
+
+
+last : List a -> Maybe a
+last =
+    List.foldr
+        (\element accum ->
+            if accum == Nothing then
+                Just element
+            else
+                accum
+        )
+        Nothing
+
+
+advanceCursorState : ( Float, Float ) -> Maybe ( Float, Float ) -> CursorState -> CursorState
+advanceCursorState newPoint newControlPoint state =
+    { state | cursor = newPoint, previousControlPoint = newControlPoint }
+
+
+fromLowLevelDrawTos : List LowLevel.DrawTo -> CursorState -> List DrawTo
+fromLowLevelDrawTos drawtos state =
+    let
+        folder element ( state, elements ) =
+            case fromLowLevelDrawTo element state of
+                Nothing ->
+                    ( state, elements )
+
+                Just ( newDrawTo, newState ) ->
+                    ( newState, newDrawTo :: elements )
+    in
+    drawtos
+        |> List.foldl folder ( state, [] )
+        |> Tuple.second
+        |> List.reverse
+
+
+fromLowLevelDrawTo : LowLevel.DrawTo -> CursorState -> Maybe ( DrawTo, CursorState )
+fromLowLevelDrawTo drawto ({ start, cursor } as state) =
+    case drawto of
+        LowLevel.LineTo mode oldPoints ->
+            let
+                updateState ( final, points ) =
+                    ( LineTo points
+                    , { state | cursor = final, previousControlPoint = Nothing }
+                    )
+            in
+            coordinatesToAbsolute mode (Vec2.add cursor) oldPoints
+                |> Maybe.map updateState
+
+        LowLevel.Horizontal mode xs ->
+            let
+                updateState ( final, points ) =
+                    ( LineTo points
+                    , { state | cursor = ( Tuple.first final, Tuple.second cursor ), previousControlPoint = Nothing }
+                    )
+            in
+            xs
+                |> List.map (\x -> ( x, 0 ))
+                |> coordinatesToAbsolute mode (Vec2.add cursor)
+                |> Maybe.map updateState
+
+        LowLevel.Vertical mode ys ->
+            let
+                updateState ( final, points ) =
+                    ( LineTo points
+                    , { state | cursor = ( Tuple.first cursor, Tuple.second final ), previousControlPoint = Nothing }
+                    )
+            in
+            ys
+                |> List.map (\y -> ( 0, y ))
+                |> coordinatesToAbsolute mode (Vec2.add cursor)
+                |> Maybe.map updateState
+
+        LowLevel.CurveTo mode coordinates ->
+            let
+                updateState ( ( _, c2, final ), points ) =
+                    ( CurveTo points
+                    , { state | cursor = final, previousControlPoint = Just c2 }
+                    )
+            in
+            coordinates
+                |> coordinatesToAbsolute mode (Vec3.map (Vec2.add cursor))
+                |> Maybe.map updateState
+
+        LowLevel.SmoothCurveTo mode coordinates ->
+            -- (If there is no previous command or if the previous command was not an C, c, S or s,
+            -- assume the first control point is coincident with the current point.)
+            coordinates
+                |> coordinatesToAbsolute mode (Vec2.map (Vec2.add cursor))
+                |> Maybe.map (makeControlPointExplicitVec2 state << Tuple.second)
+                |> Maybe.map
+                    (\( finalState, finalPoints ) ->
+                        ( CurveTo finalPoints
+                        , finalState
+                        )
+                    )
+
+        LowLevel.QuadraticBezierCurveTo mode coordinates ->
+            let
+                updateState ( ( c1, final ), points ) =
+                    ( QuadraticBezierCurveTo points
+                    , { state | cursor = final, previousControlPoint = Just c1 }
+                    )
+            in
+            coordinates
+                |> coordinatesToAbsolute mode (Vec2.map (Vec2.add cursor))
+                |> Maybe.map updateState
+
+        LowLevel.SmoothQuadraticBezierCurveTo mode coordinates ->
+            coordinates
+                |> coordinatesToAbsolute mode (Vec2.add cursor)
+                |> Maybe.map (makeControlPointExplicitVec1 state << Tuple.second)
+                |> Maybe.map
+                    (\( finalState, finalPoints ) ->
+                        ( QuadraticBezierCurveTo finalPoints
+                        , finalState
+                        )
+                    )
+
+        LowLevel.EllipticalArc mode arguments ->
+            let
+                argumentToAbsolute cursor argument =
+                    { argument | target = Vec2.add cursor argument.target }
+
+                updateState ( { target }, points ) =
+                    ( EllipticalArc points
+                    , { state | cursor = target, previousControlPoint = Nothing }
+                    )
+            in
+            arguments
+                |> coordinatesToAbsolute mode (argumentToAbsolute cursor)
+                |> Maybe.map updateState
+
+        LowLevel.ClosePath ->
+            Just ( ClosePath, { state | cursor = start } )
+
+
+makeControlPointExplicitVec1 : CursorState -> List ( Float, Float ) -> ( CursorState, List (Vec2 ( Float, Float )) )
+makeControlPointExplicitVec1 initial withoutContolPoint =
+    let
+        folder target ( state, accum ) =
+            let
+                previousControlPoint =
+                    Maybe.withDefault state.cursor state.previousControlPoint
+
+                newControlPoint =
+                    Vec2.sub previousControlPoint state.cursor |> Vec2.negate
+            in
+            ( { state | cursor = target, previousControlPoint = Just newControlPoint }
+            , ( newControlPoint, target ) :: accum
+            )
+    in
+    List.foldl folder ( initial, [] ) withoutContolPoint
+        |> Tuple.mapSecond List.reverse
+
+
+makeControlPointExplicitVec2 : CursorState -> List (Vec2 ( Float, Float )) -> ( CursorState, List (Vec3 ( Float, Float )) )
+makeControlPointExplicitVec2 initial withoutContolPoint =
+    let
+        folder ( c2, target ) ( state, accum ) =
+            let
+                previousControlPoint =
+                    Maybe.withDefault state.cursor state.previousControlPoint
+
+                newControlPoint =
+                    Vec2.sub previousControlPoint state.cursor |> Vec2.negate
+            in
+            ( { state | cursor = target, previousControlPoint = Just c2 }
+            , ( newControlPoint, c2, target ) :: accum
+            )
+    in
+    List.foldl folder ( initial, [] ) withoutContolPoint
+        |> Tuple.mapSecond List.reverse
+
+
+coordinatesToAbsolute : Mode -> (coords -> coords) -> List coords -> Maybe ( coords, List coords )
+coordinatesToAbsolute mode toAbsolute coordinates =
+    case mode of
+        Absolute ->
+            coordinates
+                |> last
+                |> Maybe.map (\final -> ( final, coordinates ))
+
+        Relative ->
+            let
+                folder f element ( elements, final ) =
+                    case final of
+                        Nothing ->
+                            ( f element :: elements, Just element )
+
+                        Just _ ->
+                            ( f element :: elements, final )
+            in
+            case List.foldr (folder toAbsolute) ( [], Nothing ) coordinates of
+                ( _, Nothing ) ->
+                    Nothing
+
+                ( newCoordinates, Just final ) ->
+                    Just ( final, newCoordinates )
 
 
 {-| Simulate the effect of a drawto command on the cursor position
@@ -222,43 +438,43 @@ updateCursorState drawto state =
         maybeUpdateCursor coordinate =
             { state | cursor = Maybe.withDefault state.cursor coordinate }
     in
-        case drawto of
-            LineTo coordinates ->
-                maybeUpdateCursor (List.last coordinates)
+    case drawto of
+        LineTo coordinates ->
+            maybeUpdateCursor (List.last coordinates)
 
-            Horizontal coordinates ->
-                List.last coordinates
-                    |> Maybe.map (\x -> ( x, cursorY ))
-                    |> maybeUpdateCursor
+        Horizontal coordinates ->
+            List.last coordinates
+                |> Maybe.map (\x -> ( x, cursorY ))
+                |> maybeUpdateCursor
 
-            Vertical coordinates ->
-                List.last coordinates
-                    |> Maybe.map (\y -> ( cursorX, y ))
-                    |> maybeUpdateCursor
+        Vertical coordinates ->
+            List.last coordinates
+                |> Maybe.map (\y -> ( cursorX, y ))
+                |> maybeUpdateCursor
 
-            CurveTo coordinates ->
-                List.last coordinates
-                    |> Maybe.map ((\( _, _, c ) -> c))
-                    |> maybeUpdateCursor
+        CurveTo coordinates ->
+            List.last coordinates
+                |> Maybe.map (\( _, _, c ) -> c)
+                |> maybeUpdateCursor
 
-            SmoothCurveTo coordinates ->
-                List.last coordinates
-                    |> Maybe.map Tuple.second
-                    |> maybeUpdateCursor
+        SmoothCurveTo coordinates ->
+            List.last coordinates
+                |> Maybe.map Tuple.second
+                |> maybeUpdateCursor
 
-            QuadraticBezierCurveTo coordinates ->
-                List.last coordinates
-                    |> Maybe.map Tuple.second
-                    |> maybeUpdateCursor
+        QuadraticBezierCurveTo coordinates ->
+            List.last coordinates
+                |> Maybe.map Tuple.second
+                |> maybeUpdateCursor
 
-            SmoothQuadraticBezierCurveTo coordinates ->
-                List.last coordinates
-                    |> maybeUpdateCursor
+        SmoothQuadraticBezierCurveTo coordinates ->
+            List.last coordinates
+                |> maybeUpdateCursor
 
-            EllipticalArc arguments ->
-                List.last arguments
-                    |> Maybe.map .target
-                    |> maybeUpdateCursor
+        EllipticalArc arguments ->
+            List.last arguments
+                |> Maybe.map .target
+                |> maybeUpdateCursor
 
-            ClosePath ->
-                state
+        ClosePath ->
+            state

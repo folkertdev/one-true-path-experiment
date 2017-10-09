@@ -3,83 +3,84 @@ module LowLevel.Convert exposing (..)
 {-| Conversion between the exposed absolute commands and internal mixed commands.
 
 This is in a separate module to circumvent cyclic dependencies.
+
 -}
 
-import LowLevel.MixedCommand as MixedCommand exposing (AbstractDrawTo, AbstractMoveTo)
 import LowLevel.Command as Command exposing (..)
+import Path.LowLevel as LowLevel
 
 
 {-| Exposed for testing purposes
 -}
-toMixedMoveTo : MoveTo -> MixedCommand.MoveTo
+toMixedMoveTo : MoveTo -> LowLevel.MoveTo
 toMixedMoveTo (MoveTo coordinates) =
-    MixedCommand.MoveTo MixedCommand.Absolute coordinates
+    LowLevel.MoveTo LowLevel.Absolute coordinates
 
 
 {-| Exposed for testing purposes
 -}
-toMixedDrawTo : DrawTo -> MixedCommand.DrawTo
+toMixedDrawTo : DrawTo -> LowLevel.DrawTo
 toMixedDrawTo drawto =
     case drawto of
         LineTo coordinates ->
-            MixedCommand.LineTo MixedCommand.Absolute coordinates
+            LowLevel.LineTo LowLevel.Absolute coordinates
 
         Horizontal coordinates ->
-            MixedCommand.Horizontal MixedCommand.Absolute coordinates
+            LowLevel.Horizontal LowLevel.Absolute coordinates
 
         Vertical coordinates ->
-            MixedCommand.Vertical MixedCommand.Absolute coordinates
+            LowLevel.Vertical LowLevel.Absolute coordinates
 
         CurveTo coordinates ->
-            MixedCommand.CurveTo MixedCommand.Absolute coordinates
+            LowLevel.CurveTo LowLevel.Absolute coordinates
 
         SmoothCurveTo coordinates ->
-            MixedCommand.SmoothCurveTo MixedCommand.Absolute coordinates
+            LowLevel.SmoothCurveTo LowLevel.Absolute coordinates
 
         QuadraticBezierCurveTo coordinates ->
-            MixedCommand.QuadraticBezierCurveTo MixedCommand.Absolute coordinates
+            LowLevel.QuadraticBezierCurveTo LowLevel.Absolute coordinates
 
         SmoothQuadraticBezierCurveTo coordinates ->
-            MixedCommand.SmoothQuadraticBezierCurveTo MixedCommand.Absolute coordinates
+            LowLevel.SmoothQuadraticBezierCurveTo LowLevel.Absolute coordinates
 
         EllipticalArc arguments ->
-            MixedCommand.EllipticalArc MixedCommand.Absolute arguments
+            LowLevel.EllipticalArc LowLevel.Absolute arguments
 
         ClosePath ->
-            MixedCommand.ClosePath
+            LowLevel.ClosePath
 
 
-fromMixedMoveTo : AbstractMoveTo () -> MoveTo
-fromMixedMoveTo (MixedCommand.MoveTo _ coordinate) =
+fromMixedMoveTo : LowLevel.MoveTo -> MoveTo
+fromMixedMoveTo (LowLevel.MoveTo _ coordinate) =
     MoveTo coordinate
 
 
-fromMixedDrawTo : MixedCommand.AbstractDrawTo () -> DrawTo
+fromMixedDrawTo : LowLevel.AbstractDrawTo () -> DrawTo
 fromMixedDrawTo drawto =
     case drawto of
-        MixedCommand.LineTo _ arg ->
+        LowLevel.LineTo _ arg ->
             LineTo arg
 
-        MixedCommand.Horizontal _ arg ->
+        LowLevel.Horizontal _ arg ->
             Horizontal arg
 
-        MixedCommand.Vertical _ arg ->
+        LowLevel.Vertical _ arg ->
             Vertical arg
 
-        MixedCommand.CurveTo _ arg ->
+        LowLevel.CurveTo _ arg ->
             CurveTo arg
 
-        MixedCommand.SmoothCurveTo _ arg ->
+        LowLevel.SmoothCurveTo _ arg ->
             SmoothCurveTo arg
 
-        MixedCommand.QuadraticBezierCurveTo _ arg ->
+        LowLevel.QuadraticBezierCurveTo _ arg ->
             QuadraticBezierCurveTo arg
 
-        MixedCommand.SmoothQuadraticBezierCurveTo _ arg ->
+        LowLevel.SmoothQuadraticBezierCurveTo _ arg ->
             SmoothQuadraticBezierCurveTo arg
 
-        MixedCommand.EllipticalArc _ arg ->
+        LowLevel.EllipticalArc _ arg ->
             EllipticalArc arg
 
-        MixedCommand.ClosePath ->
+        LowLevel.ClosePath ->
             ClosePath
