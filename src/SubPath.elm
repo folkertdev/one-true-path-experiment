@@ -54,11 +54,11 @@ module SubPath
 
 import Deque exposing (Deque)
 import List.Extra as List
-import LowLevel.Convert as Convert
-import LowLevel.MixedSubPath as MixedSubPath
+import LowLevel.Command as Command exposing (CursorState, DrawTo(..), MoveTo(..))
 import Matrix4 as Mat4
 import Parser
 import Path.LowLevel as LowLevel
+import Path.LowLevel.Parser as PathParser
 import Segment exposing (Segment)
 import Svg
 import Svg.Attributes
@@ -68,7 +68,41 @@ import Vector3 as Vec3 exposing (Vec3)
 
 fromLowLevel : List LowLevel.SubPath -> List SubPath
 fromLowLevel lowlevels =
-    []
+    case lowlevels of
+        [] ->
+            []
+
+        first :: _ ->
+            -- first moveto is always interpreted absolute
+            case first.moveto of
+                LowLevel.MoveTo _ target ->
+                    let
+                        initialCursorState =
+                            { start = target, cursor = target, previousControlPoint = Nothing }
+
+                        folder { moveto, drawtos } ( state, accum ) =
+                            let
+                                ( stateAfterMoveTo, newMoveTo ) =
+                                    Command.fromLowLevelMoveTo moveto state
+
+                                ( stateAfterDrawtos, newDrawTos ) =
+                                    Command.fromLowLevelDrawTos drawtos stateAfterMoveTo
+                            in
+                            ( stateAfterDrawtos, SubPath { moveto = newMoveTo, drawtos = Deque.fromList newDrawTos } :: accum )
+                    in
+                    List.foldl folder ( initialCursorState, [] ) lowlevels
+                        |> Tuple.second
+                        |> List.reverse
+
+
+toLowLevel : SubPath -> Maybe LowLevel.SubPath
+toLowLevel subpath =
+    case subpath of
+        Empty ->
+            Nothing
+
+        SubPath { moveto, drawtos } ->
+            Just { moveto = Command.toLowLevelMoveTo moveto, drawtos = List.map Command.toLowLevelDrawTo (Deque.toList drawtos) }
 
 
 {-| Type representing a subpath
@@ -137,10 +171,6 @@ map2 f sub1 sub2 =
             f a b
 
 
-type alias CursorState =
-    { start : ( Float, Float ), cursor : ( Float, Float ), previousCursor : Maybe ( Float, Float ) }
-
-
 {-| Map over each drawto with the CursorState available.
 
 The CursorState contains the subpath start position and the current cursor position at the
@@ -160,15 +190,15 @@ mapWithCursorState mapDrawTo subpath =
 
                 folder : DrawTo -> ( CursorState, List b ) -> ( CursorState, List b )
                 folder drawto ( cursorState, accum ) =
-                    ( let
-                        { newStart, newCursor } =
-                            LowLevel.updateCursorState drawto { start = cursorState.start, cursor = cursorState.cursor }
-                      in
-                      { start = newStart, cursor = newCursor, previousCursor = Just cursorState.cursor }
+                    let
+                        new =
+                            Command.updateCursorState drawto { start = cursorState.start, cursor = cursorState.cursor, previousControlPoint = Nothing }
+                    in
+                    ( new
                     , mapDrawTo cursorState drawto :: accum
                     )
             in
-            Deque.foldl folder ( { start = start, cursor = start, previousCursor = Nothing }, [] ) drawtos
+            Deque.foldl folder ( { start = start, cursor = start, previousControlPoint = Nothing }, [] ) drawtos
                 |> Tuple.second
                 |> List.reverse
 
@@ -243,7 +273,7 @@ connect =
                 { moveto = a.moveto
                 , drawtos =
                     a.drawtos
-                        |> Deque.pushBack (LowLevel.lineTo [ secondStart ])
+                        |> Deque.pushBack (Command.lineTo [ secondStart ])
                         |> flip Deque.append b.drawtos
                 }
         )
@@ -264,7 +294,7 @@ close subpath =
                     subpath
 
                 _ ->
-                    SubPath { moveto = moveto, drawtos = Deque.pushBack LowLevel.closePath drawtos }
+                    SubPath { moveto = moveto, drawtos = Deque.pushBack Command.closePath drawtos }
 
 
 {-| Map over all the 2D coordinates in a subpath
@@ -301,14 +331,8 @@ mapCoordinateDrawTo f drawto =
         CurveTo coordinates ->
             CurveTo (List.map (Vec3.map f) coordinates)
 
-        SmoothCurveTo coordinates ->
-            SmoothCurveTo (List.map (Vec2.map f) coordinates)
-
         QuadraticBezierCurveTo coordinates ->
             QuadraticBezierCurveTo (List.map (Vec2.map f) coordinates)
-
-        SmoothQuadraticBezierCurveTo coordinates ->
-            SmoothQuadraticBezierCurveTo (List.map f coordinates)
 
         EllipticalArc arguments ->
             EllipticalArc (List.map (\argument -> { argument | target = f argument.target }) arguments)
@@ -324,11 +348,11 @@ finalCursorState { moveto, drawtos } =
             moveto
 
         initial =
-            { start = start, cursor = start }
+            { start = start, cursor = start, previousControlPoint = Nothing }
     in
     case Deque.popBack drawtos of
         ( Just drawto, _ ) ->
-            LowLevel.updateCursorState drawto initial
+            Command.updateCursorState drawto initial
 
         _ ->
             initial
@@ -346,7 +370,7 @@ fromSegments segments =
             Empty
 
         segment :: rest ->
-            subpath (moveTo (Segment.firstPoint segment)) (List.map Segment.toDrawTo segments)
+            subpath (Command.moveTo (Segment.firstPoint segment)) (List.map Segment.toDrawTo segments)
 
 
 {-| -}
@@ -464,13 +488,9 @@ scale vec subpath =
 -}
 toString : SubPath -> String
 toString subpath =
-    case subpath of
-        Empty ->
-            ""
-
-        SubPath { moveto, drawtos } ->
-            { moveto = Convert.toMixedMoveTo moveto, drawtos = List.map Convert.toMixedDrawTo (Deque.toList drawtos) }
-                |> MixedSubPath.toString
+    toLowLevel subpath
+        |> Maybe.map (LowLevel.toString << List.singleton)
+        |> Maybe.withDefault ""
 
 
 {-| Parse a single subpath
@@ -478,15 +498,9 @@ toString subpath =
 This parser will fail if there are multiple subpaths, use the parser in `Path` instead if multiple subpaths in your input are possible.
 
 -}
-parse : String -> Result Parser.Error SubPath
-parse string =
-    case MixedSubPath.parseSubPath string of
-        Ok { moveto, drawtos } ->
-            subpath (Convert.fromMixedMoveTo moveto) (List.map Convert.fromMixedDrawTo drawtos)
-                |> Ok
-
-        Err e ->
-            Err e
+parse : String -> Result Parser.Error (List SubPath)
+parse =
+    Result.map fromLowLevel << PathParser.parse
 
 
 {-| Construct an svg path element from a `Path` with the given attributes

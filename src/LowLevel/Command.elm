@@ -11,6 +11,8 @@ module LowLevel.Command
         , closePath
         , counterClockwise
         , cubicCurveTo
+        , fromLowLevelDrawTos
+        , fromLowLevelMoveTo
         , horizontalTo
         , largestArc
         , lineTo
@@ -18,6 +20,8 @@ module LowLevel.Command
         , quadraticCurveTo
         , smallestArc
           --
+        , toLowLevelDrawTo
+        , toLowLevelMoveTo
         , updateCursorState
         , verticalTo
         )
@@ -64,6 +68,12 @@ As the name implies, this is a low-level module that you probably shouldn't deal
 
 @docs arcTo, EllipticalArcArgument, clockwise, counterClockwise, largestArc, smallestArc
 @docs ArcFlag, Direction
+
+
+## Conversion
+
+@docs fromLowLevelMoveTo, fromLowLevelDrawTos
+@docs toLowLevelDrawTo, toLowLevelMoveTo
 
 -}
 
@@ -217,7 +227,34 @@ last =
         Nothing
 
 
-fromLowLevelDrawTos : List LowLevel.DrawTo -> CursorState -> List DrawTo
+{-| -}
+fromLowLevelMoveTo : LowLevel.MoveTo -> CursorState -> ( CursorState, MoveTo )
+fromLowLevelMoveTo (LowLevel.MoveTo mode target) ({ cursor } as state) =
+    case mode of
+        Absolute ->
+            ( { state | start = target, cursor = target, previousControlPoint = Nothing }
+            , MoveTo target
+            )
+
+        Relative ->
+            let
+                absoluteTarget =
+                    Vec2.add target cursor
+            in
+            ( { state | start = absoluteTarget, cursor = absoluteTarget, previousControlPoint = Nothing }
+            , MoveTo absoluteTarget
+            )
+
+
+{-| Convert a one-true-path moveto to a svg-path-lowlevel moveto. Used in conversion to string
+-}
+toLowLevelMoveTo : MoveTo -> LowLevel.MoveTo
+toLowLevelMoveTo (MoveTo target) =
+    LowLevel.MoveTo Absolute target
+
+
+{-| -}
+fromLowLevelDrawTos : List LowLevel.DrawTo -> CursorState -> ( CursorState, List DrawTo )
 fromLowLevelDrawTos drawtos state =
     let
         folder element ( state, elements ) =
@@ -230,8 +267,7 @@ fromLowLevelDrawTos drawtos state =
     in
     drawtos
         |> List.foldl folder ( state, [] )
-        |> Tuple.second
-        |> List.reverse
+        |> Tuple.mapSecond List.reverse
 
 
 fromLowLevelDrawTo : LowLevel.DrawTo -> CursorState -> Maybe ( DrawTo, CursorState )
@@ -335,6 +371,33 @@ fromLowLevelDrawTo drawto ({ start, cursor } as state) =
             Just ( ClosePath, { state | cursor = start } )
 
 
+{-| Convert a one-true-path drawto to a svg-path-lowlevel drawto. Used in conversion to string
+-}
+toLowLevelDrawTo : DrawTo -> LowLevel.DrawTo
+toLowLevelDrawTo drawto =
+    case drawto of
+        LineTo coordinates ->
+            LowLevel.LineTo Absolute coordinates
+
+        Horizontal coordinates ->
+            LowLevel.Horizontal Absolute coordinates
+
+        Vertical coordinates ->
+            LowLevel.Vertical Absolute coordinates
+
+        CurveTo coordinates ->
+            LowLevel.CurveTo Absolute coordinates
+
+        QuadraticBezierCurveTo coordinates ->
+            LowLevel.QuadraticBezierCurveTo Absolute coordinates
+
+        EllipticalArc arguments ->
+            LowLevel.EllipticalArc Absolute arguments
+
+        ClosePath ->
+            LowLevel.ClosePath
+
+
 makeControlPointExplicitVec1 : CursorState -> List ( Float, Float ) -> ( CursorState, List (Vec2 ( Float, Float )) )
 makeControlPointExplicitVec1 initial withoutContolPoint =
     let
@@ -344,7 +407,9 @@ makeControlPointExplicitVec1 initial withoutContolPoint =
                     Maybe.withDefault state.cursor state.previousControlPoint
 
                 newControlPoint =
-                    Vec2.sub previousControlPoint state.cursor |> Vec2.negate
+                    Vec2.sub previousControlPoint state.cursor
+                        |> Vec2.negate
+                        |> Vec2.add state.cursor
             in
             ( { state | cursor = target, previousControlPoint = Just newControlPoint }
             , ( newControlPoint, target ) :: accum
@@ -363,7 +428,9 @@ makeControlPointExplicitVec2 initial withoutContolPoint =
                     Maybe.withDefault state.cursor state.previousControlPoint
 
                 newControlPoint =
-                    Vec2.sub previousControlPoint state.cursor |> Vec2.negate
+                    Vec2.sub previousControlPoint state.cursor
+                        |> Vec2.negate
+                        |> Vec2.add state.cursor
             in
             ( { state | cursor = target, previousControlPoint = Just c2 }
             , ( newControlPoint, c2, target ) :: accum

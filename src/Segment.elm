@@ -1,19 +1,19 @@
 module Segment
     exposing
         ( Segment(..)
-        , length
-        , reverse
-        , lengthWithOptions
+        , angle
+        , arcLengthParameterization
         , at
         , derivativeAtFinal
         , derivativeAtFirst
-        , angle
-        , firstPoint
         , finalPoint
+        , firstPoint
+        , length
+        , lengthWithOptions
+        , reverse
+        , toChordLengths
         , toDrawTo
         , toSegment
-        , arcLengthParameterization
-        , toChordLengths
         )
 
 {-| An alternative interpretation of paths that is convenient for mathematical operations.
@@ -22,25 +22,30 @@ Here, a path is viewed as a list of segments with a start and end point.
 
 @docs Segment
 
+
 # Operations
+
 @docs at, length, lengthWithOptions, angle, arcLengthParameterization, toChordLengths
 @docs derivativeAtFirst, derivativeAtFinal
 @docs firstPoint, finalPoint, reverse
 
+
 # Conversion
+
 @docs toDrawTo, toSegment
 
 -}
 
-import Vector2 as Vec2 exposing (Vec2, Float2)
-import Geometry.Ellipse as Ellipse
 import Geometry.CubicBezier as CubicBezier exposing (..)
+import Geometry.Ellipse as Ellipse
 import LowLevel.Command exposing (..)
+import Vector2 as Vec2 exposing (Float2, Vec2)
 
 
 {-| The four types of segments.
 
 For segments, the `xAxisRotate` field is in radians.
+
 -}
 type Segment
     = LineSegment (Vec2 Float) (Vec2 Float)
@@ -129,9 +134,6 @@ reverse segment =
 
 
 {-| Get the (x,y) coorindate arrived at when following the curve for some amount.
-
-
-
 -}
 arcLengthParameterization : Segment -> Float -> Maybe ( Float, Float )
 arcLengthParameterization segment =
@@ -149,34 +151,34 @@ arcLengthParameterization segment =
                         |> List.reverse
                         |> List.head
             in
-                -- \s -> go s chords
-                \s ->
-                    case matchingSegment s of
-                        Nothing ->
-                            Nothing
+            -- \s -> go s chords
+            \s ->
+                case matchingSegment s of
+                    Nothing ->
+                        Nothing
 
-                        Just ( ( start, end ), lengthSoFar ) ->
-                            let
-                                size =
-                                    Vec2.distance start end
-                            in
-                                (Vec2.scale ((s - lengthSoFar) / size) (Vec2.sub end start))
-                                    |> Vec2.add start
-                                    |> Just
+                    Just ( ( start, end ), lengthSoFar ) ->
+                        let
+                            size =
+                                Vec2.distance start end
+                        in
+                        Vec2.scale ((s - lengthSoFar) / size) (Vec2.sub end start)
+                            |> Vec2.add start
+                            |> Just
     in
-        case segment of
-            LineSegment start end ->
-                approximate ()
+    case segment of
+        LineSegment start end ->
+            approximate ()
 
-            Arc ({ radii } as parameterization) ->
-                if Tuple.first radii == Tuple.second radii then
-                    -- for a circle we can be exact
-                    Ellipse.arcLengthParameterizationCircle (Ellipse.endpointToCenter parameterization)
-                else
-                    Ellipse.arcLengthParameterizationEllipse (parameterization)
+        Arc ({ radii } as parameterization) ->
+            if Tuple.first radii == Tuple.second radii then
+                -- for a circle we can be exact
+                Ellipse.arcLengthParameterizationCircle (Ellipse.endpointToCenter parameterization)
+            else
+                Ellipse.arcLengthParameterizationEllipse parameterization
 
-            _ ->
-                approximate ()
+        _ ->
+            approximate ()
 
 
 {-| toChordLengths
@@ -205,6 +207,7 @@ toChordLengths maxDepth segment =
 {-| Convert a drawto into a segment
 
 This function needs the previous segment to the starting point and (for bezier curves) the control points
+
 -}
 toSegment : Segment -> DrawTo -> List Segment
 toSegment previous drawto =
@@ -215,94 +218,57 @@ toSegment previous drawto =
         ( startX, startY ) =
             start
     in
-        case drawto of
-            LineTo coordinates ->
-                List.map2 LineSegment (start :: coordinates) coordinates
+    case drawto of
+        LineTo coordinates ->
+            List.map2 LineSegment (start :: coordinates) coordinates
 
-            Horizontal xs ->
-                let
-                    coordinates =
-                        List.map (\x -> ( x, startY )) xs
-                in
-                    List.map2 LineSegment (start :: coordinates) coordinates
+        Horizontal xs ->
+            let
+                coordinates =
+                    List.map (\x -> ( x, startY )) xs
+            in
+            List.map2 LineSegment (start :: coordinates) coordinates
 
-            Vertical ys ->
-                let
-                    coordinates =
-                        List.map (\y -> ( startX, y )) ys
-                in
-                    List.map2 LineSegment (start :: coordinates) coordinates
+        Vertical ys ->
+            let
+                coordinates =
+                    List.map (\y -> ( startX, y )) ys
+            in
+            List.map2 LineSegment (start :: coordinates) coordinates
 
-            CurveTo coordinates ->
-                let
-                    folder ( c1, c2, p ) ( segmentStart, accum ) =
-                        ( p, Cubic segmentStart c1 c2 p :: accum )
-                in
-                    traverse folder start coordinates
+        CurveTo coordinates ->
+            let
+                folder ( c1, c2, p ) ( segmentStart, accum ) =
+                    ( p, Cubic segmentStart c1 c2 p :: accum )
+            in
+            traverse folder start coordinates
 
-            SmoothCurveTo coordinates ->
-                let
-                    controlPoint =
-                        case previous of
-                            Cubic _ _ ( cx, cy ) _ ->
-                                -- reflect the previous control point in the end point
-                                Vec2.add start ( startX - cx, startY - cy )
+        QuadraticBezierCurveTo coordinates ->
+            let
+                folder ( c, p ) ( segmentStart, accum ) =
+                    ( p, Quadratic segmentStart c p :: accum )
+            in
+            traverse folder start coordinates
 
-                            _ ->
-                                start
+        EllipticalArc arguments ->
+            let
+                folder args ( segmentStart, accum ) =
+                    ( args.target
+                    , Arc
+                        { start = segmentStart
+                        , end = args.target
+                        , radii = args.radii
+                        , xAxisRotate = radians args.xAxisRotate
+                        , arcFlag = args.arcFlag
+                        , direction = args.direction
+                        }
+                        :: accum
+                    )
+            in
+            traverse folder start arguments
 
-                    folder ( c2, p ) ( ( c1, segmentStart ), accum ) =
-                        ( ( c2, p ), Cubic segmentStart c1 c2 p :: accum )
-                in
-                    traverse folder ( controlPoint, start ) coordinates
-
-            QuadraticBezierCurveTo coordinates ->
-                let
-                    folder ( c, p ) ( segmentStart, accum ) =
-                        ( p, Quadratic segmentStart c p :: accum )
-                in
-                    traverse folder start coordinates
-
-            SmoothQuadraticBezierCurveTo coordinates ->
-                let
-                    controlPoint =
-                        case previous of
-                            Quadratic _ ( cx, cy ) _ ->
-                                ( cx, cy )
-
-                            _ ->
-                                start
-
-                    folder point ( ( previousControlPoint, segmentStart ), accum ) =
-                        let
-                            controlPoint =
-                                -- reflect c in segmentStart
-                                Vec2.sub segmentStart previousControlPoint
-                                    |> Vec2.add point
-                        in
-                            ( ( controlPoint, point ), Quadratic segmentStart controlPoint point :: accum )
-                in
-                    traverse folder ( controlPoint, start ) coordinates
-
-            EllipticalArc arguments ->
-                let
-                    folder args ( segmentStart, accum ) =
-                        ( args.target
-                        , Arc
-                            { start = segmentStart
-                            , end = args.target
-                            , radii = args.radii
-                            , xAxisRotate = radians args.xAxisRotate
-                            , arcFlag = args.arcFlag
-                            , direction = args.direction
-                            }
-                            :: accum
-                        )
-                in
-                    traverse folder start arguments
-
-            ClosePath ->
-                []
+        ClosePath ->
+            []
 
 
 traverse : (a -> ( b, List c ) -> ( b, List c )) -> b -> List a -> List c
@@ -405,7 +371,7 @@ signedAngle u v =
         q =
             acos (Vec2.dot u v / (Vec2.length u * Vec2.length v))
     in
-        sign * abs q
+    sign * abs q
 
 
 {-| The approximate length of a segment
@@ -417,8 +383,9 @@ length =
 
 {-| Supply the options for the approximation
 
-* `minDepth`: Minimum recursion depth for calculating the length of arc segments. Default is `10`.
-* `error`: Minimal amount of progress that an recursive step must make. Default is `1.0e-12`.
+  - `minDepth`: Minimum recursion depth for calculating the length of arc segments. Default is `10`.
+  - `error`: Minimal amount of progress that an recursive step must make. Default is `1.0e-12`.
+
 -}
 lengthWithOptions : { minDepth : Int, error : Float } -> Segment -> Float
 lengthWithOptions config segment =
@@ -428,7 +395,7 @@ lengthWithOptions config segment =
                 ( dx, dy ) =
                     ( x0 - x1, y0 - y1 )
             in
-                sqrt (dx * dx + dy * dy)
+            sqrt (dx * dx + dy * dy)
 
         Quadratic start c1 end ->
             CubicBezier.fromQuadratic start c1 end
