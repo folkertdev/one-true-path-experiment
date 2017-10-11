@@ -1,11 +1,11 @@
 module Path
     exposing
         ( Path
-        , toString
         , element
-        , parse
         , mapCoordinate
         , mapWithCursorState
+        , parse
+        , toString
         )
 
 {-| Low-level module for constructing svg paths.
@@ -15,7 +15,6 @@ svg path primitives, and then converted to a string that can be used in the [`d`
 
 Note that this is not the most convenient way of drawing. This package is mainly meant as a primitive to build other packages on top of.
 If you want to visualize data, have a look at [elm-plot] and [elm-visualization]. If you want to draw geometry, check out [opensolid].
-
 
 For more information on svg paths, see the [MDN documentation].
 
@@ -29,70 +28,70 @@ For more information on svg paths, see the [MDN documentation].
 [`DrawTo`]: #DrawTo
 [with the spec]: https://www.w3.org/TR/SVG/paths.html#PathDataMovetoCommands
 
+
 ## Data Layout
 
 A path is a list of subpaths that are drawn in order. A subpath consists of a [`MoveTo`] instruction followed by a list of [`DrawTo`] instructions.
 
 This package only supports absolute coordinates and instructions, but it is possible to parse strings with relative intructions.
 When a path is parsed, the first [`MoveTo`] instruction is always interpreted as absolute (this is in accordance [with the spec]),
-thus making sure  that there is always an absolute cursor position.
-
+thus making sure that there is always an absolute cursor position.
 
 The constructors are exposed, so if you need an escape hatch it is available. As always though, never reach for it when there are other options.
 
 The vector types are from [Zinggi/elm-webgl-math](http://package.elm-lang.org/packages/Zinggi/elm-webgl-math/latest). They are just type aliases for tuples.
 
+
 ## Example
 
-```elm
--- (Float, Float) is equivalent to Vec2 Float
-myPoints : List (Float, Float)
-
--- connect all the points with a straight line
-linear : List (Vec2 Float) -> Path
-linear points =
-    case points of
-        [] ->
-            []
-
-        p::ps ->
-            [ subpath (moveTo p) [ lineTo ps ] ]
+    myPoints : List ( Float, Float )
 
 
-main =
-    Svg.svg [ width "400", height "400" ]
-        [ Path.element (linear myPoints) [ fill "none" ]
-        ]
-```
+    -- connect all the points with a straight line
+
+    linear : List (Vec2 Float) -> Path
+    linear points =
+        case points of
+            [] ->
+                []
+
+            p :: ps ->
+                [ subpath (moveTo p) [ lineTo ps ] ]
+
+    main =
+        Svg.svg [ width "400", height "400" ]
+            [ Path.element (linear myPoints) [ fill "none" ]
+            ]
+
 
 ## Data Structures
+
 @docs Path
 
+
 ## Constructing Paths
+
 @docs parse
 
+
 ## Creating SVG
+
 @docs element, toString
 
+
 ## Modifying Paths
+
 @docs mapCoordinate, mapWithCursorState
-
-
 
 -}
 
+import LowLevel.Command as Command exposing (CursorState, DrawTo)
+import Parser
+import Path.LowLevel.Parser as PathParser
+import SubPath exposing (SubPath, subpath)
 import Svg
 import Svg.Attributes
-import Parser
 import Vector2 as Vec2 exposing (Vec2)
-import LowLevel.Command as LowLevel exposing (DrawTo, CursorState)
-import LowLevel.MixedSubPath as MixedSubPath
-import LowLevel.Convert as Convert
-
-
---import MixedPath exposing (AbstractMoveTo, AbstractDrawTo, MixedPath)
-
-import SubPath exposing (SubPath, subpath)
 
 
 {-| Construct an svg path element from a `Path` with the given attributes
@@ -112,6 +111,7 @@ type alias Path =
 
     Path.toString [ subpath (moveTo (0,0)) [ lineBy ( 42, 73 ) ] ]
         --> "M0,0 l42,73"
+
 -}
 toString : Path -> String
 toString =
@@ -119,7 +119,6 @@ toString =
 
 
 {-| Parse a path string into a `Path`
-
 
     parse "M0,0 l42,73"
         --> Ok [{ moveto = MoveTo Absolute (0,0), drawtos = [ LineTo Relative  [(42, 73)]]}]
@@ -129,15 +128,11 @@ The types and constructors in the output are described [here](#internal-data-use
 
 The parser uses [`elm-tools/parser`](http://package.elm-lang.org/packages/elm-tools/parser/2.0.1/).
 The error type is [`Parser.Error`](http://package.elm-lang.org/packages/elm-tools/parser/2.0.1/Parser#Error).
+
 -}
 parse : String -> Result Parser.Error (List SubPath)
 parse =
-    let
-        convert { moveto, drawtos } =
-            subpath (Convert.fromMixedMoveTo moveto) (List.map Convert.fromMixedDrawTo drawtos)
-    in
-        MixedSubPath.parse
-            >> Result.map (List.map convert)
+    Result.map SubPath.fromLowLevel << PathParser.parse
 
 
 {-| Manipulate the coordinates in your SVG. This can be useful for scaling the svg.
@@ -146,6 +141,7 @@ parse =
     [ subpath (moveTo (10,0)) [ lineTo [ (42, 42) ] ] ]
         |> mapCoordinate (\(x,y) -> (2 * x, y))
              --> [ subpath (moveTo (20,0)) [ lineTo [ (84, 42) ] ] ]
+
 -}
 mapCoordinate : (Vec2 Float -> Vec2 Float) -> Path -> Path
 mapCoordinate f path =
@@ -157,6 +153,7 @@ mapCoordinate f path =
 Many mathematical operations (length, derivative, curvature) are only possible when a segment is fully specified. A `DrawTo` on its
 own misses its starting point - the current cursor position. This function makes the cursor position and the start of the current subpath available
 when mapping.
+
 -}
 mapWithCursorState : (CursorState -> DrawTo -> b) -> Path -> List b
 mapWithCursorState f =

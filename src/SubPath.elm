@@ -7,6 +7,7 @@ module SubPath
         , continueSmooth
         , element
         , empty
+        , fromLowLevel
         , fromSegments
         , mapCoordinate
         , mapWithCursorState
@@ -14,6 +15,7 @@ module SubPath
         , rotate
         , scale
         , subpath
+        , toLowLevel
         , toSegments
         , toString
         , translate
@@ -50,6 +52,11 @@ module SubPath
 @docs translate, rotate, scale
 @docs mapCoordinate, mapWithCursorState
 
+
+## Conversion
+
+@docs fromLowLevel, toLowLevel
+
 -}
 
 import Deque exposing (Deque)
@@ -66,6 +73,8 @@ import Vector2 as Vec2 exposing (Vec2)
 import Vector3 as Vec3 exposing (Vec3)
 
 
+{-| Converting a svg-path-lowlevel subpath into a one-true-path subpath. Used in parsing
+-}
 fromLowLevel : List LowLevel.SubPath -> List SubPath
 fromLowLevel lowlevels =
     case lowlevels of
@@ -95,6 +104,8 @@ fromLowLevel lowlevels =
                         |> List.reverse
 
 
+{-| Converting a one-true-path subpath into a svg-path-lowlevel subpath. Used in toString
+-}
 toLowLevel : SubPath -> Maybe LowLevel.SubPath
 toLowLevel subpath =
     case subpath of
