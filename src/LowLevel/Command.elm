@@ -11,6 +11,7 @@ module LowLevel.Command
         , closePath
         , counterClockwise
         , cubicCurveTo
+        , fromLowLevelDrawTo
         , fromLowLevelDrawTos
         , fromLowLevelMoveTo
         , horizontalTo
@@ -72,7 +73,7 @@ As the name implies, this is a low-level module that you probably shouldn't deal
 
 ## Conversion
 
-@docs fromLowLevelMoveTo, fromLowLevelDrawTos
+@docs fromLowLevelMoveTo, fromLowLevelDrawTos, fromLowLevelDrawTo
 @docs toLowLevelDrawTo, toLowLevelMoveTo
 
 -}
@@ -270,6 +271,7 @@ fromLowLevelDrawTos drawtos state =
         |> Tuple.mapSecond List.reverse
 
 
+{-| -}
 fromLowLevelDrawTo : LowLevel.DrawTo -> CursorState -> Maybe ( DrawTo, CursorState )
 fromLowLevelDrawTo drawto ({ start, cursor } as state) =
     case drawto of
@@ -355,7 +357,7 @@ fromLowLevelDrawTo drawto ({ start, cursor } as state) =
 
         LowLevel.EllipticalArc mode arguments ->
             let
-                argumentToAbsolute cursor argument =
+                argumentToAbsolute argument =
                     { argument | target = Vec2.add cursor argument.target }
 
                 updateState ( { target }, points ) =
@@ -364,7 +366,7 @@ fromLowLevelDrawTo drawto ({ start, cursor } as state) =
                     )
             in
             arguments
-                |> coordinatesToAbsolute mode (argumentToAbsolute cursor)
+                |> coordinatesToAbsolute mode argumentToAbsolute
                 |> Maybe.map updateState
 
         LowLevel.ClosePath ->
@@ -463,7 +465,7 @@ coordinatesToAbsolute mode toAbsolute coordinates =
                     Nothing
 
                 ( newCoordinates, Just final ) ->
-                    Just ( final, newCoordinates )
+                    Just ( toAbsolute final, newCoordinates )
 
 
 {-| Simulate the effect of a drawto command on the cursor position

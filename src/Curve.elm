@@ -1,15 +1,6 @@
 module Curve
     exposing
-        ( linear
-        , linearClosed
-        , cubicBezier
-        , smoothCubicBezier
-        , quadraticBezier
-        , smoothQuadraticBezier
-        , step
-        , stepBefore
-        , stepAfter
-        , basis
+        ( basis
         , basisClosed
         , basisOpen
         , bundle
@@ -19,14 +10,23 @@ module Curve
         , catmullRom
         , catmullRomClosed
         , catmullRomOpen
+        , cubicBezier
+        , linear
+        , linearClosed
         , monotoneX
         , monotoneY
         , natural
-        , radial
-        , toPolarWithCenter
         , naturalControlPoints
-        , repeatFirstPoint
+        , quadraticBezier
+        , radial
         , repeatFinalPoint
+        , repeatFirstPoint
+        , smoothCubicBezier
+        , smoothQuadraticBezier
+        , step
+        , stepAfter
+        , stepBefore
+        , toPolarWithCenter
         )
 
 {-| Construct curves from a set of points.
@@ -36,24 +36,31 @@ This module gives many options for drawing lines through points.
 
 Supports all the curves defined by [D3 Shape](https://github.com/d3/d3-shape#curves).
 
+
 ## Linear
 
 @docs linear, linearClosed
 
+
 ## Bezier
+
 @docs cubicBezier , smoothCubicBezier , quadraticBezier , smoothQuadraticBezier
+
 
 ## Step
 
 @docs step, stepBefore, stepAfter
 
+
 ## Basis
 
 @docs basis, basisClosed, basisOpen, bundle
 
+
 ## Cardinal
 
 @docs cardinal, cardinalClosed, cardinalOpen
+
 
 ## Catmull-Rom
 
@@ -61,6 +68,7 @@ Catmull-Rom splines are a special case of cardinal splines. These curves are gre
 hit exactly and the curve is smooth.
 
 @docs catmullRom, catmullRomClosed, catmullRomOpen
+
 
 ## Monotone
 
@@ -75,26 +83,29 @@ A nice consequence is that there are no weird bumps in the curve between the dat
 
 @docs monotoneX, monotoneY
 
+
 ## Natural
 
 @docs natural
+
 
 ## Transformations
 
 @docs repeatFirstPoint , repeatFinalPoint
 @docs radial, toPolarWithCenter
 
+
 ## WIP TEST
+
 @docs naturalControlPoints
 
 -}
 
-import SubPath exposing (SubPath(..), subpath, empty, connect, close)
-import LowLevel.Command as LowLevel exposing (..)
 import List.Extra as List
+import LowLevel.Command as LowLevel exposing (..)
+import SubPath exposing (SubPath(..), close, connect, empty, subpath)
 import Vector2 as Vec2 exposing (Vec2)
 import Vector3 exposing (Vec3)
-import List.Extra as List
 
 
 epsilon : Float
@@ -125,13 +136,12 @@ area points =
             points
                 |> List.unzip
     in
-        step 1.0 low
-            |> connect (step 1.0 high)
-            |> close
+    step 1.0 low
+        |> connect (step 1.0 high)
+        |> close
 
 
 {-| Draw straight lines between the data points.
-
 
 <img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/linear.svg" />
 
@@ -162,12 +172,18 @@ cubicBezier start points =
 -}
 smoothCubicBezier : Vec2 Float -> Vec3 (Vec2 Float) -> List (Vec2 (Vec2 Float)) -> SubPath
 smoothCubicBezier start first points =
-    case points of
-        [] ->
-            empty
+    Debug.crash "todo "
 
-        x :: xs ->
-            subpath (moveTo start) [ cubicCurveTo [ first ], cubicCurveExtendTo points ]
+
+
+{-
+   case points of
+       [] ->
+           empty
+
+       x :: xs ->
+           subpath (moveTo start) [ cubicCurveTo [ first ], cubicCurveExtendTo points ]
+-}
 
 
 {-| Shorthand to draw a sequence of quadratic bezier segments
@@ -186,17 +202,24 @@ quadraticBezier start points =
 -}
 smoothQuadraticBezier : Vec2 Float -> Vec2 (Vec2 Float) -> List (Vec2 Float) -> SubPath
 smoothQuadraticBezier start first points =
-    case points of
-        [] ->
-            empty
+    Debug.crash "todo"
 
-        x :: xs ->
-            subpath (moveTo start) [ quadraticCurveTo [ first ], quadraticCurveExtendTo points ]
+
+
+{-
+   case points of
+       [] ->
+           empty
+
+       x :: xs ->
+           subpath (moveTo start) [ quadraticCurveTo [ first ], quadraticCurveExtendTo points ]
+-}
 
 
 {-| Draw a straigt line between the data points, connecting the ends.
 
 <img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/linearClosed.svg" />
+
 -}
 linearClosed : List (Vec2 Float) -> SubPath
 linearClosed points =
@@ -212,7 +235,7 @@ linearClosed points =
 
 This function is used by radial and can be used to use radial with different interpolations, for instance.
 
-    radialNatural  : Vec2 Float -> List (Vec2 Float) -> SubPath
+    radialNatural : Vec2 Float -> List (Vec2 Float) -> SubPath
     radialNatural ( x, y ) =
         natural << toPolarWithCenter ( x, y )
 
@@ -225,6 +248,7 @@ toPolarWithCenter ( x, y ) =
 {-| Interpret a 2D vector as a `(angle, radius)` pair. The angle is in radians. The first argument is the center.
 
 <img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/radial.svg" />
+
 -}
 radial : Vec2 Float -> List (Vec2 Float) -> SubPath
 radial ( x, y ) =
@@ -248,8 +272,8 @@ basisPoint p0 p1 p =
 
 {-| Basis interpolation (also known as B-spline)
 
-
 <img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/basis.svg" />
+
 -}
 basis : List (Vec2 Float) -> SubPath
 basis points =
@@ -261,31 +285,32 @@ basis points =
                     [ cubicCurveTo [ basisPoint p0 p1 p1 ], lineTo [ p1 ] ]
 
                 p0 :: p1 :: p :: rest ->
-                    (cubicCurveTo [ basisPoint p0 p1 p ]) :: commonCase (p1 :: p :: rest)
+                    cubicCurveTo [ basisPoint p0 p1 p ] :: commonCase (p1 :: p :: rest)
 
                 _ ->
                     []
     in
-        case points of
-            p0 :: p1 :: _ :: _ ->
-                let
-                    toFirst =
-                        Vec2.scale 5 p0
-                            |> Vec2.add p1
-                            |> Vec2.divideBy 6
-                in
-                    subpath (moveTo p0) (lineTo [ toFirst ] :: commonCase points)
+    case points of
+        p0 :: p1 :: _ :: _ ->
+            let
+                toFirst =
+                    Vec2.scale 5 p0
+                        |> Vec2.add p1
+                        |> Vec2.divideBy 6
+            in
+            subpath (moveTo p0) (lineTo [ toFirst ] :: commonCase points)
 
-            [ p0, p1 ] ->
-                subpath (moveTo p0) [ lineTo [ p1 ] ]
+        [ p0, p1 ] ->
+            subpath (moveTo p0) [ lineTo [ p1 ] ]
 
-            _ ->
-                empty
+        _ ->
+            empty
 
 
 {-| Closed Basis interpolation (also known as B-spline)
 
 <img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/basisClosed.svg" />
+
 -}
 basisClosed : List (Vec2 Float) -> SubPath
 basisClosed points =
@@ -302,37 +327,35 @@ basisClosed points =
                 _ ->
                     []
     in
-        case points of
-            p2 :: p3 :: p4 :: rest ->
-                let
-                    ( p0, p1, p ) =
-                        ( p2, p3, p4 )
+    case points of
+        p2 :: p3 :: p4 :: rest ->
+            let
+                ( p0, p1, p ) =
+                    ( p2, p3, p4 )
 
-                    closing p0 p1 =
-                        [ basisPoint p0 p1 p2
-                        , basisPoint p1 p2 p3
-                        , basisPoint p2 p3 p4
-                        ]
+                closing p0 p1 =
+                    [ basisPoint p0 p1 p2
+                    , basisPoint p1 p2 p3
+                    , basisPoint p2 p3 p4
+                    ]
 
-                    start =
-                        p0
-                            |> Vec2.add (Vec2.scale 4 p1)
-                            |> Vec2.add p
-                            |> Vec2.divideBy 6
-                in
-                    subpath (moveTo start)
-                        [ cubicCurveTo (commonCase closing (p3 :: p4 :: rest)) ]
+                start =
+                    p0
+                        |> Vec2.add (Vec2.scale 4 p1)
+                        |> Vec2.add p
+                        |> Vec2.divideBy 6
+            in
+            subpath (moveTo start)
+                [ cubicCurveTo (commonCase closing (p3 :: p4 :: rest)) ]
 
-            [ p0, p1 ] ->
-                subpath (moveTo p0) [ lineTo [ p1 ] ]
+        [ p0, p1 ] ->
+            subpath (moveTo p0) [ lineTo [ p1 ] ]
 
-            _ ->
-                empty
+        _ ->
+            empty
 
 
-{-|
-
-<img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/basisOpen.svg" />
+{-| <img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/basisOpen.svg" />
 -}
 basisOpen : List (Vec2 Float) -> SubPath
 basisOpen points =
@@ -345,24 +368,22 @@ basisOpen points =
                 _ ->
                     []
     in
-        case points of
-            p0 :: p1 :: p :: rest ->
-                let
-                    start =
-                        p0
-                            |> Vec2.add (Vec2.scale 4 p1)
-                            |> Vec2.add p
-                            |> Vec2.divideBy 6
-                in
-                    subpath (moveTo start) [ cubicCurveTo (helper (p1 :: p :: rest)) ]
+    case points of
+        p0 :: p1 :: p :: rest ->
+            let
+                start =
+                    p0
+                        |> Vec2.add (Vec2.scale 4 p1)
+                        |> Vec2.add p
+                        |> Vec2.divideBy 6
+            in
+            subpath (moveTo start) [ cubicCurveTo (helper (p1 :: p :: rest)) ]
 
-            _ ->
-                empty
+        _ ->
+            empty
 
 
-{-|
-
-<img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/bundle.svg" />
+{-| <img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/bundle.svg" />
 -}
 bundle : Float -> List (Vec2 Float) -> SubPath
 bundle beta points =
@@ -384,13 +405,13 @@ bundle beta points =
                         t =
                             toFloat i / j
                     in
-                        deltas
-                            |> Vec2.scale t
-                            |> Vec2.add p0
-                            |> interpolateVec2 beta p
+                    deltas
+                        |> Vec2.scale t
+                        |> Vec2.add p0
+                        |> interpolateVec2 beta p
             in
-                List.indexedMap helper points
-                    |> basis
+            List.indexedMap helper points
+                |> basis
 
 
 interpolateVec2 : Float -> Vec2 Float -> Vec2 Float -> Vec2 Float
@@ -410,9 +431,7 @@ cardinalPoint k p0 p1 p2 p =
     )
 
 
-{-|
-
-<img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/cardinal.svg" />
+{-| <img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/cardinal.svg" />
 -}
 cardinal : Float -> List (Vec2 Float) -> SubPath
 cardinal tension points =
@@ -431,19 +450,18 @@ cardinal tension points =
                 _ ->
                     []
     in
-        case points of
-            [ p0, p1 ] ->
-                subpath (moveTo p0) [ lineTo [ p1 ] ]
+    case points of
+        [ p0, p1 ] ->
+            subpath (moveTo p0) [ lineTo [ p1 ] ]
 
-            p0 :: p1 :: p2 :: rest ->
-                subpath (moveTo p0) [ cubicCurveTo (cardinalPoint k p0 p1 p1 p2 :: helper points) ]
+        p0 :: p1 :: p2 :: rest ->
+            subpath (moveTo p0) [ cubicCurveTo (cardinalPoint k p0 p1 p1 p2 :: helper points) ]
 
-            _ ->
-                empty
+        _ ->
+            empty
 
 
-{-|
-<img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/cardinalOpen.svg" />
+{-| <img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/cardinalOpen.svg" />
 -}
 cardinalOpen : Float -> List (Vec2 Float) -> SubPath
 cardinalOpen tension points =
@@ -451,19 +469,18 @@ cardinalOpen tension points =
         k =
             (1 - tension) / 6
     in
-        case points of
-            p0 :: p1 :: p2 :: p3 :: rest ->
-                List.map4 (cardinalPoint k) (p0 :: p1 :: p2 :: p3 :: rest) (p1 :: p2 :: p3 :: rest) (p2 :: p3 :: rest) (p3 :: rest)
-                    |> cubicCurveTo
-                    |> List.singleton
-                    |> subpath (moveTo p1)
+    case points of
+        p0 :: p1 :: p2 :: p3 :: rest ->
+            List.map4 (cardinalPoint k) (p0 :: p1 :: p2 :: p3 :: rest) (p1 :: p2 :: p3 :: rest) (p2 :: p3 :: rest) (p3 :: rest)
+                |> cubicCurveTo
+                |> List.singleton
+                |> subpath (moveTo p1)
 
-            _ ->
-                empty
+        _ ->
+            empty
 
 
-{-|
-<img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/cardinalClosed.svg" />
+{-| <img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/cardinalClosed.svg" />
 -}
 cardinalClosed : Float -> List (Vec2 Float) -> SubPath
 cardinalClosed tension points =
@@ -482,38 +499,37 @@ cardinalClosed tension points =
                 _ ->
                     []
     in
-        case points of
-            [] ->
-                empty
+    case points of
+        [] ->
+            empty
 
-            [ p ] ->
-                subpath (moveTo p) [ closePath ]
+        [ p ] ->
+            subpath (moveTo p) [ closePath ]
 
-            [ p0, p1 ] ->
-                subpath (moveTo p1) [ lineTo [ p0 ], closePath ]
+        [ p0, p1 ] ->
+            subpath (moveTo p1) [ lineTo [ p0 ], closePath ]
 
-            p3 :: p4 :: p5 :: rest ->
-                let
-                    end p0 p1 p2 =
-                        [ cardinalPoint k p0 p1 p2 p3
-                        , cardinalPoint k p1 p2 p3 p4
-                        , cardinalPoint k p2 p3 p4 p5
-                        ]
-                in
-                    subpath (moveTo p4) [ cubicCurveTo (helper end points) ]
+        p3 :: p4 :: p5 :: rest ->
+            let
+                end p0 p1 p2 =
+                    [ cardinalPoint k p0 p1 p2 p3
+                    , cardinalPoint k p1 p2 p3 p4
+                    , cardinalPoint k p2 p3 p4 p5
+                    ]
+            in
+            subpath (moveTo p4) [ cubicCurveTo (helper end points) ]
 
 
 catmullRomDistance : Float -> Vec2 Float -> Vec2 Float -> ( Float, Float )
 catmullRomDistance alpha p1 p2 =
     let
         l23_2a =
-            (Vec2.lengthSquared (Vec2.sub p1 p2)) ^ alpha
+            Vec2.lengthSquared (Vec2.sub p1 p2) ^ alpha
     in
-        ( sqrt l23_2a, l23_2a )
+    ( sqrt l23_2a, l23_2a )
 
 
-{-|
-<img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/catmullRom.svg" />
+{-| <img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/catmullRom.svg" />
 -}
 catmullRom : Float -> List (Vec2 Float) -> SubPath
 catmullRom alpha points =
@@ -529,7 +545,7 @@ catmullRom alpha points =
                     ending p0 p1 p2 =
                         [ catmullRomPoint alpha p0 p1 p2 p2 ]
                 in
-                    subpath (moveTo p0) [ cubicCurveTo (catmullRomHelper alpha ending (p0 :: points)) ]
+                subpath (moveTo p0) [ cubicCurveTo (catmullRomHelper alpha ending (p0 :: points)) ]
 
             _ ->
                 empty
@@ -548,8 +564,7 @@ catmullRomHelper alpha ending points =
             []
 
 
-{-|
-<img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/catmullRomOpen.svg" />
+{-| <img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/catmullRomOpen.svg" />
 -}
 catmullRomOpen : Float -> List (Vec2 Float) -> SubPath
 catmullRomOpen alpha points =
@@ -565,14 +580,13 @@ catmullRomOpen alpha points =
                     ending _ _ _ =
                         []
                 in
-                    subpath (moveTo p1) [ cubicCurveTo (catmullRomHelper alpha ending points) ]
+                subpath (moveTo p1) [ cubicCurveTo (catmullRomHelper alpha ending points) ]
 
             _ ->
                 empty
 
 
-{-|
-<img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/catmullRomClosed.svg" />
+{-| <img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/catmullRomClosed.svg" />
 -}
 catmullRomClosed : Float -> List (Vec2 Float) -> SubPath
 catmullRomClosed alpha points =
@@ -597,7 +611,7 @@ catmullRomClosed alpha points =
                         , catmullRomPoint alpha p2 p3 p4 p5
                         ]
                 in
-                    subpath (moveTo p4) [ cubicCurveTo (catmullRomHelper alpha ending points) ]
+                subpath (moveTo p4) [ cubicCurveTo (catmullRomHelper alpha ending points) ]
 
 
 catmullRomPoint : Float -> Vec2 Float -> Vec2 Float -> Vec2 Float -> Vec2 Float -> Vec3 (Vec2 Float)
@@ -621,9 +635,9 @@ catmullRomPoint alpha p0 p1 p2 p3 =
                 n =
                     3 * l01_a * (l01_a + l12_a)
             in
-                Vec2.sub (Vec2.scale a p) (Vec2.scale l12_2a p0)
-                    |> Vec2.add (Vec2.scale l01_2a p2)
-                    |> Vec2.divideBy n
+            Vec2.sub (Vec2.scale a p) (Vec2.scale l12_2a p0)
+                |> Vec2.add (Vec2.scale l01_2a p2)
+                |> Vec2.divideBy n
 
         helper2 : Vec2 Float -> Vec2 Float
         helper2 p =
@@ -634,10 +648,10 @@ catmullRomPoint alpha p0 p1 p2 p3 =
                 m =
                     3 * l23_a * (l23_a + l12_a)
             in
-                Vec2.scale b p
-                    |> Vec2.add (Vec2.scale l23_2a p1)
-                    |> Vec2.add (Vec2.scale -l12_2a p3)
-                    |> Vec2.divideBy m
+            Vec2.scale b p
+                |> Vec2.add (Vec2.scale l23_2a p1)
+                |> Vec2.add (Vec2.scale -l12_2a p3)
+                |> Vec2.divideBy m
 
         control1 =
             if l01_a > epsilon then
@@ -651,7 +665,7 @@ catmullRomPoint alpha p0 p1 p2 p3 =
             else
                 p2
     in
-        ( control1, control2, p2 )
+    ( control1, control2, p2 )
 
 
 slope3 : Vec2 Float -> Vec2 Float -> Vec2 Float -> Float
@@ -675,7 +689,7 @@ slope3 (( x0, y0 ) as p0) (( x1, y1 ) as p1) (( x2, y2 ) as p2) =
         p =
             (s0 * dx2 + s1 * dx1) / (dx1 + dx2)
     in
-        (sign s0 + sign s1) * Basics.min (Basics.min (Basics.abs s0) (Basics.abs s1)) (0.5 * Basics.abs (p))
+    (sign s0 + sign s1) * Basics.min (Basics.min (Basics.abs s0) (Basics.abs s1)) (0.5 * Basics.abs p)
 
 
 slope2 : Vec2 Float -> Vec2 Float -> Float -> Float
@@ -684,10 +698,10 @@ slope2 p0 p1 t =
         ( dx, dy ) =
             Vec2.sub p0 p1
     in
-        if dx /= 0 then
-            (3 * dy / dx - t) / 2
-        else
-            t
+    if dx /= 0 then
+        (3 * dy / dx - t) / 2
+    else
+        t
 
 
 monotonePoint : Vec2 Float -> Vec2 Float -> Float -> Float -> Vec3 (Vec2 Float)
@@ -696,16 +710,17 @@ monotonePoint ( x0, y0 ) ( x1, y1 ) t0 t1 =
         dx =
             (x1 - x0) / 3
     in
-        ( ( x0 + dx, y0 + dx * t0 )
-        , ( x1 - dx, y1 - dx * t1 )
-        , ( x1, y1 )
-        )
+    ( ( x0 + dx, y0 + dx * t0 )
+    , ( x1 - dx, y1 - dx * t1 )
+    , ( x1, y1 )
+    )
 
 
 {-| Draw a curve monotone in y assuming the points are monotone in x.
 <img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/monotoneX.svg" />
 
 Note, does not deal well with coincident points
+
 -}
 monotoneX : List (Vec2 Float) -> SubPath
 monotoneX points =
@@ -725,7 +740,7 @@ monotoneX points =
                                 t1 =
                                     slope3 p0 p1 p
                             in
-                                monotonePoint p0 p1 t0 t1 :: helper t1 (p1 :: p :: rest)
+                            monotonePoint p0 p1 t0 t1 :: helper t1 (p1 :: p :: rest)
 
                         [ p0, p1 ] ->
                             [ monotonePoint p0 p1 t0 (slope2 p0 p1 t0) ]
@@ -733,7 +748,7 @@ monotoneX points =
                         _ ->
                             []
             in
-                subpath (moveTo p0) [ cubicCurveTo (initialInstruction :: helper t1 (p1 :: p :: rest)) ]
+            subpath (moveTo p0) [ cubicCurveTo (initialInstruction :: helper t1 (p1 :: p :: rest)) ]
 
         [ p0, p1 ] ->
             subpath (moveTo p0) [ lineTo [ p1 ] ]
@@ -788,7 +803,7 @@ step1 coordinates =
                     List.updateAt (n - 1) (\_ -> 8 * butFinal + final) r
                         |> Maybe.withDefault r
             in
-                Just ( a, b, r_ )
+            Just ( a, b, r_ )
 
         _ ->
             Nothing
@@ -809,7 +824,7 @@ step2 ( a, b, r ) =
                         |> List.drop 1
                         |> List.unzip
             in
-                Just ( a, b_, r_ )
+            Just ( a, b_, r_ )
 
         _ ->
             Nothing
@@ -830,11 +845,11 @@ step3 points ( a, b, r ) =
                     List.scanr scanner finalA (List.map2 (,) (unsafeInit b) (unsafeInit r))
 
                 b_ =
-                    (List.map2 (\xx aa -> 2 * xx - aa) (unsafeTail points) (unsafeTail a_)) ++ [ (finalX + finalA) / 2 ]
+                    List.map2 (\xx aa -> 2 * xx - aa) (unsafeTail points) (unsafeTail a_) ++ [ (finalX + finalA) / 2 ]
             in
-                ( a_, b_ )
+            ( a_, b_ )
     in
-        Maybe.map3 helper (List.last r) (List.last b) (List.last points)
+    Maybe.map3 helper (List.last r) (List.last b) (List.last points)
 
 
 controlPoints : List Float -> Maybe ( List Float, List Float )
@@ -852,8 +867,7 @@ unsafeTail =
     Maybe.withDefault [] << List.tail
 
 
-{-|
-<img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/natural.svg" />
+{-| <img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/natural.svg" />
 -}
 natural : List (Vec2 Float) -> SubPath
 natural points =
@@ -879,30 +893,31 @@ naturalControlPoints points =
         ( xs, ys ) =
             List.unzip points
     in
-        case Maybe.map2 (,) (controlPoints xs) (controlPoints ys) of
-            Just ( ( px0, px1 ), ( py0, py1 ) ) ->
-                let
-                    pa =
-                        List.map2 (,) px0 py0
+    case Maybe.map2 (,) (controlPoints xs) (controlPoints ys) of
+        Just ( ( px0, px1 ), ( py0, py1 ) ) ->
+            let
+                pa =
+                    List.map2 (,) px0 py0
 
-                    pb =
-                        List.map2 (,) px1 py1
-                in
-                    List.map3 (,,) pa pb (List.drop 1 points)
+                pb =
+                    List.map2 (,) px1 py1
+            in
+            List.map3 (,,) pa pb (List.drop 1 points)
 
-            Nothing ->
-                []
+        Nothing ->
+            []
 
 
 {-| Step goes some distance to the right, then to the y-coordinate of the next data point, and then draws to the next point.
 
 The first argument determines where the step is.
 
-* `step 1 points` is  `stepAfter`
-* `step 0 points` is `stepBefore`
-* `step 0.5 points` steps exactly in the middle
+  - `step 1 points` is `stepAfter`
+  - `step 0 points` is `stepBefore`
+  - `step 0.5 points` steps exactly in the middle
 
 <img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/step.svg" />
+
 -}
 step : Float -> List (Vec2 Float) -> SubPath
 step factor points =
@@ -915,28 +930,26 @@ step factor points =
                     x1 =
                         x0 * (1 - factor) + x * factor
                 in
-                    [ ( x1, y0 ), ( x1, y ) ]
+                [ ( x1, y0 ), ( x1, y ) ]
     in
-        case points of
-            [] ->
-                empty
+    case points of
+        [] ->
+            empty
 
-            p :: ps ->
-                p
-                    :: (List.concat (List.map2 helper points ps) ++ [ List.last ps |> Maybe.withDefault p ])
-                    |> linear
+        p :: ps ->
+            p
+                :: (List.concat (List.map2 helper points ps) ++ [ List.last ps |> Maybe.withDefault p ])
+                |> linear
 
 
-{-|
-<img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/stepBefore.svg" />
+{-| <img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/stepBefore.svg" />
 -}
 stepBefore : List (Vec2 Float) -> SubPath
 stepBefore =
     step 0
 
 
-{-|
-<img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/stepAfter.svg" />
+{-| <img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/stepAfter.svg" />
 -}
 stepAfter : List (Vec2 Float) -> SubPath
 stepAfter =
@@ -947,6 +960,7 @@ stepAfter =
 
 This is sometimes useful for curves that don't go through their first control point (catmullRom, cardinal). Repeating the first point
 makes the curve actually hit the first control point.
+
 -}
 repeatFirstPoint : List a -> List a
 repeatFirstPoint items =
@@ -961,6 +975,7 @@ repeatFirstPoint items =
 {-| Repeat the final element of a list
 
 Similar to `repeatFirstPoint`, this can be used to make some curves hit their final control point.
+
 -}
 repeatFinalPoint : List a -> List a
 repeatFinalPoint items =
