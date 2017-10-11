@@ -102,15 +102,30 @@ toAbsoluteConversion =
         , test "curveTo relative" <|
             \_ ->
                 fromLowLevelDrawTo startConfig (LowLevel.CurveTo Relative [ ( ( 0, 5 ), ( 10, 5 ), ( 10, 10 ) ) ])
-                    |> Expect.equal (Just ( CurveTo [ ( ( 100, 105 ), ( 110, 105 ), ( 110, 110 ) ) ], { startConfig | cursor = ( 110, 110 ), previousControlPoint = Just ( 110, 105 ) } ))
+                    |> Expect.equal
+                        (Just
+                            ( CurveTo [ ( ( 100, 105 ), ( 110, 105 ), ( 110, 110 ) ) ]
+                            , { startConfig | cursor = ( 110, 110 ), previousControlPoint = Just ( 110, 105 ) }
+                            )
+                        )
         , test "curveTo absolute" <|
             \_ ->
                 fromLowLevelDrawTo startConfig (LowLevel.CurveTo Absolute [ ( ( 0, 5 ), ( 10, 5 ), ( 10, 10 ) ) ])
-                    |> Expect.equal (Just ( CurveTo [ ( ( 0, 5 ), ( 10, 5 ), ( 10, 10 ) ) ], { startConfig | cursor = ( 10, 10 ), previousControlPoint = Just ( 10, 5 ) } ))
+                    |> Expect.equal
+                        (Just
+                            ( CurveTo [ ( ( 0, 5 ), ( 10, 5 ), ( 10, 10 ) ) ]
+                            , { startConfig | cursor = ( 10, 10 ), previousControlPoint = Just ( 10, 5 ) }
+                            )
+                        )
         , test "smoothCurveTo relative" <|
             \_ ->
                 fromLowLevelDrawTo startConfig (LowLevel.SmoothCurveTo Relative [ ( ( 10, 5 ), ( 10, 10 ) ) ])
-                    |> Expect.equal (Just ( CurveTo [ ( ( 100, 100 ), ( 110, 105 ), ( 110, 110 ) ) ], { startConfig | cursor = ( 110, 110 ), previousControlPoint = Just ( 110, 105 ) } ))
+                    |> Expect.equal
+                        (Just
+                            ( CurveTo [ ( ( 100, 100 ), ( 110, 105 ), ( 110, 110 ) ) ]
+                            , { startConfig | cursor = ( 110, 110 ), previousControlPoint = Just ( 110, 105 ) }
+                            )
+                        )
         , test "smoothCurveTo absolute" <|
             \_ ->
                 fromLowLevelDrawTo startConfig (LowLevel.SmoothCurveTo Absolute [ ( ( 10, 5 ), ( 10, 10 ) ) ])
