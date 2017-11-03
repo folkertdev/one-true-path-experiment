@@ -136,9 +136,9 @@ area points =
             points
                 |> List.unzip
     in
-    step 1.0 low
-        |> connect (step 1.0 high)
-        |> close
+        step 1.0 low
+            |> connect (step 1.0 high)
+            |> close
 
 
 {-| Draw straight lines between the data points.
@@ -290,21 +290,21 @@ basis points =
                 _ ->
                     []
     in
-    case points of
-        p0 :: p1 :: _ :: _ ->
-            let
-                toFirst =
-                    Vec2.scale 5 p0
-                        |> Vec2.add p1
-                        |> Vec2.divideBy 6
-            in
-            subpath (moveTo p0) (lineTo [ toFirst ] :: commonCase points)
+        case points of
+            p0 :: p1 :: _ :: _ ->
+                let
+                    toFirst =
+                        Vec2.scale 5 p0
+                            |> Vec2.add p1
+                            |> Vec2.divideBy 6
+                in
+                    subpath (moveTo p0) (lineTo [ toFirst ] :: commonCase points)
 
-        [ p0, p1 ] ->
-            subpath (moveTo p0) [ lineTo [ p1 ] ]
+            [ p0, p1 ] ->
+                subpath (moveTo p0) [ lineTo [ p1 ] ]
 
-        _ ->
-            empty
+            _ ->
+                empty
 
 
 {-| Closed Basis interpolation (also known as B-spline)
@@ -327,32 +327,32 @@ basisClosed points =
                 _ ->
                     []
     in
-    case points of
-        p2 :: p3 :: p4 :: rest ->
-            let
-                ( p0, p1, p ) =
-                    ( p2, p3, p4 )
+        case points of
+            p2 :: p3 :: p4 :: rest ->
+                let
+                    ( p0, p1, p ) =
+                        ( p2, p3, p4 )
 
-                closing p0 p1 =
-                    [ basisPoint p0 p1 p2
-                    , basisPoint p1 p2 p3
-                    , basisPoint p2 p3 p4
-                    ]
+                    closing p0 p1 =
+                        [ basisPoint p0 p1 p2
+                        , basisPoint p1 p2 p3
+                        , basisPoint p2 p3 p4
+                        ]
 
-                start =
-                    p0
-                        |> Vec2.add (Vec2.scale 4 p1)
-                        |> Vec2.add p
-                        |> Vec2.divideBy 6
-            in
-            subpath (moveTo start)
-                [ cubicCurveTo (commonCase closing (p3 :: p4 :: rest)) ]
+                    start =
+                        p0
+                            |> Vec2.add (Vec2.scale 4 p1)
+                            |> Vec2.add p
+                            |> Vec2.divideBy 6
+                in
+                    subpath (moveTo start)
+                        [ cubicCurveTo (commonCase closing (p3 :: p4 :: rest)) ]
 
-        [ p0, p1 ] ->
-            subpath (moveTo p0) [ lineTo [ p1 ] ]
+            [ p0, p1 ] ->
+                subpath (moveTo p0) [ lineTo [ p1 ] ]
 
-        _ ->
-            empty
+            _ ->
+                empty
 
 
 {-| <img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/basisOpen.svg" />
@@ -368,19 +368,19 @@ basisOpen points =
                 _ ->
                     []
     in
-    case points of
-        p0 :: p1 :: p :: rest ->
-            let
-                start =
-                    p0
-                        |> Vec2.add (Vec2.scale 4 p1)
-                        |> Vec2.add p
-                        |> Vec2.divideBy 6
-            in
-            subpath (moveTo start) [ cubicCurveTo (helper (p1 :: p :: rest)) ]
+        case points of
+            p0 :: p1 :: p :: rest ->
+                let
+                    start =
+                        p0
+                            |> Vec2.add (Vec2.scale 4 p1)
+                            |> Vec2.add p
+                            |> Vec2.divideBy 6
+                in
+                    subpath (moveTo start) [ cubicCurveTo (helper (p1 :: p :: rest)) ]
 
-        _ ->
-            empty
+            _ ->
+                empty
 
 
 {-| <img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/bundle.svg" />
@@ -405,13 +405,13 @@ bundle beta points =
                         t =
                             toFloat i / j
                     in
-                    deltas
-                        |> Vec2.scale t
-                        |> Vec2.add p0
-                        |> interpolateVec2 beta p
+                        deltas
+                            |> Vec2.scale t
+                            |> Vec2.add p0
+                            |> interpolateVec2 beta p
             in
-            List.indexedMap helper points
-                |> basis
+                List.indexedMap helper points
+                    |> basis
 
 
 interpolateVec2 : Float -> Vec2 Float -> Vec2 Float -> Vec2 Float
@@ -450,15 +450,15 @@ cardinal tension points =
                 _ ->
                     []
     in
-    case points of
-        [ p0, p1 ] ->
-            subpath (moveTo p0) [ lineTo [ p1 ] ]
+        case points of
+            [ p0, p1 ] ->
+                subpath (moveTo p0) [ lineTo [ p1 ] ]
 
-        p0 :: p1 :: p2 :: rest ->
-            subpath (moveTo p0) [ cubicCurveTo (cardinalPoint k p0 p1 p1 p2 :: helper points) ]
+            p0 :: p1 :: p2 :: rest ->
+                subpath (moveTo p0) [ cubicCurveTo (cardinalPoint k p0 p1 p1 p2 :: helper points) ]
 
-        _ ->
-            empty
+            _ ->
+                empty
 
 
 {-| <img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/cardinalOpen.svg" />
@@ -469,15 +469,15 @@ cardinalOpen tension points =
         k =
             (1 - tension) / 6
     in
-    case points of
-        p0 :: p1 :: p2 :: p3 :: rest ->
-            List.map4 (cardinalPoint k) (p0 :: p1 :: p2 :: p3 :: rest) (p1 :: p2 :: p3 :: rest) (p2 :: p3 :: rest) (p3 :: rest)
-                |> cubicCurveTo
-                |> List.singleton
-                |> subpath (moveTo p1)
+        case points of
+            p0 :: p1 :: p2 :: p3 :: rest ->
+                List.map4 (cardinalPoint k) (p0 :: p1 :: p2 :: p3 :: rest) (p1 :: p2 :: p3 :: rest) (p2 :: p3 :: rest) (p3 :: rest)
+                    |> cubicCurveTo
+                    |> List.singleton
+                    |> subpath (moveTo p1)
 
-        _ ->
-            empty
+            _ ->
+                empty
 
 
 {-| <img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/cardinalClosed.svg" />
@@ -499,25 +499,25 @@ cardinalClosed tension points =
                 _ ->
                     []
     in
-    case points of
-        [] ->
-            empty
+        case points of
+            [] ->
+                empty
 
-        [ p ] ->
-            subpath (moveTo p) [ closePath ]
+            [ p ] ->
+                subpath (moveTo p) [ closePath ]
 
-        [ p0, p1 ] ->
-            subpath (moveTo p1) [ lineTo [ p0 ], closePath ]
+            [ p0, p1 ] ->
+                subpath (moveTo p1) [ lineTo [ p0 ], closePath ]
 
-        p3 :: p4 :: p5 :: rest ->
-            let
-                end p0 p1 p2 =
-                    [ cardinalPoint k p0 p1 p2 p3
-                    , cardinalPoint k p1 p2 p3 p4
-                    , cardinalPoint k p2 p3 p4 p5
-                    ]
-            in
-            subpath (moveTo p4) [ cubicCurveTo (helper end points) ]
+            p3 :: p4 :: p5 :: rest ->
+                let
+                    end p0 p1 p2 =
+                        [ cardinalPoint k p0 p1 p2 p3
+                        , cardinalPoint k p1 p2 p3 p4
+                        , cardinalPoint k p2 p3 p4 p5
+                        ]
+                in
+                    subpath (moveTo p4) [ cubicCurveTo (helper end points) ]
 
 
 catmullRomDistance : Float -> Vec2 Float -> Vec2 Float -> ( Float, Float )
@@ -526,7 +526,7 @@ catmullRomDistance alpha p1 p2 =
         l23_2a =
             Vec2.lengthSquared (Vec2.sub p1 p2) ^ alpha
     in
-    ( sqrt l23_2a, l23_2a )
+        ( sqrt l23_2a, l23_2a )
 
 
 {-| <img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/catmullRom.svg" />
@@ -545,7 +545,7 @@ catmullRom alpha points =
                     ending p0 p1 p2 =
                         [ catmullRomPoint alpha p0 p1 p2 p2 ]
                 in
-                subpath (moveTo p0) [ cubicCurveTo (catmullRomHelper alpha ending (p0 :: points)) ]
+                    subpath (moveTo p0) [ cubicCurveTo (catmullRomHelper alpha ending (p0 :: points)) ]
 
             _ ->
                 empty
@@ -580,7 +580,7 @@ catmullRomOpen alpha points =
                     ending _ _ _ =
                         []
                 in
-                subpath (moveTo p1) [ cubicCurveTo (catmullRomHelper alpha ending points) ]
+                    subpath (moveTo p1) [ cubicCurveTo (catmullRomHelper alpha ending points) ]
 
             _ ->
                 empty
@@ -611,7 +611,7 @@ catmullRomClosed alpha points =
                         , catmullRomPoint alpha p2 p3 p4 p5
                         ]
                 in
-                subpath (moveTo p4) [ cubicCurveTo (catmullRomHelper alpha ending points) ]
+                    subpath (moveTo p4) [ cubicCurveTo (catmullRomHelper alpha ending points) ]
 
 
 catmullRomPoint : Float -> Vec2 Float -> Vec2 Float -> Vec2 Float -> Vec2 Float -> Vec3 (Vec2 Float)
@@ -635,9 +635,9 @@ catmullRomPoint alpha p0 p1 p2 p3 =
                 n =
                     3 * l01_a * (l01_a + l12_a)
             in
-            Vec2.sub (Vec2.scale a p) (Vec2.scale l12_2a p0)
-                |> Vec2.add (Vec2.scale l01_2a p2)
-                |> Vec2.divideBy n
+                Vec2.sub (Vec2.scale a p) (Vec2.scale l12_2a p0)
+                    |> Vec2.add (Vec2.scale l01_2a p2)
+                    |> Vec2.divideBy n
 
         helper2 : Vec2 Float -> Vec2 Float
         helper2 p =
@@ -648,10 +648,10 @@ catmullRomPoint alpha p0 p1 p2 p3 =
                 m =
                     3 * l23_a * (l23_a + l12_a)
             in
-            Vec2.scale b p
-                |> Vec2.add (Vec2.scale l23_2a p1)
-                |> Vec2.add (Vec2.scale -l12_2a p3)
-                |> Vec2.divideBy m
+                Vec2.scale b p
+                    |> Vec2.add (Vec2.scale l23_2a p1)
+                    |> Vec2.add (Vec2.scale -l12_2a p3)
+                    |> Vec2.divideBy m
 
         control1 =
             if l01_a > epsilon then
@@ -665,7 +665,19 @@ catmullRomPoint alpha p0 p1 p2 p3 =
             else
                 p2
     in
-    ( control1, control2, p2 )
+        ( control1, control2, p2 )
+
+
+slope2 : Vec2 Float -> Vec2 Float -> Float -> Float
+slope2 p0 p1 t =
+    let
+        ( dx, dy ) =
+            Vec2.sub p0 p1
+    in
+        if dx /= 0 then
+            (3 * dy / dx - t) / 2
+        else
+            t
 
 
 slope3 : Vec2 Float -> Vec2 Float -> Vec2 Float -> Float
@@ -689,19 +701,7 @@ slope3 (( x0, y0 ) as p0) (( x1, y1 ) as p1) (( x2, y2 ) as p2) =
         p =
             (s0 * dx2 + s1 * dx1) / (dx1 + dx2)
     in
-    (sign s0 + sign s1) * Basics.min (Basics.min (Basics.abs s0) (Basics.abs s1)) (0.5 * Basics.abs p)
-
-
-slope2 : Vec2 Float -> Vec2 Float -> Float -> Float
-slope2 p0 p1 t =
-    let
-        ( dx, dy ) =
-            Vec2.sub p0 p1
-    in
-    if dx /= 0 then
-        (3 * dy / dx - t) / 2
-    else
-        t
+        (sign s0 + sign s1) * Basics.min (Basics.min (Basics.abs s0) (Basics.abs s1)) (0.5 * Basics.abs p)
 
 
 monotonePoint : Vec2 Float -> Vec2 Float -> Float -> Float -> Vec3 (Vec2 Float)
@@ -710,10 +710,10 @@ monotonePoint ( x0, y0 ) ( x1, y1 ) t0 t1 =
         dx =
             (x1 - x0) / 3
     in
-    ( ( x0 + dx, y0 + dx * t0 )
-    , ( x1 - dx, y1 - dx * t1 )
-    , ( x1, y1 )
-    )
+        ( ( x0 + dx, y0 + dx * t0 )
+        , ( x1 - dx, y1 - dx * t1 )
+        , ( x1, y1 )
+        )
 
 
 {-| Draw a curve monotone in y assuming the points are monotone in x.
@@ -731,7 +731,7 @@ monotoneX points =
                     slope3 p0 p1 p
 
                 initialInstruction =
-                    monotonePoint p0 p1 t1 t1
+                    monotonePoint p0 p1 (slope2 p0 p1 t1) t1
 
                 helper t0 points =
                     case points of
@@ -740,7 +740,7 @@ monotoneX points =
                                 t1 =
                                     slope3 p0 p1 p
                             in
-                            monotonePoint p0 p1 t0 t1 :: helper t1 (p1 :: p :: rest)
+                                monotonePoint p0 p1 t0 t1 :: helper t1 (p1 :: p :: rest)
 
                         [ p0, p1 ] ->
                             [ monotonePoint p0 p1 t0 (slope2 p0 p1 t0) ]
@@ -748,7 +748,7 @@ monotoneX points =
                         _ ->
                             []
             in
-            subpath (moveTo p0) [ cubicCurveTo (initialInstruction :: helper t1 (p1 :: p :: rest)) ]
+                subpath (moveTo p0) [ cubicCurveTo (initialInstruction :: helper t1 (p1 :: p :: rest)) ]
 
         [ p0, p1 ] ->
             subpath (moveTo p0) [ lineTo [ p1 ] ]
@@ -803,7 +803,7 @@ step1 coordinates =
                     List.updateAt (n - 1) (\_ -> 8 * butFinal + final) r
                         |> Maybe.withDefault r
             in
-            Just ( a, b, r_ )
+                Just ( a, b, r_ )
 
         _ ->
             Nothing
@@ -824,7 +824,7 @@ step2 ( a, b, r ) =
                         |> List.drop 1
                         |> List.unzip
             in
-            Just ( a, b_, r_ )
+                Just ( a, b_, r_ )
 
         _ ->
             Nothing
@@ -847,9 +847,9 @@ step3 points ( a, b, r ) =
                 b_ =
                     List.map2 (\xx aa -> 2 * xx - aa) (unsafeTail points) (unsafeTail a_) ++ [ (finalX + finalA) / 2 ]
             in
-            ( a_, b_ )
+                ( a_, b_ )
     in
-    Maybe.map3 helper (List.last r) (List.last b) (List.last points)
+        Maybe.map3 helper (List.last r) (List.last b) (List.last points)
 
 
 controlPoints : List Float -> Maybe ( List Float, List Float )
@@ -893,19 +893,19 @@ naturalControlPoints points =
         ( xs, ys ) =
             List.unzip points
     in
-    case Maybe.map2 (,) (controlPoints xs) (controlPoints ys) of
-        Just ( ( px0, px1 ), ( py0, py1 ) ) ->
-            let
-                pa =
-                    List.map2 (,) px0 py0
+        case Maybe.map2 (,) (controlPoints xs) (controlPoints ys) of
+            Just ( ( px0, px1 ), ( py0, py1 ) ) ->
+                let
+                    pa =
+                        List.map2 (,) px0 py0
 
-                pb =
-                    List.map2 (,) px1 py1
-            in
-            List.map3 (,,) pa pb (List.drop 1 points)
+                    pb =
+                        List.map2 (,) px1 py1
+                in
+                    List.map3 (,,) pa pb (List.drop 1 points)
 
-        Nothing ->
-            []
+            Nothing ->
+                []
 
 
 {-| Step goes some distance to the right, then to the y-coordinate of the next data point, and then draws to the next point.
@@ -930,16 +930,16 @@ step factor points =
                     x1 =
                         x0 * (1 - factor) + x * factor
                 in
-                [ ( x1, y0 ), ( x1, y ) ]
+                    [ ( x1, y0 ), ( x1, y ) ]
     in
-    case points of
-        [] ->
-            empty
+        case points of
+            [] ->
+                empty
 
-        p :: ps ->
-            p
-                :: (List.concat (List.map2 helper points ps) ++ [ List.last ps |> Maybe.withDefault p ])
-                |> linear
+            p :: ps ->
+                p
+                    :: (List.concat (List.map2 helper points ps) ++ [ List.last ps |> Maybe.withDefault p ])
+                    |> linear
 
 
 {-| <img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/stepBefore.svg" />
