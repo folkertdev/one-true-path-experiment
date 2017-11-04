@@ -91,6 +91,14 @@ type MoveTo
 
 
 {-| Constructors for DrawTo instructions
+
+You may miss some constructs in comparison to SVG. Only absolute coordinates are
+supported, and the smooth curve variants are removed. These choices were
+made to keep the number of constructors small.
+
+Relative coordinates can always
+be transformed to abslute ones, and smooth (also known as short-hand) curve extensions
+can be achieved with `Curve.smoothQuadraticBezier` and `Curve.smoothCubicBezier`.
 -}
 type DrawTo
     = LineTo (List (Vec2 Float))
@@ -125,14 +133,14 @@ type alias ArcFlag =
     LowLevel.ArcFlag
 
 
-{-| Corresponds to a sweep flag of 1
+{-| Corresponds to a sweep flag of 0
 -}
 clockwise : Direction
 clockwise =
     Clockwise
 
 
-{-| Corresponds to a sweep flag of 0
+{-| Corresponds to a sweep flag of 1
 -}
 counterClockwise : Direction
 counterClockwise =
@@ -210,7 +218,11 @@ arcTo =
     EllipticalArc
 
 
-{-| Contains the start of the current subpath and the current cursor position.
+{-|
+* `start` start of the subpath (most recent `MoveTo`)
+* `cursor` the current cursor position
+* `previousControlPoint` if the previous drawto instruction was a curveTo (cubic or quadratic), then
+    this value stores Just its last control point position, else Nothing
 -}
 type alias CursorState =
     { start : Vec2 Float, cursor : Vec2 Float, previousControlPoint : Maybe ( Float, Float ) }
@@ -469,6 +481,15 @@ coordinatesToAbsolute mode toAbsolute coordinates =
 
 
 {-| Simulate the effect of a drawto command on the cursor position
+
+    state : CursorState
+    state = { start = (0,0), cursor = (10, 10), previousControlPoint = Nothing}
+
+    updateCursorState (LineTo [(20, 10)]) state
+                    --> { start = (0,0), cursor = (10, 10), previousControlPoint = Nothing}
+
+    updateCursorState (QuadraticCurveTo [(( 15, 20), (20, 10))]) state
+                    --> { start = (0,0), cursor = (10, 10), previousControlPoint = Nothing}
 -}
 updateCursorState : DrawTo -> CursorState -> CursorState
 updateCursorState drawto state =
