@@ -58,7 +58,6 @@ in `SubPath`.
 -}
 
 import LowLevel.Command exposing (..)
-import OpenSolid.Arc2d as Arc2d exposing (Arc2d)
 import OpenSolid.CubicSpline2d as CubicSpline2d exposing (CubicSpline2d)
 import OpenSolid.LineSegment2d as LineSegment2d exposing (LineSegment2d)
 import OpenSolid.Point2d as Point2d exposing (Point2d)

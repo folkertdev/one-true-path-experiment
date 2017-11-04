@@ -1,4 +1,4 @@
 {
   "root": "../src",
-  "tests": [ "LowLevel.Command", "Segment" ] 
+  "tests": [ "LowLevel.Command", "Segment", "SubPath" ] 
 }

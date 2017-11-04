@@ -25,6 +25,7 @@ module LowLevel.Command
         , toLowLevelMoveTo
         , updateCursorState
         , verticalTo
+        , mapCoordinateDrawTo
         )
 
 {-| Low-level access to absolute svg drawing commands.
@@ -75,6 +76,7 @@ As the name implies, this is a low-level module that you probably shouldn't deal
 
 @docs fromLowLevelMoveTo, fromLowLevelDrawTos, fromLowLevelDrawTo
 @docs toLowLevelDrawTo, toLowLevelMoveTo
+@docs mapCoordinateDrawTo
 
 -}
 
@@ -563,3 +565,34 @@ updateCursorState drawto state =
             ClosePath ->
                 state
                     |> noControlPoint
+
+
+{-| Transform the coordinates in a drawto
+-}
+mapCoordinateDrawTo : (Vec2 Float -> Vec2 Float) -> DrawTo -> DrawTo
+mapCoordinateDrawTo f drawto =
+    case drawto of
+        LineTo coordinates ->
+            LineTo (List.map f coordinates)
+
+        Horizontal coordinates ->
+            coordinates
+                |> List.map ((\x -> ( x, 0 )) >> f >> Tuple.first)
+                |> Horizontal
+
+        Vertical coordinates ->
+            coordinates
+                |> List.map ((\y -> ( 0, y )) >> f >> Tuple.second)
+                |> Vertical
+
+        CurveTo coordinates ->
+            CurveTo (List.map (Vec3.map f) coordinates)
+
+        QuadraticBezierCurveTo coordinates ->
+            QuadraticBezierCurveTo (List.map (Vec2.map f) coordinates)
+
+        EllipticalArc arguments ->
+            EllipticalArc (List.map (\argument -> { argument | target = f argument.target }) arguments)
+
+        ClosePath ->
+            ClosePath

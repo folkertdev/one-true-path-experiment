@@ -70,49 +70,6 @@ import Vector2 as Vec2 exposing (Vec2)
 import Vector3 as Vec3 exposing (Vec3)
 
 
-{-| Converting a svg-path-lowlevel subpath into a one-true-path subpath. Used in parsing
--}
-fromLowLevel : List LowLevel.SubPath -> List SubPath
-fromLowLevel lowlevels =
-    case lowlevels of
-        [] ->
-            []
-
-        first :: _ ->
-            -- first moveto is always interpreted absolute
-            case first.moveto of
-                LowLevel.MoveTo _ target ->
-                    let
-                        initialCursorState =
-                            { start = target, cursor = target, previousControlPoint = Nothing }
-
-                        folder { moveto, drawtos } ( state, accum ) =
-                            let
-                                ( stateAfterMoveTo, newMoveTo ) =
-                                    Command.fromLowLevelMoveTo moveto state
-
-                                ( stateAfterDrawtos, newDrawTos ) =
-                                    Command.fromLowLevelDrawTos drawtos stateAfterMoveTo
-                            in
-                                ( stateAfterDrawtos, SubPath { moveto = newMoveTo, drawtos = Deque.fromList newDrawTos } :: accum )
-                    in
-                        List.foldl folder ( initialCursorState, [] ) lowlevels
-                            |> Tuple.second
-                            |> List.reverse
-
-
-{-| Converting a one-true-path subpath into a svg-path-lowlevel subpath. Used in toString
--}
-toLowLevel : SubPath -> Maybe LowLevel.SubPath
-toLowLevel subpath =
-    case subpath of
-        Empty ->
-            Nothing
-
-        SubPath { moveto, drawtos } ->
-            Just { moveto = Command.toLowLevelMoveTo moveto, drawtos = List.map Command.toLowLevelDrawTo (Deque.toList drawtos) }
-
-
 {-| Type representing a subpath
 
 A subpath is one moveto command followed by an arbitrary number of drawto commands.
@@ -124,6 +81,8 @@ type SubPath
 
 
 {-| Construct a subpath
+
+    subpath (moveTo (0,0)) [ lineTo [ (10,10), (10, 20) ] ]
 -}
 subpath : MoveTo -> List DrawTo -> SubPath
 subpath moveto drawtos =
@@ -147,6 +106,32 @@ unwrap subpath =
 
         SubPath internal ->
             Just { internal | drawtos = Deque.toList internal.drawtos }
+
+
+{-| Convert a subpath into SVG path notation
+
+    import LowLevel.Command exposing (moveTo, lineTo)
+
+    line : SubPath
+    line = subpath (moveTo (0,0)) [ lineTo [ (10,10), (10, 20) ] ]
+
+    SubPath.toString line --> "M0,0 L10,10 10,20"
+-}
+toString : SubPath -> String
+toString subpath =
+    toLowLevel subpath
+        |> Maybe.map (LowLevel.toString << List.singleton)
+        |> Maybe.withDefault ""
+
+
+{-| Construct an svg path element from a `Path` with the given attributes
+
+    Svg.svg []
+        [ SubPath.element mySubPath [ stroke "black" ] ]
+-}
+element : SubPath -> List (Svg.Attribute msg) -> Svg.Svg msg
+element path attributes =
+    Svg.path (Svg.Attributes.d (toString path) :: attributes) []
 
 
 map : ({ moveto : MoveTo, drawtos : Deque DrawTo } -> SubPath) -> SubPath -> SubPath
@@ -247,7 +232,7 @@ continue =
 
                 newRight =
                     b.drawtos
-                        |> Deque.map (mapCoordinateDrawTo (Vec2.add distance))
+                        |> Deque.map (Command.mapCoordinateDrawTo (Vec2.add distance))
             in
                 SubPath
                     { moveto = a.moveto
@@ -332,38 +317,9 @@ mapCoordinate f =
                 MoveTo coordinate ->
                     SubPath
                         { moveto = MoveTo (f coordinate)
-                        , drawtos = Deque.map (mapCoordinateDrawTo f) drawtos
+                        , drawtos = Deque.map (Command.mapCoordinateDrawTo f) drawtos
                         }
         )
-
-
-mapCoordinateDrawTo : (Vec2 Float -> Vec2 Float) -> DrawTo -> DrawTo
-mapCoordinateDrawTo f drawto =
-    case drawto of
-        LineTo coordinates ->
-            LineTo (List.map f coordinates)
-
-        Horizontal coordinates ->
-            coordinates
-                |> List.map ((\x -> ( x, 0 )) >> f >> Tuple.first)
-                |> Horizontal
-
-        Vertical coordinates ->
-            coordinates
-                |> List.map ((\y -> ( 0, y )) >> f >> Tuple.second)
-                |> Vertical
-
-        CurveTo coordinates ->
-            CurveTo (List.map (Vec3.map f) coordinates)
-
-        QuadraticBezierCurveTo coordinates ->
-            QuadraticBezierCurveTo (List.map (Vec2.map f) coordinates)
-
-        EllipticalArc arguments ->
-            EllipticalArc (List.map (\argument -> { argument | target = f argument.target }) arguments)
-
-        ClosePath ->
-            ClosePath
 
 
 finalCursorState : { moveto : MoveTo, drawtos : Deque DrawTo } -> CursorState
@@ -473,10 +429,7 @@ rotate angle subpath =
                         |> cleanVec2
                         |> Vec2.add firstPoint
             in
-                SubPath
-                    { moveto = moveto
-                    , drawtos = Deque.map (mapCoordinateDrawTo transform) drawtos
-                    }
+                mapCoordinate transform subpath
 
 
 {-| Scale the subpath in the x and y direction
@@ -503,23 +456,47 @@ scale vec subpath =
                         |> (\( x, y, z ) -> ( x, y ))
                         |> Vec2.add firstPoint
             in
-                SubPath
-                    { moveto = moveto
-                    , drawtos = Deque.map (mapCoordinateDrawTo transform) drawtos
-                    }
+                mapCoordinate transform subpath
 
 
-{-| Convert a subpath into SVG path notation
+{-| Converting a svg-path-lowlevel subpath into a one-true-path subpath. Used in parsing
 -}
-toString : SubPath -> String
-toString subpath =
-    toLowLevel subpath
-        |> Maybe.map (LowLevel.toString << List.singleton)
-        |> Maybe.withDefault ""
+fromLowLevel : List LowLevel.SubPath -> List SubPath
+fromLowLevel lowlevels =
+    case lowlevels of
+        [] ->
+            []
+
+        first :: _ ->
+            -- first moveto is always interpreted absolute
+            case first.moveto of
+                LowLevel.MoveTo _ target ->
+                    let
+                        initialCursorState =
+                            { start = target, cursor = target, previousControlPoint = Nothing }
+
+                        folder { moveto, drawtos } ( state, accum ) =
+                            let
+                                ( stateAfterMoveTo, newMoveTo ) =
+                                    Command.fromLowLevelMoveTo moveto state
+
+                                ( stateAfterDrawtos, newDrawTos ) =
+                                    Command.fromLowLevelDrawTos drawtos stateAfterMoveTo
+                            in
+                                ( stateAfterDrawtos, SubPath { moveto = newMoveTo, drawtos = Deque.fromList newDrawTos } :: accum )
+                    in
+                        List.foldl folder ( initialCursorState, [] ) lowlevels
+                            |> Tuple.second
+                            |> List.reverse
 
 
-{-| Construct an svg path element from a `Path` with the given attributes
+{-| Converting a one-true-path subpath into a svg-path-lowlevel subpath. Used in toString
 -}
-element : SubPath -> List (Svg.Attribute msg) -> Svg.Svg msg
-element path attributes =
-    Svg.path (Svg.Attributes.d (toString path) :: attributes) []
+toLowLevel : SubPath -> Maybe LowLevel.SubPath
+toLowLevel subpath =
+    case subpath of
+        Empty ->
+            Nothing
+
+        SubPath { moveto, drawtos } ->
+            Just { moveto = Command.toLowLevelMoveTo moveto, drawtos = List.map Command.toLowLevelDrawTo (Deque.toList drawtos) }
