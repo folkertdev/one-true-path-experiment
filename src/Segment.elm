@@ -8,7 +8,7 @@ module Segment
         , derivativeAt
         , finalPoint
         , firstPoint
-        , length
+          -- , length
         , reverse
         , toDrawTo
         , toSegment
@@ -18,16 +18,35 @@ module Segment
         , arc
         )
 
-{-| An alternative interpretation of paths that is convenient for mathematical operations.
+{-| An alternative view on paths that is convenient for mathematical operations.
 
-Here, a path is viewed as a list of segments with a start and end point.
+When we look at a path as a list of elemental `Segment`s, it becomes easier to reason about it.
+The segment data type has four segment types:
+
+* `line` straigt line segment
+* `quadratic` a quadratic bezier curve segment
+* `cubic` a cubic bezier curve segment
+* `arc` an elliptical arc segment
+
+All four of these are mathematically well-defined, and there is a wide range of
+operations that we can perform on them:
+
+* `length` the arc length of a segment
+* `angle` between two segments
+* `derivative` or curvature
+* `reverse`
+
+These operations are backed by the great [OpenSolid][] package, and in turn back many of the operations
+in `SubPath`.
+
+[OpenSolid]: http://package.elm-lang.org/packages/opensolid/geometry/latest
 
 @docs Segment
 @docs line, quadratic, cubic, arc
 
 # Operations
 
-@docs at, length, angle
+@docs at, angle
 @docs derivativeAt, derivativeAtFirst, derivativeAtFinal
 @docs firstPoint, finalPoint, reverse
 
@@ -53,7 +72,6 @@ import Path.LowLevel exposing (EllipticalArcArgument)
 
 {-| The four types of segments.
 
-For segments, the `xAxisRotate` field is in radians.
 
 -}
 type Segment
@@ -125,10 +143,15 @@ toDrawTo segment =
             in
                 cubicCurveTo [ ( Point2d.coordinates c1, Point2d.coordinates c2, Point2d.coordinates end ) ]
 
-        Arc _ ->
-            -- { end, radii, xAxisRotate, arcFlag, direction } ->
-            --EllipticalArc [ { target = end, radii = radii, xAxisRotate = degrees xAxisRotate, arcFlag = arcFlag, direction = direction } ]
-            Debug.crash "todo"
+        Arc { end, radii, xAxisRotate, arcFlag, direction } ->
+            EllipticalArc
+                [ { target = end
+                  , radii = radii
+                  , xAxisRotate = degrees xAxisRotate
+                  , arcFlag = arcFlag
+                  , direction = direction
+                  }
+                ]
 
 
 {-| Extract the first point from a segment
@@ -248,24 +271,21 @@ toSegment previous drawto =
                     traverse folder start coordinates
 
             EllipticalArc arguments ->
-                {-
-                   let
-                       folder args ( segmentStart, accum ) =
-                           ( args.target
-                           , Arc
-                               { start = segmentStart
-                               , end = args.target
-                               , radii = args.radii
-                               , xAxisRotate = radians args.xAxisRotate
-                               , arcFlag = args.arcFlag
-                               , direction = args.direction
-                               }
-                               :: accum
-                           )
-                   in
-                   traverse folder start arguments
-                -}
-                Debug.crash "todo"
+                let
+                    folder args ( segmentStart, accum ) =
+                        ( args.target
+                        , Arc
+                            { start = segmentStart
+                            , end = args.target
+                            , radii = args.radii
+                            , xAxisRotate = radians args.xAxisRotate
+                            , arcFlag = args.arcFlag
+                            , direction = args.direction
+                            }
+                            :: accum
+                        )
+                in
+                    traverse folder (Point2d.coordinates start) arguments
 
             ClosePath ->
                 []
@@ -279,6 +299,12 @@ traverse folder initial elements =
 
 
 {-| Get the location at a point on the curve, only defined in the range [0, 1].
+
+
+    at 0.5 (line (0,0) (10, 0)) --> ( 5, 0 )
+
+    at 0.5 (quadratic (0,0) (5, 10) (10, 0)) --> ( 5, 5 )
+
 -}
 at : Float -> Segment -> ( Float, Float )
 at t segment =
@@ -301,6 +327,27 @@ at t segment =
 
 
 {-| Get the derivative at a point on the curve, only defined in the range [0, 1].
+
+    import LowLevel.Command exposing
+        ( EllipticalArcArgument
+        , largestArc
+        , clockwise
+        )
+
+    derivativeAt 0.5 (line (0,0) (1,1))
+        --> (0.7071067811865475,0.7071067811865475)
+
+    argument : EllipticalArcArgument
+    argument =
+        { target = ( 10, 0 )
+        , radii = ( 5, 5 )
+        , xAxisRotate = 0
+        , arcFlag = largestArc
+        , direction = clockwise
+        }
+
+    derivativeAt 0.5 (arc (0,0)  argument) --> ( 1, 0)
+
 -}
 derivativeAt : Float -> Segment -> ( Float, Float )
 derivativeAt t segment =
@@ -375,7 +422,17 @@ derivativeAtFinal segment =
             )
 
 
-{-| The angle between the end of segment1 and the start of segment2
+{-| The signed angle (in radians) between the end of segment1 and the start of segment2
+
+    a : Segment
+    a = line ( 0, 0 ) ( 1, 0 )
+
+    b : Segment
+    b = line ( 0, 0 ) ( 0, 1 )
+
+    angle a b --> degrees 90
+
+    angle b a --> degrees -90
 -}
 angle : Segment -> Segment -> Float
 angle seg1 seg2 =
@@ -409,7 +466,6 @@ signedAngle u v =
 -}
 length : Segment -> Float
 length segment =
-    -- Debug.crash "soon"
     0
 
 
@@ -417,4 +473,4 @@ length segment =
 -}
 intersections : Segment -> Segment -> List ( Float, Float )
 intersections segment1 segment2 =
-    Debug.crash ""
+    []

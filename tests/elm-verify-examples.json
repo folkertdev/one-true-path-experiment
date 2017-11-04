@@ -1,7 +1,4 @@
 {
   "root": "../src",
-  "tests": [
-      "LowLevel.Command"
-  ]
-
+  "tests": [ "LowLevel.Command", "Segment" ] 
 }
