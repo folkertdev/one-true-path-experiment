@@ -111,6 +111,16 @@ type DrawTo
 
 
 {-| The arguments for an Arc
+
+    argument : EllipticalArcArgument
+    argument =
+        { start = ( 0, 42 )
+        , end = ( 42, 0 )
+        , radii = ( 1, 1 )
+        , xAxisRotate = 0
+        , arcFlag = largestArc
+        , direction = clockwise
+        }
 -}
 type alias EllipticalArcArgument =
     { radii : ( Float, Float )
@@ -212,6 +222,8 @@ cubicCurveTo =
 
 
 {-| An elliptical arc. The `A` instruction.
+
+
 -}
 arcTo : List EllipticalArcArgument -> DrawTo
 arcTo =
@@ -482,14 +494,20 @@ coordinatesToAbsolute mode toAbsolute coordinates =
 
 {-| Simulate the effect of a drawto command on the cursor position
 
+
     state : CursorState
-    state = { start = (0,0), cursor = (10, 10), previousControlPoint = Nothing}
+    state =
+        { start = (0,0)
+        , cursor = (10, 10)
+        , previousControlPoint = Nothing
+        }
 
-    updateCursorState (LineTo [(20, 10)]) state
-                    --> { start = (0,0), cursor = (10, 10), previousControlPoint = Nothing}
+    updateCursorState (lineTo [(20, 10)]) state
+        --> { start = (0,0), cursor = (20,10), previousControlPoint = Nothing }
 
-    updateCursorState (QuadraticCurveTo [(( 15, 20), (20, 10))]) state
-                    --> { start = (0,0), cursor = (10, 10), previousControlPoint = Nothing}
+    updateCursorState (quadraticCurveTo [(( 15, 20), (20, 10))]) state
+        --> { start = (0,0), cursor = (20,10), previousControlPoint = Just (15, 20) }
+
 -}
 updateCursorState : DrawTo -> CursorState -> CursorState
 updateCursorState drawto state =
@@ -499,35 +517,49 @@ updateCursorState drawto state =
 
         maybeUpdateCursor coordinate =
             { state | cursor = Maybe.withDefault state.cursor coordinate }
+
+        noControlPoint state =
+            { state | previousControlPoint = Nothing }
     in
         case drawto of
             LineTo coordinates ->
                 maybeUpdateCursor (List.last coordinates)
+                    |> noControlPoint
 
             Horizontal coordinates ->
                 List.last coordinates
                     |> Maybe.map (\x -> ( x, cursorY ))
                     |> maybeUpdateCursor
+                    |> noControlPoint
 
             Vertical coordinates ->
                 List.last coordinates
                     |> Maybe.map (\y -> ( cursorX, y ))
                     |> maybeUpdateCursor
+                    |> noControlPoint
 
             CurveTo coordinates ->
-                List.last coordinates
-                    |> Maybe.map (\( _, _, c ) -> c)
-                    |> maybeUpdateCursor
+                case List.last coordinates of
+                    Nothing ->
+                        state
+
+                    Just ( control1, control2, target ) ->
+                        { state | cursor = target, previousControlPoint = Just control2 }
 
             QuadraticBezierCurveTo coordinates ->
-                List.last coordinates
-                    |> Maybe.map Tuple.second
-                    |> maybeUpdateCursor
+                case List.last coordinates of
+                    Nothing ->
+                        state
+
+                    Just ( control, target ) ->
+                        { state | cursor = target, previousControlPoint = Just control }
 
             EllipticalArc arguments ->
                 List.last arguments
                     |> Maybe.map .target
                     |> maybeUpdateCursor
+                    |> noControlPoint
 
             ClosePath ->
                 state
+                    |> noControlPoint

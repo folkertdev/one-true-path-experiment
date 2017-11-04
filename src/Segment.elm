@@ -282,20 +282,22 @@ traverse folder initial elements =
 -}
 at : Float -> Segment -> ( Float, Float )
 at t segment =
-    Point2d.coordinates <|
-        case segment of
-            LineSegment segment ->
-                LineSegment2d.interpolate segment t
+    case segment of
+        LineSegment segment ->
+            LineSegment2d.interpolate segment t
+                |> Point2d.coordinates
 
-            Quadratic spline ->
-                QuadraticSpline2d.pointOn spline t
+        Quadratic spline ->
+            QuadraticSpline2d.pointOn spline t
+                |> Point2d.coordinates
 
-            Cubic spline ->
-                CubicSpline2d.pointOn spline t
+        Cubic spline ->
+            CubicSpline2d.pointOn spline t
+                |> Point2d.coordinates
 
-            Arc arc ->
-                -- Arc2d.pointOn arc t
-                Debug.crash "todo"
+        Arc arc ->
+            -- Arc2d.pointOn arc t
+            Geometry.Ellipse.at t (Geometry.Ellipse.endpointToCenter arc)
 
 
 {-| Get the derivative at a point on the curve, only defined in the range [0, 1].

@@ -9,6 +9,7 @@ import Curve
 import SubPath
 import Vector2 as Vec2
 import Geometry.Ellipse as Ellipse
+import OpenSolid.Point2d as Point2d exposing (Point2d)
 
 
 (=>) =
@@ -32,9 +33,9 @@ cleanVec2 ( x, y ) =
 segment : Fuzz.Fuzzer Segment
 segment =
     Fuzz.frequency
-        [ 1 => Fuzz.map2 LineSegment vec2 vec2
-        , 1 => Fuzz.map3 Quadratic vec2 vec2 vec2
-        , 1 => Fuzz.map4 Cubic vec2 vec2 vec2 vec2
+        [ 1 => Fuzz.map2 Segment.line vec2 vec2
+        , 1 => Fuzz.map3 Segment.quadratic vec2 vec2 vec2
+        , 1 => Fuzz.map4 Segment.cubic vec2 vec2 vec2 vec2
         , 1
             => let
                 direction =
@@ -63,19 +64,19 @@ segment =
 {-
    arcLengthParameterization =
        describe "arc length parameterization"
-           [ test "f 2 with LineSegment (0,0) (4,0) is (2,0)" <|
+           [ test "f 2 with Segment.line (0,0) (4,0) is (2,0)" <|
                \_ ->
-                   LineSegment ( 0, 0 ) ( 4, 0 )
+                   Segment.line ( 0, 0 ) ( 4, 0 )
                        |> flip Segment.arcLengthParameterization 2
                        |> Expect.equal (Just ( 2, 0 ))
-           , test "f 2 with LineSegment (0,0) (0,4) is (0,2)" <|
+           , test "f 2 with Segment.line (0,0) (0,4) is (0,2)" <|
                \_ ->
-                   LineSegment ( 0, 0 ) ( 0, 4 )
+                   Segment.line ( 0, 0 ) ( 0, 4 )
                        |> flip Segment.arcLengthParameterization 2
                        |> Expect.equal (Just ( 0, 2 ))
-           , test "f 2 with CubicSegment (0,0) (0,4) is (0,2)" <|
+           , test "f 2 with Segment.cubicSegment (0,0) (0,4) is (0,2)" <|
                \_ ->
-                   Cubic ( 0, 0 ) ( 0, 0 ) ( 4, 0 ) ( 4, 0 )
+                   Segment.cubic ( 0, 0 ) ( 0, 0 ) ( 4, 0 ) ( 4, 0 )
                        |> flip Segment.arcLengthParameterization 2
                        |> Expect.equal (Just ( 2, 0 ))
            , test "f 2 with Ellipse (1,0) (0,1) is ( cos (pi / 4), sin (pi / 4))" <|
@@ -144,7 +145,7 @@ reverse =
             \( start, end ) ->
                 let
                     s =
-                        LineSegment start end
+                        Segment.line start end
                 in
                     s
                         |> Segment.reverse
@@ -154,7 +155,7 @@ reverse =
             \( start, c1, end ) ->
                 let
                     s =
-                        Quadratic start c1 end
+                        Segment.quadratic start c1 end
                 in
                     s
                         |> Segment.reverse
@@ -164,7 +165,7 @@ reverse =
             \( start, c1, c2, end ) ->
                 let
                     s =
-                        Cubic start c1 c2 end
+                        Segment.cubic start c1 c2 end
                 in
                     s
                         |> Segment.reverse
@@ -213,9 +214,9 @@ reverse =
 
 
 segments =
-    [ "line" => LineSegment ( 0, 42 ) ( 42, 0 )
-    , "quadratic" => Quadratic ( 0, 42 ) ( 0, 0 ) ( 42, 0 )
-    , "cubic" => Cubic ( 0, 42 ) ( 0, 0 ) ( 0, 0 ) ( 42, 0 )
+    [ "line" => Segment.line ( 0, 42 ) ( 42, 0 )
+    , "quadratic" => Segment.quadratic ( 0, 42 ) ( 0, 0 ) ( 42, 0 )
+    , "cubic" => Segment.cubic ( 0, 42 ) ( 0, 0 ) ( 0, 0 ) ( 42, 0 )
     , "arc" => Arc { start = ( 0, 42 ), end = ( 42, 0 ), radii = ( 1, 1 ), xAxisRotate = 0, arcFlag = largestArc, direction = clockwise }
     ]
 
@@ -241,19 +242,19 @@ angle =
     describe "angle tests"
         [ test "angle is pi / 2" <|
             \_ ->
-                Segment.angle (LineSegment ( 0, 0 ) ( 100, 0 )) (LineSegment ( 0, 0 ) ( 0, 100 ))
+                Segment.angle (Segment.line ( 0, 0 ) ( 100, 0 )) (Segment.line ( 0, 0 ) ( 0, 100 ))
                     |> Expect.equal (pi / 2)
         , test "angle is -pi / 2" <|
             \_ ->
-                Segment.angle (LineSegment ( 0, 0 ) ( 0, 100 )) (LineSegment ( 0, 0 ) ( 100, 0 ))
+                Segment.angle (Segment.line ( 0, 0 ) ( 0, 100 )) (Segment.line ( 0, 0 ) ( 100, 0 ))
                     |> Expect.equal (pi / -2)
         , test "angle is pi" <|
             \_ ->
-                Segment.angle (LineSegment ( 0, 0 ) ( 100, 0 )) (LineSegment ( 100, 0 ) ( 0, 0 ))
+                Segment.angle (Segment.line ( 0, 0 ) ( 100, 0 )) (Segment.line ( 100, 0 ) ( 0, 0 ))
                     |> Expect.equal (pi)
         , test "angle is 0" <|
             \_ ->
-                Segment.angle (LineSegment ( 0, 0 ) ( 100, 0 )) (LineSegment ( 0, 0 ) ( 100, 0 ))
+                Segment.angle (Segment.line ( 0, 0 ) ( 100, 0 )) (Segment.line ( 0, 0 ) ( 100, 0 ))
                     |> Expect.equal 0
         ]
 
@@ -264,15 +265,15 @@ toSegments =
             \_ ->
                 Curve.linear [ ( 0, 0 ), ( 100, 0 ), ( 100, 100 ) ]
                     |> SubPath.toSegments
-                    |> Expect.equal [ LineSegment ( 0, 0 ) ( 100, 0 ), LineSegment ( 100, 0 ) ( 100, 100 ) ]
+                    |> Expect.equal [ Segment.line ( 0, 0 ) ( 100, 0 ), Segment.line ( 100, 0 ) ( 100, 100 ) ]
         , test "conversion from subpath produces correctly ordered result" <|
             \_ ->
                 SubPath.subpath (moveTo ( 0, 0 )) [ lineTo [ ( 100, 0 ), ( 100, 100 ) ] ]
                     |> SubPath.toSegments
-                    |> Expect.equal [ LineSegment ( 0, 0 ) ( 100, 0 ), LineSegment ( 100, 0 ) ( 100, 100 ) ]
+                    |> Expect.equal [ Segment.line ( 0, 0 ) ( 100, 0 ), Segment.line ( 100, 0 ) ( 100, 100 ) ]
         , test "conversion from drawto to segment produces correctly ordered result" <|
             \_ ->
                 lineTo [ ( 100, 0 ), ( 100, 100 ) ]
-                    |> Segment.toSegment (LineSegment ( 0, 0 ) ( 0, 0 ))
-                    |> Expect.equal [ LineSegment ( 0, 0 ) ( 100, 0 ), LineSegment ( 100, 0 ) ( 100, 100 ) ]
+                    |> Segment.toSegment (Segment.line ( 0, 0 ) ( 0, 0 ))
+                    |> Expect.equal [ Segment.line ( 0, 0 ) ( 100, 0 ), Segment.line ( 100, 0 ) ( 100, 100 ) ]
         ]

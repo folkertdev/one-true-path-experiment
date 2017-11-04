@@ -60,49 +60,49 @@ tests =
                 right
                     |> SubPath.continueSmooth right
                     |> SubPath.toSegments
-                    |> Expect.equal [ LineSegment ( 0, 0 ) ( 100, 0 ), LineSegment ( 100, 0 ) ( 200, 0 ) ]
+                    |> Expect.equal [ Segment.line ( 0, 0 ) ( 100, 0 ), Segment.line ( 100, 0 ) ( 200, 0 ) ]
         , test "right smooth down produces a straight line" <|
             \_ ->
                 right
                     |> SubPath.continueSmooth down
                     |> SubPath.toSegments
-                    |> Expect.equal [ LineSegment ( 0, 0 ) ( 100, 0 ), LineSegment ( 100, 0 ) ( 200, 0 ) ]
+                    |> Expect.equal [ Segment.line ( 0, 0 ) ( 100, 0 ), Segment.line ( 100, 0 ) ( 200, 0 ) ]
         , test "right smooth up produces a straight line" <|
             \_ ->
                 right
                     |> SubPath.continueSmooth up
                     |> SubPath.toSegments
-                    |> Expect.equal [ LineSegment ( 0, 0 ) ( 100, 0 ), LineSegment ( 100, 0 ) ( 200, 0 ) ]
+                    |> Expect.equal [ Segment.line ( 0, 0 ) ( 100, 0 ), Segment.line ( 100, 0 ) ( 200, 0 ) ]
         , test "right smooth left produces a straight line" <|
             \_ ->
                 right
                     |> SubPath.continueSmooth left
                     |> SubPath.toSegments
-                    |> Expect.equal [ LineSegment ( 0, 0 ) ( 100, 0 ), LineSegment ( 100, 0 ) ( 200, 0 ) ]
+                    |> Expect.equal [ Segment.line ( 0, 0 ) ( 100, 0 ), Segment.line ( 100, 0 ) ( 200, 0 ) ]
         , test "right smooth slope produces a straight line" <|
             \_ ->
                 right
                     |> SubPath.continueSmooth slope
                     |> SubPath.toSegments
-                    |> Expect.equal [ LineSegment ( 0, 0 ) ( 100, 0 ), LineSegment ( 100, 0 ) ( 200, 0 ) ]
+                    |> Expect.equal [ Segment.line ( 0, 0 ) ( 100, 0 ), Segment.line ( 100, 0 ) ( 200, 0 ) ]
         , test "toSegments returns segments in the correct order" <|
             \_ ->
                 SubPath.subpath (moveTo ( 0, 0 )) [ lineTo [ ( 0, 100 ), ( 100, 100 ), ( 100, 0 ) ] ]
                     |> SubPath.toSegments
-                    |> Expect.equal [ LineSegment ( 0, 0 ) ( 0, 100 ), LineSegment ( 0, 100 ) ( 100, 100 ), LineSegment ( 100, 100 ) ( 100, 0 ) ]
+                    |> Expect.equal [ Segment.line ( 0, 0 ) ( 0, 100 ), Segment.line ( 0, 100 ) ( 100, 100 ), Segment.line ( 100, 100 ) ( 100, 0 ) ]
         , test "continue produces segments in the correct order" <|
             \_ ->
                 (right |> SubPath.continue down)
                     |> SubPath.toSegments
-                    |> Expect.equal [ LineSegment ( 0, 0 ) ( 100, 0 ), LineSegment ( 100, 0 ) ( 100, 100 ) ]
+                    |> Expect.equal [ Segment.line ( 0, 0 ) ( 100, 0 ), Segment.line ( 100, 0 ) ( 100, 100 ) ]
         , test "connect produces segments in the correct order" <|
             \_ ->
                 Curve.linear [ ( 0, 0 ), ( 100, 0 ) ]
                     |> SubPath.connect (Curve.linear [ ( 200, 0 ), ( 300, 0 ) ])
                     |> SubPath.toSegments
                     |> Expect.equal
-                        [ LineSegment ( 0, 0 ) ( 100, 0 )
-                        , LineSegment ( 100, 0 ) ( 200, 0 )
-                        , LineSegment ( 200, 0 ) ( 300, 0 )
+                        [ Segment.line ( 0, 0 ) ( 100, 0 )
+                        , Segment.line ( 100, 0 ) ( 200, 0 )
+                        , Segment.line ( 200, 0 ) ( 300, 0 )
                         ]
         ]
