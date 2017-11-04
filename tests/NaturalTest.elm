@@ -3,16 +3,13 @@ module NaturalTest exposing (..)
 import Test exposing (..)
 import Expect
 import Fuzz exposing (..)
-import Curve exposing (..)
+import Internal.NaturalInterpolation exposing (naturalControlPoints)
 import Path exposing (Path)
 import SubPath exposing (subpath)
 import LowLevel.Command exposing (lineTo, moveTo, cubicCurveTo)
 import Vector2 exposing (Vec2)
 import Vector3 exposing (Vec3)
-
-
-last =
-    List.reverse >> List.head
+import List.Extra as List
 
 
 type alias Triplet a =
@@ -102,7 +99,7 @@ controlPoints points =
             step2 points
 
         finalA =
-            case ( last b, last r ) of
+            case ( List.last b, List.last r ) of
                 ( Just bb, Just rr ) ->
                     rr / bb
 
@@ -126,7 +123,7 @@ controlPoints points =
                 |> Tuple.second
 
         lastX =
-            case last points of
+            case List.last points of
                 Nothing ->
                     Debug.crash "invalid input"
 
@@ -134,7 +131,7 @@ controlPoints points =
                     v
 
         lastA =
-            case last a_ of
+            case List.last a_ of
                 Nothing ->
                     Debug.crash "invalid input"
 
@@ -190,7 +187,7 @@ tests =
             \points ->
                 case points of
                     _ :: _ :: _ ->
-                        Curve.naturalControlPoints points
+                        Internal.NaturalInterpolation.naturalControlPoints points
                             |> Expect.equal (naturalControlPoints points)
 
                     _ ->
