@@ -1,6 +1,5 @@
-module Tests exposing (..)
+module PathTest exposing (..)
 
-import Curve
 import Expect
 import Fuzz exposing (..)
 import LowLevel.Command as Command exposing (DrawTo(..), MoveTo(..))
@@ -11,49 +10,9 @@ import Test exposing (..)
 import Vector2 as Vec2
 
 
+(=>) : a -> b -> ( a, b )
 (=>) =
     (,)
-
-
-toStringTests =
-    let
-        cases =
-            [ SubPath.subpath (Command.moveTo ( 0, 0 )) [ Command.lineTo [ ( 20, 40 ), ( 73, 73 ) ] ] => "M0,0 L20,40 73,73"
-            , Curve.linear [ ( 0, 0 ), ( 20, 40 ), ( 74, 74 ) ] => "M0,0 L20,40 74,74"
-            ]
-
-        createTest subpath expected =
-            test ("pretty printing expecting " ++ expected) <|
-                \_ ->
-                    SubPath.toString subpath |> Expect.equal expected
-    in
-        describe "pretty printing tests" <|
-            List.map (uncurry createTest) cases
-
-
-pathCommand =
-    [ SubPath.subpath (Command.moveTo ( 0, 0 )) [ Command.lineTo [ ( 20, 40 ) ], Command.lineTo [ ( 73, 73 ) ] ]
-    , SubPath.subpath (Command.moveTo ( 20, 0 )) [ Command.lineTo [ ( 30, 50 ) ], Command.lineTo [ ( 42, 42 ) ] ]
-    ]
-
-
-pathTests =
-    describe "functions directly related to paths"
-        [ fuzz2 fuzzCoordinate (Fuzz.list fuzzCoordinate) "mapWithCursorState" <|
-            \start rest ->
-                [ SubPath.subpath (Command.moveTo start) (List.map (Command.lineTo << List.singleton) rest) ]
-                    |> List.concatMap (SubPath.mapWithCursorState (\{ cursor } _ -> cursor))
-                    |> Expect.equal
-                        (if rest /= [] then
-                            start :: List.take (List.length rest - 1) rest
-                         else
-                            []
-                        )
-        ]
-
-
-
--- Path.parse "M10 80 Q 52.5 10, 95 80 T 180 80" |> Result.map Path.toString
 
 
 toAbsoluteConversion : Test
@@ -165,14 +124,24 @@ toAbsoluteConversion =
                 \_ ->
                     fromLowLevelDrawTo startConfig LowLevel.ClosePath
                         |> Expect.equal (Just ( ClosePath, { startConfig | cursor = startConfig.start } ))
-            , test "foldl/traverse works with multiple subpaths" <|
+            ]
+
+
+various : Test
+various =
+    let
+        startConfig =
+            { start = ( 100, 100 ), cursor = ( 100, 100 ), previousControlPoint = Nothing }
+    in
+        describe "various"
+            [ test "foldl/traverse works with multiple subpaths" <|
                 \_ ->
                     "M10,10 L15,15 m20,20"
                         |> Path.parse
                         |> Expect.equal
                             (Ok
-                                [ SubPath.subpath (Command.MoveTo ( 10, 10 )) [ Command.LineTo [ ( 15, 15 ) ] ]
-                                , SubPath.subpath (Command.MoveTo ( 35, 35 )) []
+                                [ SubPath.subpath (Command.moveTo ( 10, 10 )) [ Command.lineTo [ ( 15, 15 ) ] ]
+                                , SubPath.subpath (Command.moveTo ( 35, 35 )) []
                                 ]
                             )
             , test "finalPoint documentation example" <|
@@ -181,8 +150,8 @@ toAbsoluteConversion =
                         finalPoint =
                             List.concatMap (SubPath.mapWithCursorState (flip Command.updateCursorState))
                     in
-                        [ SubPath.subpath (Command.MoveTo ( 10, 10 )) [ Command.LineTo [ ( 15, 15 ) ] ]
-                        , SubPath.subpath (Command.MoveTo ( 35, 35 )) []
+                        [ SubPath.subpath (Command.moveTo ( 10, 10 )) [ Command.lineTo [ ( 15, 15 ) ] ]
+                        , SubPath.subpath (Command.moveTo ( 35, 35 )) []
                         ]
                             |> finalPoint
                             |> List.reverse

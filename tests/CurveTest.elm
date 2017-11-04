@@ -1,4 +1,4 @@
-module CurveTests exposing (..)
+module CurveTest exposing (..)
 
 import Test exposing (..)
 import Expect

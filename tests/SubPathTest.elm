@@ -1,8 +1,7 @@
-module Composition exposing (..)
+module SubPathTest exposing (..)
 
 import Test exposing (..)
 import Expect
-import Fuzz exposing (..)
 import Segment exposing (Segment(..))
 import Curve
 import SubPath
