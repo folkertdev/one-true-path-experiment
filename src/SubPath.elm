@@ -43,6 +43,38 @@ module SubPath
 
 <img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/subpath-composition.svg" />
 
+    import Curve
+
+    curve : SubPath
+    curve =
+        Curve.quadraticBezier ( 0, 0 )
+            [ ( ( 0.5, -0.5 ), ( 1.0, 0 ) ) ]
+
+
+    down : SubPath
+    down =
+        Curve.linear [ ( 0, 0 ), ( 0, 1 ) ]
+
+    curve
+        |> connect down
+        |> SubPath.toString
+        --> "M0,0 Q0.5,-0.5 1,0 L0,0 L0,1"
+
+    curve
+        |> continue down
+        |> SubPath.toString
+        --> "M0,0 Q0.5,-0.5 1,0 L1,1"
+
+    curve
+        |> continueSmooth down
+        |> SubPath.toString
+        --> "M0,0 Q0.5,-0.5 1,0 L1.707106781187,0.707106781187"
+
+    close curve
+        |> SubPath.toString
+        --> "M0,0 Q0.5,-0.5 1,0 Z"
+
+
 @docs continue , connect, continueSmooth, close
 
 
@@ -76,8 +108,12 @@ A subpath is one moveto command followed by an arbitrary number of drawto comman
 
 -}
 type SubPath
-    = SubPath { moveto : MoveTo, drawtos : Deque DrawTo }
+    = SubPath Instructions
     | Empty
+
+
+type alias Instructions =
+    { moveto : MoveTo, drawtos : Deque DrawTo }
 
 
 {-| Construct a subpath
@@ -134,36 +170,6 @@ element path attributes =
     Svg.path (Svg.Attributes.d (toString path) :: attributes) []
 
 
-map : ({ moveto : MoveTo, drawtos : Deque DrawTo } -> SubPath) -> SubPath -> SubPath
-map f subpath =
-    case subpath of
-        Empty ->
-            Empty
-
-        SubPath data ->
-            f data
-
-
-map2 :
-    ({ moveto : MoveTo, drawtos : Deque DrawTo } -> { moveto : MoveTo, drawtos : Deque DrawTo } -> SubPath)
-    -> SubPath
-    -> SubPath
-    -> SubPath
-map2 f sub1 sub2 =
-    case ( sub1, sub2 ) of
-        ( Empty, Empty ) ->
-            Empty
-
-        ( Empty, subpath ) ->
-            subpath
-
-        ( subpath, Empty ) ->
-            subpath
-
-        ( SubPath a, SubPath b ) ->
-            f a b
-
-
 {-| Map over each drawto with the CursorState available.
 
 The CursorState contains the subpath start position and the current cursor position at the
@@ -185,7 +191,8 @@ mapWithCursorState mapDrawTo subpath =
                 folder drawto ( cursorState, accum ) =
                     let
                         new =
-                            Command.updateCursorState drawto { start = cursorState.start, cursor = cursorState.cursor, previousControlPoint = Nothing }
+                            { start = cursorState.start, cursor = cursorState.cursor, previousControlPoint = Nothing }
+                                |> Command.updateCursorState drawto
                     in
                         ( new
                         , mapDrawTo cursorState drawto :: accum
@@ -196,97 +203,57 @@ mapWithCursorState mapDrawTo subpath =
                     |> List.reverse
 
 
-foldlWithPreviousInstruction : (MoveTo -> Maybe DrawTo -> DrawTo -> result -> result) -> result -> SubPath -> result
-foldlWithPreviousInstruction folder default subpath =
-    case subpath of
-        Empty ->
-            default
-
-        SubPath { moveto, drawtos } ->
-            case Deque.toList drawtos of
-                [] ->
-                    default
-
-                x :: xs ->
-                    List.foldl (\current ( previous, accum ) -> ( Just current, folder moveto previous current accum )) ( Just x, folder moveto Nothing x default ) xs
-                        |> Tuple.second
-
-
 {-| Start the second subpath where the first one ends
 
 -}
 continue : SubPath -> SubPath -> SubPath
 continue =
-    map2
-        (\b a ->
+    let
+        helper right left =
             let
-                (MoveTo firstPoint) =
-                    b.moveto
-
-                finalPoint =
-                    finalCursorState a
-                        |> .cursor
-
                 distance =
-                    Vec2.sub finalPoint firstPoint
-
-                newRight =
-                    b.drawtos
-                        |> Deque.map (Command.mapCoordinateDrawTo (Vec2.add distance))
+                    Vec2.sub (finalPoint left) (firstPoint right)
             in
-                SubPath
-                    { moveto = a.moveto
-                    , drawtos = Deque.append a.drawtos newRight
-                    }
-        )
+                unsafeConcatenate left (mapCoordinateInstructions (Vec2.add distance) right)
+                    |> SubPath
+    in
+        map2 helper
 
 
 {-| Start the second subpath where the first one ends, and rotate it to continue smoothly
 -}
 continueSmooth : SubPath -> SubPath -> SubPath
-continueSmooth b a =
-    case
-        ( toSegments a
-            |> List.last
-        , toSegments b
-            |> List.head
-        )
-    of
-        ( Just final, Just first ) ->
-            let
-                angle =
-                    -- angle is negated because the svg coord system has +y facing down
-                    Segment.angle final first
-                        |> negate
-            in
-                a
-                    |> continue (rotate angle b)
+continueSmooth right left =
+    case List.last (toSegments left) of
+        Nothing ->
+            right
 
-        ( _, Nothing ) ->
-            a
+        Just final ->
+            case List.head (toSegments right) of
+                Nothing ->
+                    left
 
-        ( Nothing, _ ) ->
-            b
+                Just first ->
+                    let
+                        angle =
+                            -- angle is negated because the svg coord system has +y facing down
+                            Segment.angle final first
+                                |> negate
+                    in
+                        left
+                            |> continue (rotate angle right)
 
 
 {-| Join two subpaths, connecting them with a straight line
 -}
 connect : SubPath -> SubPath -> SubPath
 connect =
-    map2
-        (\b a ->
-            let
-                (MoveTo secondStart) =
-                    b.moveto
-            in
-                SubPath
-                    { moveto = a.moveto
-                    , drawtos =
-                        a.drawtos
-                            |> Deque.pushBack (Command.lineTo [ secondStart ])
-                            |> flip Deque.append b.drawtos
-                    }
-        )
+    let
+        helper right left =
+            unsafeConcatenate (pushBack (Command.lineTo [ firstPoint right ]) left) right
+                |> SubPath
+    in
+        map2 helper
 
 
 {-| Append a ClosePath at the end of the subpath (if none is present)
@@ -310,16 +277,27 @@ close subpath =
 {-| Map over all the 2D coordinates in a subpath
 -}
 mapCoordinate : (Vec2 Float -> Vec2 Float) -> SubPath -> SubPath
-mapCoordinate f =
-    map
-        (\{ moveto, drawtos } ->
+mapCoordinate f subpath =
+    case subpath of
+        SubPath { moveto, drawtos } ->
             case moveto of
                 MoveTo coordinate ->
                     SubPath
                         { moveto = MoveTo (f coordinate)
                         , drawtos = Deque.map (Command.mapCoordinateDrawTo f) drawtos
                         }
-        )
+
+        Empty ->
+            Empty
+
+
+mapCoordinateInstructions : (Vec2 Float -> Vec2 Float) -> Instructions -> Instructions
+mapCoordinateInstructions f { moveto, drawtos } =
+    case moveto of
+        MoveTo coordinate ->
+            { moveto = MoveTo (f coordinate)
+            , drawtos = Deque.map (Command.mapCoordinateDrawTo f) drawtos
+            }
 
 
 finalCursorState : { moveto : MoveTo, drawtos : Deque DrawTo } -> CursorState
@@ -331,17 +309,20 @@ finalCursorState { moveto, drawtos } =
         initial =
             { start = start, cursor = start, previousControlPoint = Nothing }
     in
-        case Deque.popBack drawtos of
-            ( Just drawto, _ ) ->
-                Command.updateCursorState drawto initial
-
-            _ ->
-                initial
+        Deque.foldl Command.updateCursorState initial drawtos
 
 
 {-| Convert a list of segments to a path
 
+In the conversion, the starting point of a segment is discarded:
 It is assumed that for every two adjacent segments in the list, the first segment's end point is the second segment's starting point
+
+    import Segment exposing (line)
+    import LowLevel.Command exposing (moveTo, lineTo)
+
+    [ line (0,0) (10,10) , line (10, 10) (20, 10) ]
+        |> fromSegments
+        --> subpath (moveTo (0,0)) [ lineTo [ (10, 10)], lineTo [ (20, 10) ] ]
 
 -}
 fromSegments : List Segment -> SubPath
@@ -354,7 +335,12 @@ fromSegments segments =
             subpath (Command.moveTo (Segment.firstPoint segment)) (List.map Segment.toDrawTo segments)
 
 
-{-| -}
+{-| Convert a subpath to its `Segment`s
+
+    subpath (moveTo (0,0)) [ lineTo [ (10, 10), (20, 10) ] ]
+        |> toSegments
+        --> [ line (0,0) (10,10) , line (10, 10) (20, 10) ]
+-}
 toSegments : SubPath -> List Segment
 toSegments subpath =
     case subpath of
@@ -499,4 +485,63 @@ toLowLevel subpath =
             Nothing
 
         SubPath { moveto, drawtos } ->
-            Just { moveto = Command.toLowLevelMoveTo moveto, drawtos = List.map Command.toLowLevelDrawTo (Deque.toList drawtos) }
+            Just
+                { moveto = Command.toLowLevelMoveTo moveto
+                , drawtos = List.map Command.toLowLevelDrawTo (Deque.toList drawtos)
+                }
+
+
+
+-- HELPERS
+
+
+map : ({ moveto : MoveTo, drawtos : Deque DrawTo } -> SubPath) -> SubPath -> SubPath
+map f subpath =
+    case subpath of
+        Empty ->
+            Empty
+
+        SubPath data ->
+            f data
+
+
+map2 :
+    ({ moveto : MoveTo, drawtos : Deque DrawTo } -> { moveto : MoveTo, drawtos : Deque DrawTo } -> SubPath)
+    -> SubPath
+    -> SubPath
+    -> SubPath
+map2 f sub1 sub2 =
+    case ( sub1, sub2 ) of
+        ( Empty, Empty ) ->
+            Empty
+
+        ( Empty, subpath ) ->
+            subpath
+
+        ( subpath, Empty ) ->
+            subpath
+
+        ( SubPath a, SubPath b ) ->
+            f a b
+
+
+firstPoint : Instructions -> Vec2 Float
+firstPoint { moveto } =
+    case moveto of
+        MoveTo p ->
+            p
+
+
+finalPoint : Instructions -> Vec2 Float
+finalPoint =
+    finalCursorState >> .cursor
+
+
+pushBack : DrawTo -> Instructions -> Instructions
+pushBack drawto data =
+    { data | drawtos = Deque.pushBack drawto data.drawtos }
+
+
+unsafeConcatenate : Instructions -> Instructions -> Instructions
+unsafeConcatenate a b =
+    { a | drawtos = Deque.append a.drawtos b.drawtos }
