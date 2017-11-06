@@ -278,6 +278,6 @@ toSegments =
         , test "conversion from drawto to segment produces correctly ordered result" <|
             \_ ->
                 lineTo [ ( 100, 0 ), ( 100, 100 ) ]
-                    |> Segment.toSegment (Segment.line ( 0, 0 ) ( 0, 0 ))
+                    |> Segment.toSegment { start = ( 0, 0 ), cursor = ( 0, 0 ), previousControlPoint = Nothing }
                     |> Expect.equal [ Segment.line ( 0, 0 ) ( 100, 0 ), Segment.line ( 100, 0 ) ( 100, 100 ) ]
         ]

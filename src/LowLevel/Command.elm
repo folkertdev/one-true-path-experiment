@@ -26,6 +26,7 @@ module LowLevel.Command
         , updateCursorState
         , verticalTo
         , mapCoordinateDrawTo
+        , merge
         )
 
 {-| Low-level access to absolute svg drawing commands.
@@ -74,6 +75,7 @@ As the name implies, this is a low-level module that you probably shouldn't deal
 
 ## Conversion
 
+@docs merge
 @docs fromLowLevelMoveTo, fromLowLevelDrawTos, fromLowLevelDrawTo
 @docs toLowLevelDrawTo, toLowLevelMoveTo
 @docs mapCoordinateDrawTo
@@ -596,3 +598,37 @@ mapCoordinateDrawTo f drawto =
 
         ClosePath ->
             ClosePath
+
+
+{-| Merge adjacent commands if possible
+
+    merge (lineTo [ (0,0) ]) (lineTo [ (10, 10) ]) --> Ok (lineTo [ (0,0) , (10, 10) ])
+
+    merge (lineTo [ (0,0) ]) closePath --> Err (lineTo [ (0,0) ], closePath)
+-}
+merge : DrawTo -> DrawTo -> Result ( DrawTo, DrawTo ) DrawTo
+merge instruction1 instruction2 =
+    case ( instruction1, instruction2 ) of
+        ( LineTo p1, LineTo p2 ) ->
+            Ok <| LineTo (p1 ++ p2)
+
+        ( Horizontal p1, Horizontal p2 ) ->
+            Ok <| Horizontal (p1 ++ p2)
+
+        ( Vertical p1, Vertical p2 ) ->
+            Ok <| Vertical (p1 ++ p2)
+
+        ( CurveTo p1, CurveTo p2 ) ->
+            Ok <| CurveTo (p1 ++ p2)
+
+        ( QuadraticBezierCurveTo p1, QuadraticBezierCurveTo p2 ) ->
+            Ok <| QuadraticBezierCurveTo (p1 ++ p2)
+
+        ( EllipticalArc p1, EllipticalArc p2 ) ->
+            Ok <| EllipticalArc (p1 ++ p2)
+
+        ( ClosePath, ClosePath ) ->
+            Ok <| ClosePath
+
+        _ ->
+            Err ( instruction1, instruction2 )

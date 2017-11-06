@@ -16,6 +16,7 @@ module Segment
         , quadratic
         , cubic
         , arc
+        , toCursorState
         )
 
 {-| An alternative view on paths that is convenient for mathematical operations.
@@ -34,11 +35,12 @@ operations that we can perform on them:
 * `length` the arc length of a segment
 * `angle` between two segments
 * `derivative` or curvature
-* `reverse`
+* `reverse` reverse a segment - this can be used to [let the browser fill your svg correctly][reverse]
 
 These operations are backed by the great [OpenSolid][] package, and in turn back many of the operations
 in `SubPath`.
 
+[reverse]: https://pomax.github.io/svg-path-reverse/
 [OpenSolid]: http://package.elm-lang.org/packages/opensolid/geometry/latest
 
 @docs Segment
@@ -53,7 +55,7 @@ in `SubPath`.
 
 # Conversion
 
-@docs toDrawTo, toSegment
+@docs toDrawTo, toSegment, toCursorState
 
 -}
 
@@ -117,7 +119,14 @@ cubic start c1 c2 end =
 -}
 arc : ( Float, Float ) -> Path.LowLevel.EllipticalArcArgument -> Segment
 arc start { radii, xAxisRotate, arcFlag, direction, target } =
-    Arc { start = start, radii = radii, xAxisRotate = xAxisRotate, direction = direction, arcFlag = arcFlag, end = target }
+    Arc
+        { start = start
+        , radii = radii
+        , xAxisRotate = xAxisRotate
+        , direction = direction
+        , arcFlag = arcFlag
+        , end = target
+        }
 
 
 {-| Convert a segment to a drawto instruction. forgets the starting point.
@@ -145,8 +154,10 @@ toDrawTo segment =
         Arc { end, radii, xAxisRotate, arcFlag, direction } ->
             EllipticalArc
                 [ { target = end
-                  , radii = radii
-                  , xAxisRotate = degrees xAxisRotate
+                  , radii =
+                        radii
+                        -- convert from radians to degrees
+                  , xAxisRotate = xAxisRotate * (180 / pi)
                   , arcFlag = arcFlag
                   , direction = direction
                   }
@@ -216,12 +227,42 @@ reverse segment =
 
 This function needs the previous segment to the starting point and (for bezier curves) the control points
 
+    import LowLevel.Command exposing (DrawTo(EllipticalArc), CursorState)
+
+    start : CursorState
+    start = { start = (0,0), cursor = (0,0), previousControlPoint = Nothing }
+
+    drawto : DrawTo
+    drawto =
+            EllipticalArc
+                [ { target = (10, 0)
+                  , radii = (5,5)
+                  , xAxisRotate = 90
+                  , arcFlag = largestArc
+                  , direction = clockwise
+                  }
+                ]
+
+    expected : List Segment
+    expected =
+         [ Arc
+            { start = (0,0)
+            , end = (10, 0)
+            , radii = (5,5)
+            , xAxisRotate = pi / 2
+            , arcFlag = largestArc
+            , direction = clockwise
+            }
+          ]
+
+    toSegment start drawto --> expected
+
 -}
-toSegment : Segment -> DrawTo -> List Segment
-toSegment previous drawto =
+toSegment : CursorState -> DrawTo -> List Segment
+toSegment state drawto =
     let
         start =
-            finalPoint previous
+            state.cursor
                 |> Point2d.fromCoordinates
 
         ( startX, startY ) =
@@ -276,8 +317,10 @@ toSegment previous drawto =
                         , Arc
                             { start = segmentStart
                             , end = args.target
-                            , radii = args.radii
-                            , xAxisRotate = radians args.xAxisRotate
+                            , radii =
+                                args.radii
+                                -- convert degrees to radians
+                            , xAxisRotate = degrees args.xAxisRotate
                             , arcFlag = args.arcFlag
                             , direction = args.direction
                             }
@@ -288,6 +331,45 @@ toSegment previous drawto =
 
             ClosePath ->
                 []
+
+
+{-| Convert a `Segment` to a `CursorState`
+
+    toCursorState (line (0,0) (10, 10))
+        --> { start = (0,0) , cursor = (10, 10) , previousControlPoint = Nothing }
+
+-}
+toCursorState : Segment -> CursorState
+toCursorState segment =
+    let
+        vec4map f ( a, b, c, d ) =
+            ( f a, f b, f c, f d )
+    in
+        case segment of
+            Cubic curve ->
+                let
+                    ( start, _, control, end ) =
+                        CubicSpline2d.controlPoints curve
+                            |> vec4map Point2d.coordinates
+                in
+                    { start = start
+                    , previousControlPoint = Just control
+                    , cursor = end
+                    }
+
+            Quadratic curve ->
+                let
+                    ( start, control, end ) =
+                        QuadraticSpline2d.controlPoints curve
+                            |> Vec3.map Point2d.coordinates
+                in
+                    { start = start
+                    , previousControlPoint = Just control
+                    , cursor = end
+                    }
+
+            _ ->
+                { start = firstPoint segment, cursor = finalPoint segment, previousControlPoint = Nothing }
 
 
 traverse : (a -> ( b, List c ) -> ( b, List c )) -> b -> List a -> List c

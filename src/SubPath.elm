@@ -19,6 +19,8 @@ module SubPath
         , toString
         , translate
         , unwrap
+        , reverse
+        , compress
         )
 
 {-|
@@ -80,6 +82,7 @@ module SubPath
 
 ## Mapping
 
+@docs reverse, compress
 @docs translate, rotate, scale
 @docs mapCoordinate, mapWithCursorState
 
@@ -320,6 +323,7 @@ It is assumed that for every two adjacent segments in the list, the first segmen
     import Segment exposing (line)
     import LowLevel.Command exposing (moveTo, lineTo)
 
+
     [ line (0,0) (10,10) , line (10, 10) (20, 10) ]
         |> fromSegments
         --> subpath (moveTo (0,0)) [ lineTo [ (10, 10)], lineTo [ (20, 10) ] ]
@@ -352,24 +356,92 @@ toSegments subpath =
                 MoveTo coordinate ->
                     let
                         cursorState =
-                            { start = coordinate, cursor = coordinate }
+                            { start = coordinate, cursor = coordinate, previousControlPoint = Nothing }
 
-                        -- fake segment to get the fold going, not part of the final result
-                        initial =
-                            Segment.line coordinate coordinate
-
-                        folder drawto ( previousSegment, accum ) =
+                        folder drawto ( previousState, accum ) =
                             let
                                 newSegments =
-                                    Segment.toSegment previousSegment drawto
+                                    Segment.toSegment previousState drawto
 
                                 finalNewSegment =
-                                    Maybe.withDefault previousSegment (List.last newSegments)
+                                    newSegments
+                                        |> List.last
+                                        |> Maybe.map Segment.toCursorState
+                                        |> Maybe.withDefault previousState
                             in
                                 ( finalNewSegment, accum ++ newSegments )
                     in
-                        List.foldl folder ( initial, [] ) (Deque.toList drawtos)
+                        List.foldl folder ( cursorState, [] ) (Deque.toList drawtos)
                             |> Tuple.second
+
+
+{-| Reverse a subpath
+
+The direction of a subpath [can be important][reverse] if you want to use SVG fills.
+
+    mySubPath : SubPath
+    mySubPath =
+        subpath (moveTo (0,0))
+            [ lineTo [ (10, 10)], lineTo [ (20, 10) ] ]
+
+    mySubPath
+        |> reverse
+        |> reverse
+        --> mySubPath
+
+
+
+[reverse]: https://pomax.github.io/svg-path-reverse/
+-}
+reverse : SubPath -> SubPath
+reverse =
+    let
+        reverseMap f =
+            List.foldl (\elem accum -> f elem :: accum) []
+    in
+        fromSegments << reverseMap Segment.reverse << toSegments
+
+
+{-| Try to merge adjacent instructions
+
+This conversion is costly (timewise), but can shorten a subpath
+considerably, meaning other functions are faster.
+
+Additionally, the toString output can become shorter.
+-}
+compress : SubPath -> SubPath
+compress subpath =
+    case subpath of
+        Empty ->
+            Empty
+
+        SubPath data ->
+            SubPath { data | drawtos = compressHelper data.drawtos }
+
+
+{-| merge adjacent instructions
+
+-}
+compressHelper : Deque DrawTo -> Deque DrawTo
+compressHelper drawtos =
+    let
+        folder instruction ( previous, accum ) =
+            case Command.merge previous instruction of
+                Ok merged ->
+                    ( merged, accum )
+
+                Err _ ->
+                    ( instruction, previous :: accum )
+    in
+        case Deque.toList drawtos of
+            [] ->
+                Deque.empty
+
+            first :: rest ->
+                List.foldl folder ( first, [] ) rest
+                    |> uncurry (::)
+                    |> List.reverse
+                    |> Deque.fromList
 
 
 {-| Translate the subpath by a vector
