@@ -50,11 +50,9 @@ docsExample =
             \_ ->
                 Path.parse example
                     |> Result.toMaybe
-                    |> Debug.log "parse result"
                     |> Maybe.andThen List.head
                     |> Maybe.withDefault SubPath.empty
                     |> SubPath.compress
-                    |> Debug.log "compress result"
                     |> SubPath.toString
                     |> Expect.equal expected
 
