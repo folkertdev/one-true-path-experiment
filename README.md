@@ -1,9 +1,11 @@
 # One True Path 
 
-A general-purpose library for working with paths. 
+A general-purpose library for working with curves and paths. 
 
-The primary aim at the moment is SVG paths, but the types and functions in this package can also be 
+The primary aim is SVG paths, but the types and functions in this package can also be 
 used for animations or other graphics backends (webgl, canvas). 
+
+Additionally, this package is meant to serve as an interchange format between packages. 
 
 ## Core Concepts 
 
@@ -105,8 +107,7 @@ Path.parse pathAsString
 
 The `Segment` module breaks down a line into four basic segment types, and exposes some mathematical functions (and the constructors, if you want to define your own fancy stuff). 
 
-The `LowLevel` module has that name for a reason. Unless you are making your own primitives, there is probably a better way. 
-If there isn't but you think there should be, please open an issue.
+The `LowLevel.Command` module contains individual instructions. These should only be used for building other primitives! Making and combining curves should happen on the SubPath level.
 
 ## What about styling
 

@@ -29,9 +29,11 @@ module LowLevel.Command
         , merge
         )
 
-{-| Low-level access to absolute svg drawing commands.
+{-| Low-level access to drawing instructions.
 
-As the name implies, this is a low-level module that you probably shouldn't deal with.
+This is a low-level module that you probably shouldn't deal with.
+These instructions are meant to build up primitives (like in the `Curve` module); building of
+curves should happen at the `SubPath` level.
 
 
 ## Threading State
@@ -121,10 +123,12 @@ type DrawTo
         { start = ( 0, 42 )
         , end = ( 42, 0 )
         , radii = ( 1, 1 )
-        , xAxisRotate = 0
+        , xAxisRotate = 90
         , arcFlag = largestArc
         , direction = clockwise
         }
+
+The xAxisRotate parameter is in degrees (note that in the `Segment` module, it is in radians).
 -}
 type alias EllipticalArcArgument =
     { radii : ( Float, Float )
@@ -351,15 +355,15 @@ fromLowLevelDrawTo drawto ({ start, cursor } as state) =
         LowLevel.SmoothCurveTo mode coordinates ->
             -- (If there is no previous command or if the previous command was not an C, c, S or s,
             -- assume the first control point is coincident with the current point.)
-            coordinates
-                |> coordinatesToAbsolute mode (Vec2.map (Vec2.add cursor))
-                |> Maybe.map (makeControlPointExplicitVec2 state << Tuple.second)
-                |> Maybe.map
-                    (\( finalState, finalPoints ) ->
-                        ( CurveTo finalPoints
-                        , finalState
-                        )
+            let
+                updateState ( finalState, finalPoints ) =
+                    ( CurveTo finalPoints
+                    , finalState
                     )
+            in
+                coordinates
+                    |> coordinatesToAbsolute mode (Vec2.map (Vec2.add cursor))
+                    |> Maybe.map (updateState << makeControlPointExplicitVec2 state << Tuple.second)
 
         LowLevel.QuadraticBezierCurveTo mode coordinates ->
             let
@@ -373,15 +377,15 @@ fromLowLevelDrawTo drawto ({ start, cursor } as state) =
                     |> Maybe.map updateState
 
         LowLevel.SmoothQuadraticBezierCurveTo mode coordinates ->
-            coordinates
-                |> coordinatesToAbsolute mode (Vec2.add cursor)
-                |> Maybe.map (makeControlPointExplicitVec1 state << Tuple.second)
-                |> Maybe.map
-                    (\( finalState, finalPoints ) ->
-                        ( QuadraticBezierCurveTo finalPoints
-                        , finalState
-                        )
+            let
+                updateState ( finalState, finalPoints ) =
+                    ( QuadraticBezierCurveTo finalPoints
+                    , finalState
                     )
+            in
+                coordinates
+                    |> coordinatesToAbsolute mode (Vec2.add cursor)
+                    |> Maybe.map (updateState << makeControlPointExplicitVec1 state << Tuple.second)
 
         LowLevel.EllipticalArc mode arguments ->
             let
