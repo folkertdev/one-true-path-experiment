@@ -4,6 +4,8 @@ module Path
         , element
         , parse
         , toString
+        , fromLowLevel
+        , toLowLevel
         )
 
 {-| Module for layering SubPaths into Paths.
@@ -27,11 +29,17 @@ Most of the interesting stuff happens in the `SubPath` and `Curve` modules.
 
 @docs element, toString
 
+## Conversion
+
+@docs fromLowLevel, toLowLevel
+
 -}
 
 import Parser
 import Path.LowLevel.Parser as PathParser
+import Path.LowLevel as LowLevel
 import SubPath exposing (SubPath, subpath)
+import LowLevel.Command as Command
 import Svg
 import Svg.Attributes
 
@@ -96,4 +104,42 @@ The error type is [`Parser.Error`](http://package.elm-lang.org/packages/elm-tool
 -}
 parse : String -> Result Parser.Error Path
 parse =
-    Result.map SubPath.fromLowLevel << PathParser.parse
+    Result.map fromLowLevel << PathParser.parse
+
+
+{-| Converting a svg-path-lowlevel subpath into a one-true-path subpath. Used in parsing
+-}
+fromLowLevel : List LowLevel.SubPath -> Path
+fromLowLevel lowlevels =
+    case lowlevels of
+        [] ->
+            []
+
+        first :: _ ->
+            -- first moveto is always interpreted absolute
+            case first.moveto of
+                LowLevel.MoveTo _ target ->
+                    let
+                        initialCursorState =
+                            { start = target, cursor = target, previousControlPoint = Nothing }
+
+                        folder { moveto, drawtos } ( state, accum ) =
+                            let
+                                ( stateAfterMoveTo, newMoveTo ) =
+                                    Command.fromLowLevelMoveTo moveto state
+
+                                ( stateAfterDrawtos, newDrawTos ) =
+                                    Command.fromLowLevelDrawTos drawtos stateAfterMoveTo
+                            in
+                                ( stateAfterDrawtos, subpath newMoveTo newDrawTos :: accum )
+                    in
+                        List.foldl folder ( initialCursorState, [] ) lowlevels
+                            |> Tuple.second
+                            |> List.reverse
+
+
+{-| Convert a path to a svg-path-lowlevel list of subpaths
+-}
+toLowLevel : Path -> List LowLevel.SubPath
+toLowLevel =
+    List.filterMap SubPath.toLowLevel

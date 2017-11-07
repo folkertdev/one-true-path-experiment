@@ -220,6 +220,20 @@ various =
                                 ( { startConfig | cursor = newCursor, start = newStart, previousControlPoint = Nothing }
                                 , MoveTo newCursor
                                 )
+            , test "parsing and conversion of smooth quadratic is correct" <|
+                \_ ->
+                    "M10 80 Q 52.5 10, 95 80 T 180 80"
+                        |> Path.parse
+                        |> Result.withDefault []
+                        |> Path.toString
+                        |> Expect.equal "M10,80 Q52.5,10 95,80 Q137.5,150 180,80"
+            , test "parsing and conversion of smooth cubic is correct" <|
+                \_ ->
+                    "M10 80 C 40 10, 65 10, 95 80 S 150 150, 180 80"
+                        |> Path.parse
+                        |> Result.withDefault []
+                        |> Path.toString
+                        |> Expect.equal "M10,80 C40,10 65,10 95,80 C125,150 150,150 180,80"
             ]
 
 

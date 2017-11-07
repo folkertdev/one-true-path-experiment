@@ -96,11 +96,12 @@ A nice consequence is that there are no weird bumps in the curve between the dat
 -}
 
 import List.Extra as List
-import LowLevel.Command as LowLevel exposing (..)
+import LowLevel.Command as Command exposing (..)
 import SubPath exposing (SubPath(..), close, connect, empty, subpath)
 import Vector2 as Vec2 exposing (Vec2)
 import Vector3 exposing (Vec3)
 import Internal.NaturalInterpolation exposing (naturalControlPoints)
+import Path.LowLevel as LowLevel exposing (Mode(Absolute))
 
 
 epsilon : Float
@@ -154,7 +155,7 @@ linear points =
 
 {-| Shorthand to draw a sequence of cubic bezier segments
 -}
-cubicBezier : Vec2 Float -> List (Vec3 (Vec2 Float)) -> SubPath
+cubicBezier : Vec2 Float -> List ( Vec2 Float, Vec2 Float, Vec2 Float ) -> SubPath
 cubicBezier start points =
     case points of
         [] ->
@@ -166,25 +167,24 @@ cubicBezier start points =
 
 {-| Shorthand to draw a sequence of smooth cubic bezier segments
 -}
-smoothCubicBezier : Vec2 Float -> Vec3 (Vec2 Float) -> List (Vec2 (Vec2 Float)) -> SubPath
+smoothCubicBezier : Vec2 Float -> ( Vec2 Float, Vec2 Float, Vec2 Float ) -> List ( Vec2 Float, Vec2 Float ) -> SubPath
 smoothCubicBezier start first points =
-    Debug.crash "todo "
+    let
+        lowLevelDrawTos =
+            [ LowLevel.CurveTo Absolute [ first ]
+            , LowLevel.SmoothCurveTo Absolute points
+            ]
 
-
-
-{-
-   case points of
-       [] ->
-           empty
-
-       x :: xs ->
-           subpath (moveTo start) [ cubicCurveTo [ first ], cubicCurveExtendTo points ]
--}
+        lowLevelSubPath : LowLevel.SubPath
+        lowLevelSubPath =
+            { moveto = LowLevel.MoveTo Absolute start, drawtos = lowLevelDrawTos }
+    in
+        SubPath.fromLowLevel lowLevelSubPath
 
 
 {-| Shorthand to draw a sequence of quadratic bezier segments
 -}
-quadraticBezier : Vec2 Float -> List (Vec2 (Vec2 Float)) -> SubPath
+quadraticBezier : Vec2 Float -> List ( Vec2 Float, Vec2 Float ) -> SubPath
 quadraticBezier start points =
     case points of
         [] ->
@@ -196,20 +196,19 @@ quadraticBezier start points =
 
 {-| Shorthand to draw a sequence of smooth quadratic bezier segments
 -}
-smoothQuadraticBezier : Vec2 Float -> Vec2 (Vec2 Float) -> List (Vec2 Float) -> SubPath
+smoothQuadraticBezier : Vec2 Float -> ( Vec2 Float, Vec2 Float ) -> List (Vec2 Float) -> SubPath
 smoothQuadraticBezier start first points =
-    Debug.crash "todo"
+    let
+        lowLevelDrawTos =
+            [ LowLevel.QuadraticBezierCurveTo Absolute [ first ]
+            , LowLevel.SmoothQuadraticBezierCurveTo Absolute points
+            ]
 
-
-
-{-
-   case points of
-       [] ->
-           empty
-
-       x :: xs ->
-           subpath (moveTo start) [ quadraticCurveTo [ first ], quadraticCurveExtendTo points ]
--}
+        lowLevelSubPath : LowLevel.SubPath
+        lowLevelSubPath =
+            { moveto = LowLevel.MoveTo Absolute start, drawtos = lowLevelDrawTos }
+    in
+        SubPath.fromLowLevel lowLevelSubPath
 
 
 {-| Draw a straigt line between the data points, connecting the ends.

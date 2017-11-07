@@ -518,34 +518,19 @@ scale vec subpath =
 
 
 {-| Converting a svg-path-lowlevel subpath into a one-true-path subpath. Used in parsing
+
+> Beware that the moveto is always interpreted as **Absolute**.
 -}
-fromLowLevel : List LowLevel.SubPath -> List SubPath
-fromLowLevel lowlevels =
-    case lowlevels of
-        [] ->
-            []
-
-        first :: _ ->
-            -- first moveto is always interpreted absolute
-            case first.moveto of
-                LowLevel.MoveTo _ target ->
-                    let
-                        initialCursorState =
-                            { start = target, cursor = target, previousControlPoint = Nothing }
-
-                        folder { moveto, drawtos } ( state, accum ) =
-                            let
-                                ( stateAfterMoveTo, newMoveTo ) =
-                                    Command.fromLowLevelMoveTo moveto state
-
-                                ( stateAfterDrawtos, newDrawTos ) =
-                                    Command.fromLowLevelDrawTos drawtos stateAfterMoveTo
-                            in
-                                ( stateAfterDrawtos, SubPath { moveto = newMoveTo, drawtos = Deque.fromList newDrawTos } :: accum )
-                    in
-                        List.foldl folder ( initialCursorState, [] ) lowlevels
-                            |> Tuple.second
-                            |> List.reverse
+fromLowLevel : LowLevel.SubPath -> SubPath
+fromLowLevel { moveto, drawtos } =
+    -- first moveto is always interpreted absolute
+    case moveto of
+        LowLevel.MoveTo _ target ->
+            let
+                initialCursorState =
+                    { start = target, cursor = target, previousControlPoint = Nothing }
+            in
+                subpath (MoveTo target) (Tuple.second <| Command.fromLowLevelDrawTos drawtos initialCursorState)
 
 
 {-| Converting a one-true-path subpath into a svg-path-lowlevel subpath. Used in toString
