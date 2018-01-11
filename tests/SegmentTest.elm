@@ -1,15 +1,15 @@
 module SegmentTest exposing (..)
 
-import Test exposing (..)
-import Fuzz
-import Expect
-import Segment exposing (Segment(..))
-import LowLevel.Command exposing (moveTo, lineTo, largestArc, clockwise, smallestArc, counterClockwise)
 import Curve
-import SubPath
-import Vector2 as Vec2
+import Expect
+import Fuzz
 import Geometry.Ellipse as Ellipse
+import LowLevel.Command exposing (arcTo, clockwise, counterClockwise, largestArc, lineTo, moveTo, smallestArc)
 import OpenSolid.Point2d as Point2d exposing (Point2d)
+import Segment exposing (Segment(..))
+import SubPath
+import Test exposing (..)
+import Vector2 as Vec2
 
 
 (=>) =
@@ -37,19 +37,19 @@ segment =
         , 1 => Fuzz.map3 Segment.quadratic vec2 vec2 vec2
         , 1 => Fuzz.map4 Segment.cubic vec2 vec2 vec2 vec2
         , 1
-            => let
-                direction =
-                    Fuzz.frequency [ 1 => Fuzz.constant clockwise, 1 => Fuzz.constant counterClockwise ]
+            => (let
+                    direction =
+                        Fuzz.frequency [ 1 => Fuzz.constant clockwise, 1 => Fuzz.constant counterClockwise ]
 
-                arcFlag =
-                    Fuzz.frequency [ 1 => Fuzz.constant largestArc, 1 => Fuzz.constant smallestArc ]
+                    arcFlag =
+                        Fuzz.frequency [ 1 => Fuzz.constant largestArc, 1 => Fuzz.constant smallestArc ]
 
-                xAngle =
-                    Fuzz.floatRange 0 (2 * pi)
-               in
+                    xAngle =
+                        Fuzz.floatRange 0 (2 * pi)
+                in
                 Fuzz.map4
                     (\start end radii direction arcFlag xAngle ->
-                        Arc { start = start, end = end, radii = radii, direction = direction, arcFlag = arcFlag, xAxisRotate = xAngle }
+                        Segment.arc start { target = end, radii = radii, direction = direction, arcFlag = arcFlag, xAxisRotate = xAngle }
                     )
                     vec2
                     vec2
@@ -57,6 +57,7 @@ segment =
                     direction
                     |> Fuzz.andMap arcFlag
                     |> Fuzz.andMap xAngle
+               )
         ]
 
 
@@ -118,19 +119,29 @@ arc =
                 factor =
                     2
             in
-                Fuzz.map (\k -> toFloat k * (pi / 2)) (Fuzz.intRange 0 2)
+            Fuzz.map (\k -> toFloat k * (pi / 2)) (Fuzz.intRange 0 2)
     in
-        Fuzz.map5
-            (\center endAngle startAngle radii direction arcFlag xAngle ->
-                Arc (Ellipse.centerToEndpoint { center = center, deltaTheta = endAngle, startAngle = startAngle, radii = radii, xAxisRotate = xAngle })
-            )
-            (Fuzz.map (\( x, y ) -> ( max x 1, max y 1 )) vec2)
-            xAngle
-            xAngle
-            (Fuzz.map (\( x, y ) -> ( max x 1, max y 1 )) vec2)
-            direction
-            |> Fuzz.andMap arcFlag
-            |> Fuzz.andMap xAngle
+    Fuzz.map5
+        (\center endAngle startAngle radii direction arcFlag xAngle ->
+            let
+                endpoint =
+                    Ellipse.centerToEndpoint { center = center, deltaTheta = endAngle, startAngle = startAngle, radii = radii, xAxisRotate = xAngle }
+            in
+            Segment.arc endpoint.start
+                { target = endpoint.end
+                , radii = endpoint.radii
+                , direction = endpoint.direction
+                , arcFlag = endpoint.arcFlag
+                , xAxisRotate = endpoint.xAxisRotate
+                }
+        )
+        (Fuzz.map (\( x, y ) -> ( max x 1, max y 1 )) vec2)
+        xAngle
+        xAngle
+        (Fuzz.map (\( x, y ) -> ( max x 1, max y 1 )) vec2)
+        direction
+        |> Fuzz.andMap arcFlag
+        |> Fuzz.andMap xAngle
 
 
 
@@ -149,30 +160,30 @@ arc =
                        s =
                            Segment.line start end
                    in
-                       s
-                           |> Segment.reverse
-                           |> Segment.length
-                           |> Expect.equal (Segment.length s)
+                   s
+                       |> Segment.reverse
+                       |> Segment.length
+                       |> Expect.equal (Segment.length s)
            , fuzz (Fuzz.tuple3 ( vec2, vec2, vec2 )) "reverse quadratic segment does not change the segment's length" <|
                \( start, c1, end ) ->
                    let
                        s =
                            Segment.quadratic start c1 end
                    in
-                       s
-                           |> Segment.reverse
-                           |> Segment.length
-                           |> Expect.equal (Segment.length s)
+                   s
+                       |> Segment.reverse
+                       |> Segment.length
+                       |> Expect.equal (Segment.length s)
            , fuzz (Fuzz.tuple4 ( vec2, vec2, vec2, vec2 )) "reverse cubic segment does not change the segment's length" <|
                \( start, c1, c2, end ) ->
                    let
                        s =
                            Segment.cubic start c1 c2 end
                    in
-                       s
-                           |> Segment.reverse
-                           |> Segment.length
-                           |> Expect.equal (Segment.length s)
+                   s
+                       |> Segment.reverse
+                       |> Segment.length
+                       |> Expect.equal (Segment.length s)
            , fuzz arc "reverse arc segment does not change the segment's length" <|
                \s ->
                    let
@@ -199,20 +210,20 @@ arc =
                        difference =
                            Vec2.sub expected given |> Vec2.length
                    in
-                       difference
-                           |> Expect.atMost 1.0e-6
-             {- -}
-             {-
-                , fuzz segment "reverse does not change a segment's length" <|
-                    \s ->
-                        s
-                            |> Debug.log "segment"
-                            |> Segment.reverse
-                            |> Segment.length
-                            |> Debug.log "segment length"
-                            |> Expect.equal (Debug.log "expected length" <| Segment.length s)
-             -}
+                   difference
+                       |> Expect.atMost 1.0e-6
 
+           {- -}
+           {-
+              , fuzz segment "reverse does not change a segment's length" <|
+                  \s ->
+                      s
+                          |> Debug.log "segment"
+                          |> Segment.reverse
+                          |> Segment.length
+                          |> Debug.log "segment length"
+                          |> Expect.equal (Debug.log "expected length" <| Segment.length s)
+           -}
            ]
 -}
 
@@ -221,7 +232,7 @@ segments =
     [ "line" => Segment.line ( 0, 42 ) ( 42, 0 )
     , "quadratic" => Segment.quadratic ( 0, 42 ) ( 0, 0 ) ( 42, 0 )
     , "cubic" => Segment.cubic ( 0, 42 ) ( 0, 0 ) ( 0, 0 ) ( 42, 0 )
-    , "arc" => Arc { start = ( 0, 42 ), end = ( 42, 0 ), radii = ( 1, 1 ), xAxisRotate = 0, arcFlag = largestArc, direction = clockwise }
+    , "arc" => Segment.arc ( 0, 42 ) { target = ( 42, 0 ), radii = ( 42, 42 ), xAxisRotate = 0, arcFlag = largestArc, direction = clockwise }
     ]
 
 
@@ -238,8 +249,8 @@ startAndEnd =
                         |> Expect.equal ( 42, 0 )
             ]
     in
-        describe "start and end points" <|
-            List.concatMap (uncurry createTests) segments
+    describe "start and end points" <|
+        List.concatMap (uncurry createTests) segments
 
 
 angle =
@@ -255,7 +266,7 @@ angle =
         , test "angle is pi" <|
             \_ ->
                 Segment.angle (Segment.line ( 0, 0 ) ( 100, 0 )) (Segment.line ( 100, 0 ) ( 0, 0 ))
-                    |> Expect.equal (pi)
+                    |> Expect.equal pi
         , test "angle is 0" <|
             \_ ->
                 Segment.angle (Segment.line ( 0, 0 ) ( 100, 0 )) (Segment.line ( 0, 0 ) ( 100, 0 ))
@@ -280,4 +291,27 @@ toSegments =
                 lineTo [ ( 100, 0 ), ( 100, 100 ) ]
                     |> Segment.toSegment { start = ( 0, 0 ), cursor = ( 0, 0 ), previousControlPoint = Nothing }
                     |> Expect.equal [ Segment.line ( 0, 0 ) ( 100, 0 ), Segment.line ( 100, 0 ) ( 100, 100 ) ]
+        ]
+
+
+conversionFromToDrawTo =
+    describe "conversion from and then to a drawto should be equal to identity"
+        [ test "arc" <|
+            \_ ->
+                let
+                    state =
+                        { cursor = ( 0, 0 ), start = ( 0, 0 ), previousControlPoint = Nothing }
+
+                    config =
+                        { target = ( 5, 5 )
+                        , radii = ( 5, 5 )
+                        , xAxisRotate = 0
+                        , arcFlag = largestArc
+                        , direction = clockwise
+                        }
+                in
+                LowLevel.Command.arcTo [ config ]
+                    |> Segment.toSegment state
+                    |> List.map Segment.toDrawTo
+                    |> Expect.equal [ LowLevel.Command.arcTo [ config ] ]
         ]

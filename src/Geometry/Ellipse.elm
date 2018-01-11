@@ -117,10 +117,10 @@ validateRadii ({ radii } as parameterization) =
         v =
             x1_ ^ 2 / rx ^ 2 + y1_ ^ 2 / ry ^ 2
     in
-        if v <= 1 then
-            parameterization
-        else
-            { parameterization | radii = ( sqrt v * rx, sqrt v * ry ) }
+    if v <= 1 then
+        parameterization
+    else
+        { parameterization | radii = ( sqrt v * rx, sqrt v * ry ) }
 
 
 normalize : CenterParameterization -> CenterParameterization
@@ -164,7 +164,7 @@ arcLengthParameterizationEllipse ({ start, end } as parameterization) s =
             , length = approximateArcLength
             }
     in
-        Approximate.approximate config parameterization s
+    Approximate.approximate config parameterization s
 
 
 arcLengthParameterizationCircle : CenterParameterization -> Float -> Maybe (Vec2 Float)
@@ -190,9 +190,9 @@ arcLengthParameterizationCircle { startAngle, deltaTheta, radii, center } s =
         angleAtS =
             startAngle + fraction * deltaTheta
     in
-        fromPolar ( rx, angleAtS )
-            |> Vec2.add center
-            |> Just
+    fromPolar ( rx, angleAtS )
+        |> Vec2.add center
+        |> Just
 
 
 chunks : Int -> EndpointParameterization -> List EndpointParameterization
@@ -213,10 +213,10 @@ chunks itersLeft ({ start, end } as parameterization) =
             average =
                 (chord + outline) / 2
         in
-            if (average - chord) / average > 0.001 then
-                chunks (itersLeft - 1) left ++ chunks (itersLeft - 1) right
-            else
-                [ left, right ]
+        if (average - chord) / average > 0.001 then
+            chunks (itersLeft - 1) left ++ chunks (itersLeft - 1) right
+        else
+            [ left, right ]
 
 
 chord : EndpointParameterization -> ( ( Float, Float ), ( Float, Float ) )
@@ -258,7 +258,7 @@ at t ({ startAngle, deltaTheta, radii, xAxisRotate, center } as parameterization
         y =
             sinr * cos angle * rx + cosr * sin angle * ry + cy
     in
-        ( x, y )
+    ( x, y )
 
 
 splitEllipse : Float -> EndpointParameterization -> ( EndpointParameterization, EndpointParameterization )
@@ -267,9 +267,9 @@ splitEllipse t parameterization =
         middlePoint =
             at t (endpointToCenter parameterization)
     in
-        ( { parameterization | end = middlePoint }
-        , { parameterization | start = middlePoint }
-        )
+    ( { parameterization | end = middlePoint }
+    , { parameterization | start = middlePoint }
+    )
 
 
 derivativeAt : Float -> CenterParameterization -> Float
@@ -281,7 +281,7 @@ derivativeAt t parameterization =
         ( a, b ) =
             parameterization.radii
     in
-        (b ^ 2 / a ^ 2) * (x1 / y1)
+    (b ^ 2 / a ^ 2) * (x1 / y1)
 
 
 tangentAt : Float -> CenterParameterization -> Vec2 Float
@@ -293,9 +293,9 @@ tangentAt t parameterization =
         ( a, b ) =
             parameterization.radii
     in
-        Vec2.map2 (*) ( b ^ 2, a ^ 2 ) ( x1, y1 )
-            |> Vec2.normalize
-            |> Matrix2.mulVector (conversionMatrix (pi / 2))
+    Vec2.map2 (*) ( b ^ 2, a ^ 2 ) ( x1, y1 )
+        |> Vec2.normalize
+        |> Matrix2.mulVector (conversionMatrix (pi / 2))
 
 
 mod2pi : Float -> Float
@@ -326,7 +326,7 @@ circumference { radii } =
         circumference =
             pi * (a + b) * (1 + (3 * h) / (10 + sqrt (4 - 3 * h)))
     in
-        circumference
+    circumference
 
 
 conversionMatrix : Float -> Mat2 Float
@@ -378,7 +378,7 @@ centerToEndpoint { center, radii, startAngle, deltaTheta, xAxisRotate } =
                 )
                 |> Maybe.withDefault ( SmallestArc, CounterClockwise )
     in
-        { start = p1, end = p2, radii = radii, arcFlag = arcFlag, direction = direction, xAxisRotate = xAxisRotate }
+    { start = p1, end = p2, radii = radii, arcFlag = arcFlag, direction = direction, xAxisRotate = xAxisRotate }
 
 
 coordinatePrime : EndpointParameterization -> Vec2 Float
@@ -398,7 +398,7 @@ coordinatePrime { start, end, xAxisRotate } =
         ( x2, y2 ) =
             end
     in
-        ( x1_, y1_ )
+    ( x1_, y1_ )
 
 
 endpointToCenter : EndpointParameterization -> CenterParameterization
@@ -411,25 +411,10 @@ endpointToCenter ({ start, end, radii, xAxisRotate, arcFlag, direction } as para
             coordinatePrime parameterization
 
         sign =
-            {-
-               if uncurry (==) (encodeFlags ( arcFlag, direction )) then
-
-                   -1
-               else
-                   1
-            -}
-            case ( arcFlag, direction ) of
-                ( LargestArc, Clockwise ) ->
-                    1
-
-                ( SmallestArc, Clockwise ) ->
-                    -1
-
-                ( LargestArc, CounterClockwise ) ->
-                    -1
-
-                ( SmallestArc, CounterClockwise ) ->
-                    1
+            if uncurry (==) (encodeFlags ( arcFlag, direction )) then
+                -1
+            else
+                1
 
         numerator =
             (rx ^ 2 * ry ^ 2)
@@ -472,14 +457,14 @@ endpointToCenter ({ start, end, radii, xAxisRotate, arcFlag, direction } as para
                 ( _, fs ) =
                     encodeFlags ( arcFlag, direction )
             in
-                (if fs == 0 && deltaTheta > 0 then
-                    temp - tau
-                 else if fs == 1 && deltaTheta < 0 then
-                    temp + tau
-                 else
-                    temp
-                )
-                    |> mod2pi_
+            (if fs == 0 && deltaTheta > 0 then
+                temp - tau
+             else if fs == 1 && deltaTheta < 0 then
+                temp + tau
+             else
+                temp
+            )
+                |> mod2pi_
 
         deltaTheta =
             let
@@ -489,18 +474,18 @@ endpointToCenter ({ start, end, radii, xAxisRotate, arcFlag, direction } as para
                 second =
                     Vec2.map2 (/) (Vec2.sub (Vec2.negate p1) center_) radii
             in
-                case ( arcFlag, direction ) of
-                    ( LargestArc, Clockwise ) ->
-                        angle first second - 2 * pi
+            case ( arcFlag, direction ) of
+                ( LargestArc, Clockwise ) ->
+                    angle first second - 2 * pi
 
-                    ( SmallestArc, Clockwise ) ->
-                        angle first second
+                ( SmallestArc, Clockwise ) ->
+                    angle first second
 
-                    ( LargestArc, CounterClockwise ) ->
-                        angle first second + 2 * pi
+                ( LargestArc, CounterClockwise ) ->
+                    angle first second + 2 * pi
 
-                    ( SmallestArc, CounterClockwise ) ->
-                        angle first second
+                ( SmallestArc, CounterClockwise ) ->
+                    angle first second
 
         result =
             { center = center
@@ -510,7 +495,7 @@ endpointToCenter ({ start, end, radii, xAxisRotate, arcFlag, direction } as para
             , radii = radii
             }
     in
-        result
+    result
 
 
 {-| A signed angle between two vectors (the standard implementation is unsigned)
@@ -544,4 +529,4 @@ angle u v =
         q =
             acos argument
     in
-        sign * abs q
+    sign * abs q
