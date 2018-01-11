@@ -137,19 +137,10 @@ coordinatePrime { start, end, xAxisRotate } =
     let
         rotate =
             inverseConversionMatrix xAxisRotate
-
-        ( x1_, y1_ ) =
-            Vec2.sub start end
-                |> Vec2.divideBy 2
-                |> Matrix2.mulVector rotate
-
-        ( x1, y1 ) =
-            start
-
-        ( x2, y2 ) =
-            end
     in
-    ( x1_, y1_ )
+    Vec2.map2 (-) start end
+        |> Vec2.divideBy 2
+        |> Matrix2.mulVector rotate
 
 
 endpointToCenter : EndpointParameterization -> CenterParameterization
@@ -201,9 +192,9 @@ endpointToCenter ({ start, end, radii, xAxisRotate, arcFlag, direction } as para
         startAngle =
             let
                 temp =
-                    Vec2.sub p1 center_
+                    Vec2.map2 (-) p1 center_
                         |> flip (Vec2.map2 (/)) radii
-                        |> angle ( 1, 0 )
+                        |> signedAngle ( 1, 0 )
 
                 ( _, fs ) =
                     LowLevel.encodeFlags ( arcFlag, direction )
@@ -220,24 +211,27 @@ endpointToCenter ({ start, end, radii, xAxisRotate, arcFlag, direction } as para
         deltaTheta =
             let
                 first =
-                    Vec2.map2 (/) (Vec2.sub p1 center_) radii
+                    Vec2.map2 (/) (Vec2.map2 (-) p1 center_) radii
 
                 second =
-                    Vec2.map2 (/) (Vec2.sub (Vec2.negate p1) center_) radii
+                    Vec2.map2 (/) (Vec2.map2 (-) (Vec2.negate p1) center_) radii
             in
-            case ( arcFlag, direction ) of
-                ( LargestArc, Clockwise ) ->
-                    angle first second - 2 * pi
+            signedAngle first second
 
-                ( SmallestArc, Clockwise ) ->
-                    angle first second
+        {-
+           case ( arcFlag, direction ) of
+               ( LargestArc, Clockwise ) ->
+                   angle first second - 2 * pi
 
-                ( LargestArc, CounterClockwise ) ->
-                    angle first second + 2 * pi
+               ( SmallestArc, Clockwise ) ->
+                   angle first second
 
-                ( SmallestArc, CounterClockwise ) ->
-                    angle first second
+               ( LargestArc, CounterClockwise ) ->
+                   angle first second + 2 * pi
 
+               ( SmallestArc, CounterClockwise ) ->
+                   angle first second
+        -}
         result =
             { center = center
             , xAxisRotate = xAxisRotate

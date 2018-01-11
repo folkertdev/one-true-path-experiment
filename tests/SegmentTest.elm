@@ -148,7 +148,7 @@ segments =
     [ "line" => Segment.line ( 0, 42 ) ( 42, 0 )
     , "quadratic" => Segment.quadratic ( 0, 42 ) ( 0, 0 ) ( 42, 0 )
     , "cubic" => Segment.cubic ( 0, 42 ) ( 0, 0 ) ( 0, 0 ) ( 42, 0 )
-    , "arc" => Segment.arc ( 0, 42 ) { target = ( 42, 0 ), radii = ( 42, 42 ), xAxisRotate = 0, arcFlag = largestArc, direction = clockwise }
+    , "arc" => Segment.arc ( 0, 42 ) { target = ( 42, 0 ), radii = ( 42, 42 ), xAxisRotate = 0, arcFlag = smallestArc, direction = clockwise }
     ]
 
 
@@ -222,7 +222,7 @@ conversionFromToDrawTo =
                         { target = ( 5, 5 )
                         , radii = ( 5, 5 )
                         , xAxisRotate = 0
-                        , arcFlag = largestArc
+                        , arcFlag = smallestArc
                         , direction = clockwise
                         }
                 in

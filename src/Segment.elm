@@ -124,20 +124,6 @@ arc start { radii, xAxisRotate, arcFlag, direction, target } =
         ( rx, ry ) =
             radii
 
-        sweptAngle =
-            case ( arcFlag, direction ) of
-                ( LargestArc, Clockwise ) ->
-                    EllipticalArc2d.largeNegative
-
-                ( LargestArc, CounterClockwise ) ->
-                    EllipticalArc2d.largePositive
-
-                ( SmallestArc, Clockwise ) ->
-                    EllipticalArc2d.smallNegative
-
-                ( SmallestArc, CounterClockwise ) ->
-                    EllipticalArc2d.smallPositive
-
         center : CenterParameterization
         center =
             { start = start, end = target, radii = radii, arcFlag = arcFlag, direction = direction, xAxisRotate = xAxisRotate }
@@ -586,23 +572,3 @@ length segment =
 intersections : Segment -> Segment -> List ( Float, Float )
 intersections segment1 segment2 =
     []
-
-
-
--- HELPERS
-
-
-toSweptAngle : Path.LowLevel.ArcFlag -> Path.LowLevel.Direction -> EllipticalArc2d.SweptAngle
-toSweptAngle arcFlag direction =
-    case ( arcFlag, direction ) of
-        ( LargestArc, Clockwise ) ->
-            EllipticalArc2d.largeNegative
-
-        ( LargestArc, CounterClockwise ) ->
-            EllipticalArc2d.largePositive
-
-        ( SmallestArc, Clockwise ) ->
-            EllipticalArc2d.smallNegative
-
-        ( SmallestArc, CounterClockwise ) ->
-            EllipticalArc2d.smallPositive
