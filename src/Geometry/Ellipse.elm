@@ -2,30 +2,12 @@ module Geometry.Ellipse
     exposing
         ( CenterParameterization
         , EndpointParameterization
-        , approximateArcLength
-        , arcLengthParameterizationCircle
-        , arcLengthParameterizationEllipse
-        , at
-        , atAngle
         , centerToEndpoint
-        , chord
-        , chordLength
-        , chunks
-        , decodeFlags
-        , derivativeAt
-        , encodeFlags
         , endpointToCenter
         , mod2pi
-        , outlineLength
-        , reverse
-        , splitEllipse
-        , tangentAt
-        , tau
         , validateRadii
         )
 
-import Geometry.Approximate as Approximate
-import Geometry.Line as Line
 import Matrix2 exposing (..)
 import Path.LowLevel as LowLevel exposing (ArcFlag(..), Direction(..))
 import Vector2 as Vec2 exposing (..)
@@ -34,56 +16,6 @@ import Vector2 as Vec2 exposing (..)
 tau : Float
 tau =
     2 * pi
-
-
-encodeFlags : ( ArcFlag, Direction ) -> ( Int, Int )
-encodeFlags ( arcFlag, direction ) =
-    case ( arcFlag, direction ) of
-        ( LargestArc, Clockwise ) ->
-            ( 1, 0 )
-
-        ( SmallestArc, Clockwise ) ->
-            ( 0, 0 )
-
-        ( LargestArc, CounterClockwise ) ->
-            ( 1, 1 )
-
-        ( SmallestArc, CounterClockwise ) ->
-            ( 0, 1 )
-
-
-decodeFlags : ( Int, Int ) -> Maybe ( ArcFlag, Direction )
-decodeFlags ( arcFlag, sweepFlag ) =
-    case ( arcFlag, sweepFlag ) of
-        ( 1, 0 ) ->
-            Just ( LargestArc, Clockwise )
-
-        ( 0, 0 ) ->
-            Just ( SmallestArc, Clockwise )
-
-        ( 1, 1 ) ->
-            Just ( LargestArc, CounterClockwise )
-
-        ( 0, 1 ) ->
-            Just ( SmallestArc, CounterClockwise )
-
-        _ ->
-            Nothing
-
-
-reverse : EndpointParameterization -> EndpointParameterization
-reverse ({ start, end, direction } as parameterization) =
-    { parameterization
-        | start = end
-        , end = start
-        , direction =
-            case direction of
-                Clockwise ->
-                    CounterClockwise
-
-                CounterClockwise ->
-                    Clockwise
-    }
 
 
 type alias EndpointParameterization =
@@ -132,170 +64,9 @@ normalize ({ startAngle, deltaTheta, xAxisRotate } as parameterization) =
     }
 
 
-approximateArcLength : EndpointParameterization -> Float
-approximateArcLength ({ start, end } as parameterization) =
-    if start == end then
-        0
-    else
-        parameterization
-            |> chunks 10
-            |> List.map (\{ start, end } -> Vec2.distance start end)
-            |> List.sum
-
-
-chordLength { start, end } =
-    Vec2.distance start end
-
-
-outlineLength { start, end } =
-    Vec2.sub end start
-        |> (\( x, y ) -> abs x + abs y)
-
-
-arcLengthParameterizationEllipse : EndpointParameterization -> Float -> Maybe (Vec2 Float)
-arcLengthParameterizationEllipse ({ start, end } as parameterization) s =
-    let
-        config =
-            { split = splitEllipse
-            , upperBound = outlineLength
-            , lowerBound = chordLength
-            , percentageError = 0.01
-            , baseCase = \{ start, end } -> Line.lengthParameterization start end s
-            , length = approximateArcLength
-            }
-    in
-    Approximate.approximate config parameterization s
-
-
-arcLengthParameterizationCircle : CenterParameterization -> Float -> Maybe (Vec2 Float)
-arcLengthParameterizationCircle { startAngle, deltaTheta, radii, center } s =
-    let
-        ( rx, ry ) =
-            radii
-
-        ratio =
-            deltaTheta / tau
-
-        -- total circumference of the circle
-        circumference =
-            2 * pi * rx
-
-        -- circumference used by the deltaAngle
-        circumferenceUsed =
-            ratio * circumference
-
-        fraction =
-            s / circumferenceUsed
-
-        angleAtS =
-            startAngle + fraction * deltaTheta
-    in
-    fromPolar ( rx, angleAtS )
-        |> Vec2.add center
-        |> Just
-
-
-chunks : Int -> EndpointParameterization -> List EndpointParameterization
-chunks itersLeft ({ start, end } as parameterization) =
-    if itersLeft <= 0 then
-        [ parameterization ]
-    else
-        let
-            ( left, right ) =
-                splitEllipse 0.5 parameterization
-
-            chord =
-                Vec2.distance start end
-
-            outline =
-                Vec2.distance left.start left.end + Vec2.distance right.start right.end
-
-            average =
-                (chord + outline) / 2
-        in
-        if (average - chord) / average > 0.001 then
-            chunks (itersLeft - 1) left ++ chunks (itersLeft - 1) right
-        else
-            [ left, right ]
-
-
-chord : EndpointParameterization -> ( ( Float, Float ), ( Float, Float ) )
-chord { start, end } =
-    ( start, end )
-
-
-atAngle : Float -> CenterParameterization -> Vec2 Float
-atAngle theta { xAxisRotate, center, radii } =
-    ( cos theta, sin theta )
-        |> Vec2.map2 (*) radii
-        |> Matrix2.mulVector (conversionMatrix xAxisRotate)
-        |> Vec2.add center
-
-
 interpolateFloat : Float -> Float -> Float -> Float
 interpolateFloat from to time =
     from + (to - from) * time
-
-
-at : Float -> CenterParameterization -> Vec2 Float
-at t ({ startAngle, deltaTheta, radii, xAxisRotate, center } as parameterization) =
-    let
-        angle =
-            startAngle + t * deltaTheta
-
-        ( cosr, sinr ) =
-            ( cos xAxisRotate, sin xAxisRotate )
-
-        ( rx, ry ) =
-            radii
-
-        ( cx, cy ) =
-            center
-
-        x =
-            cosr * cos angle * rx - sinr * sin angle * ry + cx
-
-        y =
-            sinr * cos angle * rx + cosr * sin angle * ry + cy
-    in
-    ( x, y )
-
-
-splitEllipse : Float -> EndpointParameterization -> ( EndpointParameterization, EndpointParameterization )
-splitEllipse t parameterization =
-    let
-        middlePoint =
-            at t (endpointToCenter parameterization)
-    in
-    ( { parameterization | end = middlePoint }
-    , { parameterization | start = middlePoint }
-    )
-
-
-derivativeAt : Float -> CenterParameterization -> Float
-derivativeAt t parameterization =
-    let
-        ( x1, y1 ) =
-            Vec2.sub parameterization.center (at t parameterization)
-
-        ( a, b ) =
-            parameterization.radii
-    in
-    (b ^ 2 / a ^ 2) * (x1 / y1)
-
-
-tangentAt : Float -> CenterParameterization -> Vec2 Float
-tangentAt t parameterization =
-    let
-        ( x1, y1 ) =
-            Vec2.sub parameterization.center (at t parameterization)
-
-        ( a, b ) =
-            parameterization.radii
-    in
-    Vec2.map2 (*) ( b ^ 2, a ^ 2 ) ( x1, y1 )
-        |> Vec2.normalize
-        |> Matrix2.mulVector (conversionMatrix (pi / 2))
 
 
 mod2pi : Float -> Float
@@ -307,26 +78,6 @@ mod2pi =
 mod2pi_ : Float -> Float
 mod2pi_ x =
     x - toFloat (truncate (x / (2 * pi))) * 2 * pi
-
-
-{-| Approximation of the circumference of the full ellipse
-
-Using Approximation 3 from [this post](https://www.mathsisfun.com/geometry/ellipse-perimeter.html)
-
--}
-circumference : { a | radii : ( Float, Float ) } -> Float
-circumference { radii } =
-    let
-        ( a, b ) =
-            radii
-
-        h =
-            ((a - b) ^ 2) / ((a + b) ^ 2)
-
-        circumference =
-            pi * (a + b) * (1 + (3 * h) / (10 + sqrt (4 - 3 * h)))
-    in
-    circumference
 
 
 conversionMatrix : Float -> Mat2 Float
@@ -366,7 +117,7 @@ centerToEndpoint { center, radii, startAngle, deltaTheta, xAxisRotate } =
                 |> Vec2.add center
 
         ( arcFlag, direction ) =
-            decodeFlags
+            LowLevel.decodeFlags
                 ( if abs deltaTheta > pi then
                     1
                   else
@@ -411,7 +162,7 @@ endpointToCenter ({ start, end, radii, xAxisRotate, arcFlag, direction } as para
             coordinatePrime parameterization
 
         sign =
-            if uncurry (==) (encodeFlags ( arcFlag, direction )) then
+            if uncurry (==) (LowLevel.encodeFlags ( arcFlag, direction )) then
                 -1
             else
                 1
@@ -455,7 +206,7 @@ endpointToCenter ({ start, end, radii, xAxisRotate, arcFlag, direction } as para
                         |> angle ( 1, 0 )
 
                 ( _, fs ) =
-                    encodeFlags ( arcFlag, direction )
+                    LowLevel.encodeFlags ( arcFlag, direction )
             in
             (if fs == 0 && deltaTheta > 0 then
                 temp - tau
@@ -500,8 +251,8 @@ endpointToCenter ({ start, end, radii, xAxisRotate, arcFlag, direction } as para
 
 {-| A signed angle between two vectors (the standard implementation is unsigned)
 -}
-angle : Vec2 Float -> Vec2 Float -> Float
-angle u v =
+signedAngle : Vec2 Float -> Vec2 Float -> Float
+signedAngle u v =
     let
         ( ux, uy ) =
             u
