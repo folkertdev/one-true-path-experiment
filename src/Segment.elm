@@ -577,3 +577,129 @@ length segment =
 intersections : Segment -> Segment -> List ( Float, Float )
 intersections segment1 segment2 =
     []
+
+
+
+-- Arc Length Parameterization
+
+
+type ArcLengthParameterized
+    = ParameterizedLineSegment LineSegment2d.LineSegment2d
+    | ParameterizedQuadratic QuadraticSpline2d.ArcLengthParameterized
+    | ParameterizedCubic CubicSpline2d.ArcLengthParameterized
+    | ParameterizedArc EllipticalArc2d.ArcLengthParameterized
+
+
+arcLengthParameterized :
+    Float
+    -> Segment
+    -> ArcLengthParameterized
+arcLengthParameterized tolerance segment =
+    case segment of
+        LineSegment segment ->
+            ParameterizedLineSegment segment
+
+        Quadratic spline ->
+            QuadraticSpline2d.arcLengthParameterized tolerance spline
+                |> ParameterizedQuadratic
+
+        Cubic spline ->
+            CubicSpline2d.arcLengthParameterized tolerance spline
+                |> ParameterizedCubic
+
+        Arc arc ->
+            EllipticalArc2d.arcLengthParameterized tolerance arc
+                |> ParameterizedArc
+
+
+arcLength : ArcLengthParameterized -> Float
+arcLength arcLengthParameterized =
+    case arcLengthParameterized of
+        ParameterizedLineSegment segment ->
+            LineSegment2d.length segment
+
+        ParameterizedQuadratic spline ->
+            QuadraticSpline2d.arcLength spline
+
+        ParameterizedCubic spline ->
+            CubicSpline2d.arcLength spline
+
+        ParameterizedArc arc ->
+            EllipticalArc2d.arcLength arc
+
+
+pointAlong : ArcLengthParameterized -> Float -> Maybe ( Float, Float )
+pointAlong arcLengthParameterized t =
+    Maybe.map Point2d.coordinates <|
+        case arcLengthParameterized of
+            ParameterizedLineSegment segment ->
+                LineSegment2d.interpolate segment t
+                    |> Just
+
+            ParameterizedQuadratic spline ->
+                QuadraticSpline2d.pointAlong spline t
+
+            ParameterizedCubic spline ->
+                CubicSpline2d.pointAlong spline t
+
+            ParameterizedArc arc ->
+                EllipticalArc2d.pointAlong arc t
+
+
+tangentAlong : ArcLengthParameterized -> Float -> Maybe ( Float, Float )
+tangentAlong arcLengthParameterized t =
+    Maybe.map Direction2d.components <|
+        case arcLengthParameterized of
+            ParameterizedLineSegment segment ->
+                LineSegment2d.direction segment
+
+            ParameterizedQuadratic spline ->
+                QuadraticSpline2d.tangentAlong spline t
+
+            ParameterizedCubic spline ->
+                CubicSpline2d.tangentAlong spline t
+
+            ParameterizedArc arc ->
+                EllipticalArc2d.tangentAlong arc t
+
+
+arcLengthToParameterValue :
+    ArcLengthParameterized
+    -> Float
+    -> Maybe Float
+arcLengthToParameterValue arcLengthParameterized t =
+    case arcLengthParameterized of
+        ParameterizedLineSegment segment ->
+            LineSegment2d.length segment
+                / t
+                |> Just
+
+        ParameterizedQuadratic spline ->
+            QuadraticSpline2d.arcLengthToParameterValue spline t
+
+        ParameterizedCubic spline ->
+            CubicSpline2d.arcLengthToParameterValue spline t
+
+        ParameterizedArc arc ->
+            EllipticalArc2d.arcLengthToParameterValue arc t
+
+
+parameterValueToArcLength :
+    ArcLengthParameterized
+    -> Float
+    -> Maybe Float
+parameterValueToArcLength arcLengthParameterized t =
+    case arcLengthParameterized of
+        ParameterizedLineSegment segment ->
+            LineSegment2d.length segment
+                * t
+                |> Just
+
+        ParameterizedQuadratic spline ->
+            QuadraticSpline2d.parameterValueToArcLength spline t
+
+        ParameterizedCubic spline ->
+            CubicSpline2d.parameterValueToArcLength spline t
+
+        ParameterizedArc arc ->
+            EllipticalArc2d.parameterValueToArcLength arc t
