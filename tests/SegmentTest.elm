@@ -6,6 +6,9 @@ import Fuzz
 import Geometry.Ellipse as Ellipse
 import LowLevel.Command exposing (arcTo, clockwise, counterClockwise, largestArc, lineTo, moveTo, smallestArc)
 import OpenSolid.Point2d as Point2d exposing (Point2d)
+import OpenSolid.Direction2d as Direction2d
+import OpenSolid.EllipticalArc2d as EllipticalArc2d exposing (EllipticalArc2d)
+import OpenSolid.Vector2d as Vector2d exposing (Vector2d)
 import Segment exposing (Segment(..))
 import SubPath
 import Test exposing (..)
@@ -47,16 +50,16 @@ segment =
                     xAngle =
                         Fuzz.floatRange 0 (2 * pi)
                 in
-                Fuzz.map4
-                    (\start end radii direction arcFlag xAngle ->
-                        Segment.arc start { target = end, radii = radii, direction = direction, arcFlag = arcFlag, xAxisRotate = xAngle }
-                    )
-                    vec2
-                    vec2
-                    (Fuzz.map (\( x, y ) -> ( max x 1, max y 1 )) vec2)
-                    direction
-                    |> Fuzz.andMap arcFlag
-                    |> Fuzz.andMap xAngle
+                    Fuzz.map4
+                        (\start end radii direction arcFlag xAngle ->
+                            Segment.arc start { target = end, radii = radii, direction = direction, arcFlag = arcFlag, xAxisRotate = xAngle }
+                        )
+                        vec2
+                        vec2
+                        (Fuzz.map (\( x, y ) -> ( max x 1, max y 1 )) vec2)
+                        direction
+                        |> Fuzz.andMap arcFlag
+                        |> Fuzz.andMap xAngle
                )
         ]
 
@@ -119,29 +122,29 @@ arc =
                 factor =
                     2
             in
-            Fuzz.map (\k -> toFloat k * (pi / 2)) (Fuzz.intRange 0 2)
+                Fuzz.map (\k -> toFloat k * (pi / 2)) (Fuzz.intRange 0 2)
     in
-    Fuzz.map5
-        (\center endAngle startAngle radii direction arcFlag xAngle ->
-            let
-                endpoint =
-                    Ellipse.centerToEndpoint { center = center, deltaTheta = endAngle, startAngle = startAngle, radii = radii, xAxisRotate = xAngle }
-            in
-            Segment.arc endpoint.start
-                { target = endpoint.end
-                , radii = endpoint.radii
-                , direction = endpoint.direction
-                , arcFlag = endpoint.arcFlag
-                , xAxisRotate = endpoint.xAxisRotate
-                }
-        )
-        (Fuzz.map (\( x, y ) -> ( max x 1, max y 1 )) vec2)
-        xAngle
-        xAngle
-        (Fuzz.map (\( x, y ) -> ( max x 1, max y 1 )) vec2)
-        direction
-        |> Fuzz.andMap arcFlag
-        |> Fuzz.andMap xAngle
+        Fuzz.map5
+            (\center endAngle startAngle radii direction arcFlag xAngle ->
+                let
+                    endpoint =
+                        Ellipse.centerToEndpoint { center = center, deltaTheta = endAngle, startAngle = startAngle, radii = radii, xAxisRotate = xAngle }
+                in
+                    Segment.arc endpoint.start
+                        { target = endpoint.end
+                        , radii = endpoint.radii
+                        , direction = endpoint.direction
+                        , arcFlag = endpoint.arcFlag
+                        , xAxisRotate = endpoint.xAxisRotate
+                        }
+            )
+            (Fuzz.map (\( x, y ) -> ( max x 1, max y 1 )) vec2)
+            xAngle
+            xAngle
+            (Fuzz.map (\( x, y ) -> ( max x 1, max y 1 )) vec2)
+            direction
+            |> Fuzz.andMap arcFlag
+            |> Fuzz.andMap xAngle
 
 
 segments =
@@ -165,8 +168,8 @@ startAndEnd =
                         |> Expect.equal ( 42, 0 )
             ]
     in
-    describe "start and end points" <|
-        List.concatMap (uncurry createTests) segments
+        describe "start and end points" <|
+            List.concatMap (uncurry createTests) segments
 
 
 angle =
@@ -187,6 +190,21 @@ angle =
             \_ ->
                 Segment.angle (Segment.line ( 0, 0 ) ( 100, 0 )) (Segment.line ( 0, 0 ) ( 100, 0 ))
                     |> Expect.equal 0
+        ]
+
+
+derivative =
+    describe "derivative tests"
+        [ test "derivative of EllipticalArc2d" <|
+            \_ ->
+                let
+                    myArc =
+                        EllipticalArc2d.with { centerPoint = Point2d.fromCoordinates ( 5, 0 ), startAngle = -pi, sweptAngle = -(pi / 2), xDirection = Direction2d.fromAngle 0, xRadius = 5, yRadius = 5 }
+                in
+                    EllipticalArc2d.derivative myArc 0
+                        |> Vector2d.normalize
+                        |> Vector2d.components
+                        |> Expect.equal ( 0, 1 )
         ]
 
 
@@ -226,8 +244,8 @@ conversionFromToDrawTo =
                         , direction = clockwise
                         }
                 in
-                LowLevel.Command.arcTo [ config ]
-                    |> Segment.toSegment state
-                    |> List.map Segment.toDrawTo
-                    |> Expect.equal [ LowLevel.Command.arcTo [ config ] ]
+                    LowLevel.Command.arcTo [ config ]
+                        |> Segment.toSegment state
+                        |> List.map Segment.toDrawTo
+                        |> Expect.equal [ LowLevel.Command.arcTo [ config ] ]
         ]
