@@ -442,6 +442,7 @@ at t segment =
 
 {-| Get the derivative at a point on the curve, only defined in the range [0, 1].
 
+    import Vector2
     import LowLevel.Command exposing
         ( EllipticalArcArgument
         , smallestArc
@@ -450,7 +451,8 @@ at t segment =
         )
 
     derivativeAt 0.5 (line (0,0) (1,1))
-        --> (0.7071067811865475,0.7071067811865475)
+        |> Vector2.normalize
+        --> Vector2.normalize (1,1)
 
     argument : EllipticalArcArgument
     argument =
@@ -462,77 +464,63 @@ at t segment =
         }
 
     derivativeAt 0.5 (arc (0,0)  argument)
-        --> (0.7071067811865475,0.7071067811865474)
+        |> Vector2.normalize
+        --> Vector2.normalize (1,1)
 
 -}
 derivativeAt : Float -> Segment -> ( Float, Float )
 derivativeAt t segment =
-    case segment of
-        LineSegment segment ->
-            LineSegment2d.vector segment
-                |> Vector2d.normalize
-                |> Vector2d.components
+    Vector2d.components <|
+        case segment of
+            LineSegment segment ->
+                LineSegment2d.vector segment
 
-        Quadratic spline ->
-            QuadraticSpline2d.derivative spline t
-                |> Vector2d.components
+            Quadratic spline ->
+                QuadraticSpline2d.derivative spline t
 
-        Cubic spline ->
-            CubicSpline2d.derivative spline t
-                |> Vector2d.components
+            Cubic spline ->
+                CubicSpline2d.derivative spline t
 
-        Arc arc ->
-            EllipticalArc2d.derivative arc t
-                |> Vector2d.normalize
-                |> Vector2d.components
+            Arc arc ->
+                EllipticalArc2d.derivative arc t
 
 
 {-| The derivative at the starting point of the segment
 -}
 derivativeAtFirst : Segment -> Float2
 derivativeAtFirst segment =
-    case segment of
-        LineSegment segment ->
-            LineSegment2d.vector segment
-                |> Vector2d.normalize
-                |> Vector2d.components
+    Vector2d.components <|
+        case segment of
+            LineSegment segment ->
+                LineSegment2d.vector segment
 
-        Quadratic spline ->
-            Vector2d.components <|
+            Quadratic spline ->
                 QuadraticSpline2d.startDerivative spline
 
-        Cubic spline ->
-            Vector2d.components <|
+            Cubic spline ->
                 CubicSpline2d.startDerivative spline
 
-        Arc arc ->
-            EllipticalArc2d.derivative arc 0
-                |> Vector2d.normalize
-                |> Vector2d.components
+            Arc arc ->
+                EllipticalArc2d.derivative arc 0
 
 
 {-| The derivative at the ending point of the segment
 -}
 derivativeAtFinal : Segment -> Float2
 derivativeAtFinal segment =
-    case segment of
-        LineSegment segment ->
-            LineSegment2d.vector segment
-                |> Vector2d.normalize
-                |> Vector2d.components
+    Vector2d.components <|
+        case segment of
+            LineSegment segment ->
+                LineSegment2d.vector segment
 
-        Quadratic spline ->
-            QuadraticSpline2d.endDerivative spline
-                |> Vector2d.components
+            Quadratic spline ->
+                QuadraticSpline2d.endDerivative spline
 
-        Cubic spline ->
-            CubicSpline2d.endDerivative spline
-                |> Vector2d.components
+            Cubic spline ->
+                CubicSpline2d.endDerivative spline
 
-        Arc arc ->
-            EllipticalArc2d.derivative arc 1
-                |> Vector2d.normalize
-                |> Vector2d.components
+            Arc arc ->
+                EllipticalArc2d.derivative arc 1
 
 
 {-| The signed angle (in radians) between the end of segment1 and the start of segment2

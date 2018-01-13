@@ -13,6 +13,7 @@ import Path
 import Geometry.Ellipse exposing (signedAngle)
 import AnimationFrame
 import Time exposing (Time)
+import Vector2 as Vec2
 
 
 mySubPath =
@@ -78,6 +79,7 @@ arrowHead location tangent =
         line =
             Curve.linear [ ( 0, 0 ), ( 30, 0 ) ]
                 |> SubPath.translate location
+                |> SubPath.scale ( Vec2.length tangent, 0 )
 
         angle =
             signedAngle ( 1, 0 ) tangent
