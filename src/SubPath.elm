@@ -131,6 +131,9 @@ import Vector3 as Vec3 exposing (Vec3)
 
 A subpath is one moveto command followed by an arbitrary number of drawto commands.
 
+**Note:** Equality with the default `==` function in unreliable for `SubPath`. The easiest way to check for
+equality is to use `SubPath.toString` on both arguments.
+
 -}
 type SubPath
     = SubPath Instructions
@@ -171,10 +174,10 @@ unwrap subpath =
 
 {-| Convert a subpath into SVG path notation
 
-    import LowLevel.Command exposing (moveTo, lineTo)
+    import Curve
 
     line : SubPath
-    line = subpath (moveTo (0,0)) [ lineTo [ (10,10), (10, 20) ] ]
+    line = Curve.linear [ (0,0), (10,10), (10, 20) ]
 
     SubPath.toString line --> "M0,0 L10,10 10,20"
 -}
@@ -342,14 +345,15 @@ finalCursorState { moveto, drawtos } =
 In the conversion, the starting point of a segment is discarded:
 It is assumed that for every two adjacent segments in the list, the first segment's end point is the second segment's starting point
 
+    import Curve
     import Segment exposing (line)
-    import LowLevel.Command exposing (moveTo, lineTo)
 
 
     [ line (0,0) (10,10) , line (10, 10) (20, 10) ]
         |> fromSegments
-        --> subpath (moveTo (0,0)) [ lineTo [ (10, 10)], lineTo [ (20, 10) ] ]
-
+        |> SubPath.compress
+        |> SubPath.toString
+        --> SubPath.toString (Curve.linear [ (0,0), (10,10), (20, 10) ])
 -}
 fromSegments : List Segment -> SubPath
 fromSegments segments =
@@ -363,7 +367,7 @@ fromSegments segments =
 
 {-| Convert a subpath to its `Segment`s
 
-    subpath (moveTo (0,0)) [ lineTo [ (10, 10), (20, 10) ] ]
+    Curve.linear [ (0,0), (10,10), (20, 10) ]
         |> toSegments
         --> [ line (0,0) (10,10) , line (10, 10) (20, 10) ]
 -}
@@ -400,17 +404,23 @@ toSegments subpath =
 {-| Reverse a subpath
 
 The direction of a subpath [can be important][reverse] if you want to use SVG fills.
+Another use is in composing subpaths:
 
-    mySubPath : SubPath
-    mySubPath =
-        subpath (moveTo (0,0))
-            [ lineTo [ (10, 10)], lineTo [ (20, 10) ] ]
+    arrowHead : (Float, Float) -> Float -> SubPath
+    arrowHead location angle =
+        let
+            line =
+                Curve.linear [ ( 0, 0 ), ( 10, 0 ) ]
+                    |> SubPath.translate location
 
-    mySubPath
-        |> reverse
-        |> reverse
-        --> mySubPath
+            a =
+                SubPath.rotate (angle - (pi + pi / 4)) line
 
+            b =
+                SubPath.rotate (angle + (pi + pi / 4)) line
+        in
+            SubPath.reverse a
+                |> SubPath.continue b
 
 
 [reverse]: https://pomax.github.io/svg-path-reverse/
@@ -812,14 +822,6 @@ every distance arcLengthParameterized =
             |> List.indexedMap (\i v -> (toFloat i + 1) * v)
 
 
-{-| evenly spaced parameter values in the range [0, 1].
-
-    evenlySpacedParameterValuesWithEndpoints 1 --> [ 0.5 ]
-
-    evenlySpacedParameterValuesWithEndpoints 2 --> [ 0, 1 ]
-
-    evenlySpacedParameterValuesWithEndpoints 5 --> [ 0, 0.25, 0.5, 0.75, 1 ]
--}
 evenlySpacedParameterValuesWithEndpoints : Int -> List Float
 evenlySpacedParameterValuesWithEndpoints count =
     if count <= 0 then
@@ -838,15 +840,6 @@ evenlySpacedParameterValuesWithEndpoints count =
             0 :: intermediate ++ [ 1 ]
 
 
-{-| evenly spaced parameter values in the range [0, 1]
-
-    evenlySpacedParameterValues 1 --> [ ]
-
-    evenlySpacedParameterValues 2 --> [ 0.5 ]
-
-    evenlySpacedParameterValues 3 --> [ 1/3, 2/3 ]
-
--}
 evenlySpacedParameterValues : Int -> List Float
 evenlySpacedParameterValues count =
     List.repeat (count - 1) (1 / (toFloat count))
