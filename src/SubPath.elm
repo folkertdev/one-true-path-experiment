@@ -21,6 +21,17 @@ module SubPath
         , unwrap
         , reverse
         , compress
+        , ArcLengthParameterized
+        , arcLengthParameterized
+        , arcLength
+        , pointAlong
+        , tangentAlong
+        , parameterValueToArcLength
+        , arcLengthToParameterValue
+        , evenlySpaced
+        , evenlySpacedWithEndpoints
+        , evenlySpacedPoints
+        , every
         )
 
 {-|
@@ -85,6 +96,17 @@ module SubPath
 @docs reverse, compress
 @docs translate, rotate, scale
 @docs mapCoordinate, mapWithCursorState
+
+## Arc Length Parameterization
+
+The arc length parameterization is a way of expressing a curve in terms of its arc length. For instance, `pointAlong` expects a distance, and returns the 2D coordinate reached
+when walked that distance along the curve.
+
+This is great for calculating the total length of your subpath (for instance to style based on the length) and to get evenly spaced points on the subpath.
+
+@docs ArcLengthParameterized, arcLengthParameterized
+@docs arcLength, evenlySpaced, evenlySpacedWithEndpoints, evenlySpacedPoints, every
+@docs pointAlong , tangentAlong , parameterValueToArcLength , arcLengthToParameterValue
 
 
 ## Conversion
@@ -546,6 +568,289 @@ toLowLevel subpath =
                 { moveto = Command.toLowLevelMoveTo moveto
                 , drawtos = List.map Command.toLowLevelDrawTo (Deque.toList drawtos)
                 }
+
+
+
+--
+
+
+{-| The arc length parameterization as a binary tree of segments.
+-}
+type ArcLengthParameterized
+    = Node { totalLength : Float, lengthAtSplit : Float, left : ArcLengthParameterized, right : ArcLengthParameterized, tolerance : Float }
+    | Leaf { segment : Segment.ArcLengthParameterized, tolerance : Float }
+    | None
+
+
+{-| Build an arc length parameterization from a subpath.
+
+For calculating the parameterization, approximations are used. To bound the error that approximations introduce,
+you can supply a `tolerance`: Operations (arcLength, pointOn, ect.) are at most `tolerance` away from the truth.
+
+    tolerance = 1e-4
+
+    parameterized =
+        arcLengthParameterized tolerance mySubPath
+-}
+arcLengthParameterized : Float -> SubPath -> ArcLengthParameterized
+arcLengthParameterized tolerance subpath =
+    arcLengthParameterizedHelper tolerance (toSegments subpath)
+
+
+arcLengthParameterizedHelper : Float -> List Segment -> ArcLengthParameterized
+arcLengthParameterizedHelper tolerance segments =
+    case segments of
+        [] ->
+            None
+
+        [ segment ] ->
+            Leaf { segment = Segment.arcLengthParameterized tolerance segment, tolerance = tolerance }
+
+        xs ->
+            let
+                ( leftSegments, rightSegments ) =
+                    List.splitAt (ceiling <| toFloat (List.length segments) / 2) segments
+
+                leftParameterized =
+                    arcLengthParameterizedHelper tolerance leftSegments
+
+                rightParameterized =
+                    arcLengthParameterizedHelper tolerance rightSegments
+            in
+                case rightParameterized of
+                    None ->
+                        leftParameterized
+
+                    _ ->
+                        Node
+                            { lengthAtSplit = arcLength leftParameterized
+                            , totalLength = arcLength leftParameterized + arcLength rightParameterized
+                            , left = leftParameterized
+                            , right = rightParameterized
+                            , tolerance = tolerance
+                            }
+
+
+{-| Find the total arc length of an elliptical arc. This will be accurate to within the tolerance given when calling arcLengthParameterized.
+
+    import Curve
+
+    Curve.linear [ (0,0), (100, 0) ]
+        |> arcLengthParameterized 1e-4
+        |> arcLength
+        --> 100
+
+-}
+arcLength : ArcLengthParameterized -> Float
+arcLength arcLengthParameterized =
+    case arcLengthParameterized of
+        None ->
+            0
+
+        Leaf { segment } ->
+            Segment.arcLength segment
+
+        Node { totalLength } ->
+            totalLength
+
+
+traverse : (Segment.ArcLengthParameterized -> Float -> Maybe a) -> ArcLengthParameterized -> Float -> Maybe a
+traverse tagger arcLengthParameterized t =
+    let
+        clamp totalLength tolerance length =
+            if (abs (length - totalLength) <= tolerance) then
+                totalLength
+            else if (abs length <= tolerance) then
+                0
+            else
+                length
+    in
+        case arcLengthParameterized of
+            None ->
+                Nothing
+
+            Leaf { segment, tolerance } ->
+                let
+                    totalLength =
+                        Segment.arcLength segment
+
+                    answer =
+                        tagger segment (clamp totalLength tolerance t)
+                in
+                    answer
+
+            Node { totalLength, lengthAtSplit, left, right, tolerance } ->
+                let
+                    clamped =
+                        clamp totalLength tolerance t
+                in
+                    if clamped <= lengthAtSplit then
+                        traverse tagger left clamped
+                    else
+                        traverse tagger right (clamped - lengthAtSplit)
+
+
+{-| A point at some distance along the curve.
+
+    import Curve
+
+    parameterized : ArcLengthParameterized
+    parameterized =
+        Curve.quadraticBezier (0,0) [ ( (5,0), (10, 0) ) ]
+            |> arcLengthParameterized 1e-4
+
+    pointAlong parameterized (arcLength parameterized / 2)
+        --> Just (5, 0)
+
+
+-}
+pointAlong : ArcLengthParameterized -> Float -> Maybe ( Float, Float )
+pointAlong arcLengthParameterized t =
+    traverse Segment.pointAlong arcLengthParameterized t
+
+
+{-| The normalized tangent along the curve
+
+    import Curve
+
+    parameterized : ArcLengthParameterized
+    parameterized =
+        Curve.quadraticBezier (0,0) [ ( (5,0), (10, 0) ) ]
+            |> arcLengthParameterized 1e-4
+
+    tangentAlong parameterized (arcLength parameterized / 2)
+        --> Just (1, 0)
+
+-}
+tangentAlong : ArcLengthParameterized -> Float -> Maybe ( Float, Float )
+tangentAlong arcLengthParameterized t =
+    traverse Segment.tangentAlong arcLengthParameterized t
+
+
+{-| Find the arc length at some parameter value.
+-}
+parameterValueToArcLength : ArcLengthParameterized -> Float -> Maybe Float
+parameterValueToArcLength arcLengthParameterized t =
+    traverse Segment.parameterValueToArcLength arcLengthParameterized t
+
+
+{-| Find the parameter value at some arc length
+-}
+arcLengthToParameterValue : ArcLengthParameterized -> Float -> Maybe Float
+arcLengthToParameterValue arcLengthParameterized t =
+    traverse Segment.arcLengthToParameterValue arcLengthParameterized t
+
+
+{-| Find `n` evenly spaced points on an arc length parameterized subpath
+
+    import Curve
+
+    curve : ArcLengthParameterized
+    curve =
+        Curve.linear [ (0,0), (10, 0) ]
+            |> arcLengthParameterized 1e-4
+
+    evenlySpacedPoints 1 curve
+        --> [ (5, 0) ]
+
+    evenlySpacedPoints 2 curve
+        --> [ (0, 0), (10, 0) ]
+
+    evenlySpacedPoints 5 curve
+        --> [(0,0),(2.5,0),(5,0),(7.5,0),(10,0)]
+
+-}
+evenlySpacedPoints : Int -> ArcLengthParameterized -> List ( Float, Float )
+evenlySpacedPoints count arcLengthParameterized =
+    let
+        length =
+            arcLength arcLengthParameterized
+    in
+        evenlySpacedParameterValuesWithEndpoints count
+            |> List.map (\t -> t * arcLength arcLengthParameterized)
+            |> List.filterMap (\t -> pointAlong arcLengthParameterized t)
+
+
+{-| Evenly splits the curve into `count` segments, giving their length along the curve
+
+    evenlySpacedPoints : Int -> ArcLengthParameterized -> List (Float, Float)
+    evenlySpacedPoints count arcLengthParameterized =
+        evenlySpaced count arcLengthParameterized
+            |> List.filterMap (\distance -> pointAlong distance arcLengthParameterized)
+
+-}
+evenlySpaced : Int -> ArcLengthParameterized -> List Float
+evenlySpaced count arcLengthParameterized =
+    let
+        length =
+            arcLength arcLengthParameterized
+    in
+        evenlySpacedParameterValues count
+            |> List.map (\t -> t * length)
+
+
+{-| Similar to `evenlySpaced`, but also gives the start and end point of the curve
+-}
+evenlySpacedWithEndpoints : Int -> ArcLengthParameterized -> List Float
+evenlySpacedWithEndpoints count arcLengthParameterized =
+    let
+        length =
+            arcLength arcLengthParameterized
+    in
+        evenlySpacedParameterValuesWithEndpoints count
+            |> List.map (\t -> t * length)
+
+
+{-| -}
+every : Float -> ArcLengthParameterized -> List Float
+every distance arcLengthParameterized =
+    let
+        length =
+            arcLength arcLengthParameterized
+    in
+        List.repeat (floor (length / distance)) distance
+            |> List.indexedMap (\i v -> (toFloat i + 1) * v)
+
+
+{-| evenly spaced parameter values in the range [0, 1].
+
+    evenlySpacedParameterValuesWithEndpoints 1 --> [ 0.5 ]
+
+    evenlySpacedParameterValuesWithEndpoints 2 --> [ 0, 1 ]
+
+    evenlySpacedParameterValuesWithEndpoints 5 --> [ 0, 0.25, 0.5, 0.75, 1 ]
+-}
+evenlySpacedParameterValuesWithEndpoints : Int -> List Float
+evenlySpacedParameterValuesWithEndpoints count =
+    if count <= 0 then
+        []
+    else if count == 1 then
+        [ 0.5 ]
+    else
+        let
+            helper count =
+                List.repeat count (1 / (1 + toFloat count))
+                    |> List.indexedMap (\i v -> (toFloat i + 1) * v)
+
+            intermediate =
+                helper (max 0 (count - 2))
+        in
+            0 :: intermediate ++ [ 1 ]
+
+
+{-| evenly spaced parameter values in the range [0, 1]
+
+    evenlySpacedParameterValues 1 --> [ ]
+
+    evenlySpacedParameterValues 2 --> [ 0.5 ]
+
+    evenlySpacedParameterValues 3 --> [ 1/3, 2/3 ]
+
+-}
+evenlySpacedParameterValues : Int -> List Float
+evenlySpacedParameterValues count =
+    List.repeat (count - 1) (1 / (toFloat count))
+        |> List.indexedMap (\i v -> (toFloat i + 1) * v)
 
 
 

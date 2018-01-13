@@ -1,6 +1,7 @@
 module SubPathTest exposing (..)
 
 import Test exposing (..)
+import Fuzz
 import Expect
 import Segment exposing (Segment(..))
 import Curve
@@ -105,3 +106,50 @@ tests =
                         , Segment.line ( 200, 0 ) ( 300, 0 )
                         ]
         ]
+
+
+arcLengthParameterization =
+    describe "arc length parameterization tests" <|
+        let
+            tolerance =
+                0.0001
+
+            straightLine =
+                Curve.linear [ ( 0, 0 ), ( 20, 0 ), ( 40, 0 ), ( 100, 0 ) ]
+        in
+            [ fuzz (Fuzz.intRange 0 100) "point along fuzz" <|
+                \t ->
+                    let
+                        curve =
+                            Curve.linear [ ( 0, 0 ), ( 20, 0 ), ( 40, 0 ), ( 42, 0 ), ( 50, 0 ), ( 55, 0 ), ( 98, 0 ), ( 100, 0 ) ]
+                                |> SubPath.arcLengthParameterized tolerance
+                    in
+                        curve
+                            |> flip SubPath.pointAlong (toFloat t * SubPath.arcLength curve / 100)
+                            |> Maybe.map (round << Tuple.first)
+                            |> Expect.equal (Just t)
+            , test "1. evenly spaced" <|
+                \_ ->
+                    Curve.linear [ ( 0, 0 ), ( 100, 0 ) ]
+                        |> SubPath.arcLengthParameterized tolerance
+                        |> SubPath.evenlySpacedPoints 1
+                        |> Expect.equal [ ( 50, 0 ) ]
+            , test "2. evenly spaced" <|
+                \_ ->
+                    Curve.linear [ ( 0, 0 ), ( 100, 0 ) ]
+                        |> SubPath.arcLengthParameterized tolerance
+                        |> SubPath.evenlySpacedPoints 2
+                        |> Expect.equal [ ( 0, 0 ), ( 100, 0 ) ]
+            , test "3. evenly spaced" <|
+                \_ ->
+                    Curve.linear [ ( 0, 0 ), ( 20, 0 ), ( 40, 0 ), ( 100, 0 ) ]
+                        |> SubPath.arcLengthParameterized tolerance
+                        |> SubPath.evenlySpacedPoints 5
+                        |> Expect.equal [ ( 0, 0 ), ( 25, 0 ), ( 50, 0 ), ( 75, 0 ), ( 100, 0 ) ]
+            , test "quadratic bezier at t=0 is the starting point" <|
+                \_ ->
+                    Curve.quadraticBezier ( 0, 100 ) [ ( ( 400, 400 ), ( 800, 100 ) ) ]
+                        |> SubPath.arcLengthParameterized tolerance
+                        |> flip SubPath.pointAlong 0
+                        |> Expect.equal (Just ( 0, 100 ))
+            ]

@@ -1,6 +1,7 @@
 module Segment
     exposing
         ( Segment(..)
+        , ArcLengthParameterized
         , angle
         , arc
         , at
@@ -17,6 +18,12 @@ module Segment
         , toCursorState
         , toDrawTo
         , toSegment
+        , arcLengthParameterized
+        , arcLength
+        , pointAlong
+        , tangentAlong
+        , parameterValueToArcLength
+        , arcLengthToParameterValue
         )
 
 {-| An alternative view on paths that is convenient for mathematical operations.
@@ -53,6 +60,10 @@ in `SubPath`.
 @docs derivativeAt, derivativeAtFirst, derivativeAtFinal
 @docs firstPoint, finalPoint, reverse
 
+# Arc Length Parameterization
+
+@docs ArcLengthParameterized
+@docs arcLengthParameterized , arcLength , pointAlong , tangentAlong , parameterValueToArcLength , arcLengthToParameterValue
 
 # Conversion
 
@@ -583,6 +594,8 @@ intersections segment1 segment2 =
 -- Arc Length Parameterization
 
 
+{-| Opaque type for the arc length parameterization of a segment
+-}
 type ArcLengthParameterized
     = ParameterizedLineSegment LineSegment2d.LineSegment2d
     | ParameterizedQuadratic QuadraticSpline2d.ArcLengthParameterized
@@ -590,6 +603,7 @@ type ArcLengthParameterized
     | ParameterizedArc EllipticalArc2d.ArcLengthParameterized
 
 
+{-| -}
 arcLengthParameterized :
     Float
     -> Segment
@@ -612,6 +626,7 @@ arcLengthParameterized tolerance segment =
                 |> ParameterizedArc
 
 
+{-| -}
 arcLength : ArcLengthParameterized -> Float
 arcLength arcLengthParameterized =
     case arcLengthParameterized of
@@ -628,12 +643,13 @@ arcLength arcLengthParameterized =
             EllipticalArc2d.arcLength arc
 
 
+{-| -}
 pointAlong : ArcLengthParameterized -> Float -> Maybe ( Float, Float )
 pointAlong arcLengthParameterized t =
     Maybe.map Point2d.coordinates <|
         case arcLengthParameterized of
             ParameterizedLineSegment segment ->
-                LineSegment2d.interpolate segment t
+                LineSegment2d.interpolate segment (t / LineSegment2d.length segment)
                     |> Just
 
             ParameterizedQuadratic spline ->
@@ -646,6 +662,7 @@ pointAlong arcLengthParameterized t =
                 EllipticalArc2d.pointAlong arc t
 
 
+{-| -}
 tangentAlong : ArcLengthParameterized -> Float -> Maybe ( Float, Float )
 tangentAlong arcLengthParameterized t =
     Maybe.map Direction2d.components <|
@@ -663,6 +680,7 @@ tangentAlong arcLengthParameterized t =
                 EllipticalArc2d.tangentAlong arc t
 
 
+{-| -}
 arcLengthToParameterValue :
     ArcLengthParameterized
     -> Float
@@ -684,6 +702,7 @@ arcLengthToParameterValue arcLengthParameterized t =
             EllipticalArc2d.arcLengthToParameterValue arc t
 
 
+{-| -}
 parameterValueToArcLength :
     ArcLengthParameterized
     -> Float

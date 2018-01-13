@@ -6,6 +6,7 @@ module Geometry.Ellipse
         , endpointToCenter
         , mod2pi
         , validateRadii
+        , signedAngle
         )
 
 import Matrix2 exposing (..)
@@ -49,10 +50,10 @@ validateRadii ({ radii } as parameterization) =
         v =
             x1_ ^ 2 / rx ^ 2 + y1_ ^ 2 / ry ^ 2
     in
-    if v <= 1 then
-        parameterization
-    else
-        { parameterization | radii = ( sqrt v * rx, sqrt v * ry ) }
+        if v <= 1 then
+            parameterization
+        else
+            { parameterization | radii = ( sqrt v * rx, sqrt v * ry ) }
 
 
 normalize : CenterParameterization -> CenterParameterization
@@ -129,7 +130,7 @@ centerToEndpoint { center, radii, startAngle, deltaTheta, xAxisRotate } =
                 )
                 |> Maybe.withDefault ( SmallestArc, CounterClockwise )
     in
-    { start = p1, end = p2, radii = radii, arcFlag = arcFlag, direction = direction, xAxisRotate = xAxisRotate }
+        { start = p1, end = p2, radii = radii, arcFlag = arcFlag, direction = direction, xAxisRotate = xAxisRotate }
 
 
 coordinatePrime : EndpointParameterization -> Vec2 Float
@@ -138,9 +139,9 @@ coordinatePrime { start, end, xAxisRotate } =
         rotate =
             inverseConversionMatrix xAxisRotate
     in
-    Vec2.map2 (-) start end
-        |> Vec2.divideBy 2
-        |> Matrix2.mulVector rotate
+        Vec2.map2 (-) start end
+            |> Vec2.divideBy 2
+            |> Matrix2.mulVector rotate
 
 
 endpointToCenter : EndpointParameterization -> CenterParameterization
@@ -199,14 +200,14 @@ endpointToCenter ({ start, end, radii, xAxisRotate, arcFlag, direction } as para
                 ( _, fs ) =
                     LowLevel.encodeFlags ( arcFlag, direction )
             in
-            (if fs == 0 && deltaTheta > 0 then
-                temp - tau
-             else if fs == 1 && deltaTheta < 0 then
-                temp + tau
-             else
-                temp
-            )
-                |> mod2pi_
+                (if fs == 0 && deltaTheta > 0 then
+                    temp - tau
+                 else if fs == 1 && deltaTheta < 0 then
+                    temp + tau
+                 else
+                    temp
+                )
+                    |> mod2pi_
 
         deltaTheta =
             let
@@ -216,7 +217,7 @@ endpointToCenter ({ start, end, radii, xAxisRotate, arcFlag, direction } as para
                 second =
                     Vec2.map2 (/) (Vec2.map2 (-) (Vec2.negate p1) center_) radii
             in
-            signedAngle first second
+                signedAngle first second
 
         {-
            case ( arcFlag, direction ) of
@@ -240,7 +241,7 @@ endpointToCenter ({ start, end, radii, xAxisRotate, arcFlag, direction } as para
             , radii = radii
             }
     in
-    result
+        result
 
 
 {-| A signed angle between two vectors (the standard implementation is unsigned)
@@ -274,4 +275,4 @@ signedAngle u v =
         q =
             acos argument
     in
-    sign * abs q
+        sign * abs q

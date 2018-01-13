@@ -4,18 +4,41 @@ module CurveImages exposing (..)
 and then used in the documentations
 -}
 
-import Svg
+import Svg exposing (Svg, Attribute)
 import Svg.Attributes exposing (..)
 import Html.Attributes
 import Html
 import Path
 import SubPath exposing (subpath)
-import LowLevel.Command as LowLevel exposing (moveTo, lineTo, closePath)
 import Curve
 import Color
 import Color.Interpolate as Color exposing (Space(LAB))
 import Color.Convert as Color
 import Color.Manipulate as Color
+
+
+main =
+    Html.div []
+        [ linear
+        , linearClosed
+        , step
+        , stepBefore
+        , stepAfter
+        , basis
+        , basisClosed
+        , basisOpen
+        , bundle
+        , cardinal
+        , cardinalClosed
+        , cardinalOpen
+        , catmullRom
+        , catmullRomClosed
+        , catmullRomOpen
+        , monotoneX
+        , monotoneY
+        , radial
+        , natural
+        ]
 
 
 composition : Svg.Svg msg
@@ -84,19 +107,10 @@ composition =
                     , height "300"
                     ]
                     (label :: path :: [])
-
-        gridRect =
-            Svg.rect [ width "100%", height "100%", fill "url(#grid)" ] []
     in
-        Svg.svg
-            [ width "1200"
-            , height "300"
-            , Html.Attributes.attribute "xmlns" "http://www.w3.org/2000/svg"
-            , Html.Attributes.style [ ( "background-color", "#efefef" ) ]
-            ]
-            [ svgGrid
-            , gridRect
-            , start
+        grid { width = 1200, height = 300 }
+            []
+            [ start
             , Svg.g [ transform "translate(300, 0)" ] [ connect ]
             , Svg.g [ transform "translate(600, 0)" ] [ continue ]
             , Svg.g [ transform "translate(900, 0)" ] [ continueSmooth ]
@@ -143,21 +157,25 @@ points2 =
 smallGrid dim =
     let
         p =
-            [ subpath (moveTo ( dim, 0 )) [ lineTo [ ( 0, 0 ), ( 0, dim ) ] ] ]
+            Curve.linear [ ( dim, 0 ), ( 0, 0 ), ( 0, dim ) ]
     in
         Svg.pattern [ id "smallGrid", width (Basics.toString dim), height (Basics.toString dim), patternUnits "userSpaceOnUse" ]
-            [ Path.element p [ fill "none", stroke "white", strokeWidth "1" ] ]
+            [ SubPath.element p [ fill "none", stroke "white", strokeWidth "1" ] ]
 
 
-grid dim =
+largeGrid dim =
     let
         p =
-            [ subpath (moveTo ( dim, 0 )) [ lineTo [ ( 0, 0 ), ( 0, dim ) ] ] ]
+            Curve.linear [ ( dim, 0 ), ( 0, 0 ), ( 0, dim ) ]
     in
         Svg.pattern [ id "grid", width (Basics.toString dim), height (Basics.toString dim), patternUnits "userSpaceOnUse" ]
             [ Svg.rect [ width (Basics.toString dim), height (Basics.toString dim), fill "url(#smallGrid)" ] []
-            , Path.element p [ fill "none", stroke "white", strokeWidth "1.5" ]
+            , SubPath.element p [ fill "none", stroke "white", strokeWidth "1.5" ]
             ]
+
+
+gridRect =
+    Svg.rect [ width "100%", height "100%", fill "url(#grid)" ] []
 
 
 tau =
@@ -187,7 +205,7 @@ stacked name toPath points =
             [ 0, 0.25, 0.5, 0.75, 1 ]
 
         path value =
-            Path.element (List.singleton <| toPath value points)
+            SubPath.element (toPath value points)
                 [ stroke (colorAt value |> Color.colorToHex)
                 , strokeWidth "2"
                 , fill "none"
@@ -195,9 +213,6 @@ stacked name toPath points =
 
         paths =
             List.map path values
-
-        gridRect =
-            Svg.rect [ width "100%", height "100%", fill "url(#grid)" ] []
 
         label i value =
             Svg.text_
@@ -213,19 +228,15 @@ stacked name toPath points =
         labels =
             List.indexedMap label values
     in
-        Svg.svg
-            [ width "1000"
-            , Html.Attributes.attribute "xmlns" "http://www.w3.org/2000/svg"
-            , height "400"
-            , Html.Attributes.style [ ( "background-color", "#efefef" ) ]
-            ]
-            (svgGrid :: gridRect :: (labels ++ paths ++ nodes points))
+        grid { width = 1000, height = 400 }
+            []
+            (labels ++ paths ++ nodes "black" points)
 
 
-nodes points =
+nodes strokeColor points =
     List.map
         (\( xx, yy ) ->
-            Svg.circle [ fill "white", stroke "black", strokeWidth "2", cx (Basics.toString xx), cy (Basics.toString (yy)), r "4" ] []
+            Svg.circle [ fill "white", stroke strokeColor, strokeWidth "2", cx (Basics.toString xx), cy (Basics.toString (yy)), r "4" ] []
         )
         points
 
@@ -233,7 +244,7 @@ nodes points =
 svgGrid =
     Svg.defs []
         [ smallGrid 25
-        , grid 50
+        , largeGrid 50
         ]
 
 
@@ -248,17 +259,19 @@ diagram name toPath points =
 
         label =
             Svg.text_ [ x "25", y "30", fontSize "20px", fontWeight "bolder", fontFamily "Verdana, sans-serif" ] [ Svg.text name ]
-
-        gridRect =
-            Svg.rect [ width "100%", height "100%", fill "url(#grid)" ] []
     in
-        Svg.svg
-            [ width "1000"
-            , height "400"
-            , Html.Attributes.attribute "xmlns" "http://www.w3.org/2000/svg"
-            , Html.Attributes.style [ ( "background-color", "#efefef" ) ]
-            ]
-            (svgGrid :: gridRect :: label :: path :: nodes points)
+        grid { width = 1000, height = 400 } [] (label :: path :: nodes "black" points)
+
+
+grid : { width : Float, height : Float } -> List (Attribute msg) -> List (Svg msg) -> Svg msg
+grid canvas attributes children =
+    Svg.svg
+        [ width (toString canvas.width)
+        , height (toString canvas.height)
+        , Html.Attributes.attribute "xmlns" "http://www.w3.org/2000/svg"
+        , Html.Attributes.style [ ( "background-color", "#efefef" ) ]
+        ]
+        [ svgGrid, gridRect, Svg.g attributes children ]
 
 
 linear =
