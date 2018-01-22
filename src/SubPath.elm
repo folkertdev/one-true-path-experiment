@@ -31,7 +31,6 @@ module SubPath
         , evenlySpaced
         , evenlySpacedWithEndpoints
         , evenlySpacedPoints
-        , every
         )
 
 {-|
@@ -49,7 +48,8 @@ module SubPath
 
 ## Conversion
 
-@docs element, toString, toSegments, fromSegments, unwrap
+@docs element, toString
+@docs reverse, compress
 
 
 ## Composition
@@ -93,7 +93,6 @@ module SubPath
 
 ## Mapping
 
-@docs reverse, compress
 @docs translate, rotate, scale
 @docs mapCoordinate, mapWithCursorState
 
@@ -105,13 +104,14 @@ when walked that distance along the curve.
 This is great for calculating the total length of your subpath (for instance to style based on the length) and to get evenly spaced points on the subpath.
 
 @docs ArcLengthParameterized, arcLengthParameterized
-@docs arcLength, evenlySpaced, evenlySpacedWithEndpoints, evenlySpacedPoints, every
+@docs arcLength, evenlySpaced, evenlySpacedWithEndpoints, evenlySpacedPoints
 @docs pointAlong , tangentAlong , parameterValueToArcLength , arcLengthToParameterValue
 
 
 ## Conversion
 
-@docs fromLowLevel, toLowLevel
+@docs toSegments, fromSegments
+@docs fromLowLevel, toLowLevel, unwrap
 
 -}
 
@@ -719,7 +719,7 @@ pointAlong arcLengthParameterized t =
     traverse Segment.pointAlong arcLengthParameterized t
 
 
-{-| The normalized tangent along the curve
+{-| The tangent along the curve
 
     import Curve
 
@@ -752,6 +752,7 @@ arcLengthToParameterValue arcLengthParameterized t =
 
 
 {-| Find `n` evenly spaced points on an arc length parameterized subpath
+Includes the start and end point.
 
     import Curve
 
@@ -772,21 +773,12 @@ arcLengthToParameterValue arcLengthParameterized t =
 -}
 evenlySpacedPoints : Int -> ArcLengthParameterized -> List ( Float, Float )
 evenlySpacedPoints count arcLengthParameterized =
-    let
-        length =
-            arcLength arcLengthParameterized
-    in
-        evenlySpacedParameterValuesWithEndpoints count
-            |> List.map (\t -> t * arcLength arcLengthParameterized)
-            |> List.filterMap (\t -> pointAlong arcLengthParameterized t)
+    evenlySpacedWithEndpoints count arcLengthParameterized
+        |> List.filterMap (pointAlong arcLengthParameterized)
 
 
 {-| Evenly splits the curve into `count` segments, giving their length along the curve
 
-    evenlySpacedPoints : Int -> ArcLengthParameterized -> List (Float, Float)
-    evenlySpacedPoints count arcLengthParameterized =
-        evenlySpaced count arcLengthParameterized
-            |> List.filterMap (\distance -> pointAlong distance arcLengthParameterized)
 
 -}
 evenlySpaced : Int -> ArcLengthParameterized -> List Float
@@ -800,6 +792,11 @@ evenlySpaced count arcLengthParameterized =
 
 
 {-| Similar to `evenlySpaced`, but also gives the start and end point of the curve
+
+    evenlySpacedPoints : Int -> ArcLengthParameterized -> List (Float, Float)
+    evenlySpacedPoints count arcLengthParameterized =
+        evenlySpacedWithEndpoints count arcLengthParameterized
+            |> List.filterMap (pointAlong arcLengthParameterized)
 -}
 evenlySpacedWithEndpoints : Int -> ArcLengthParameterized -> List Float
 evenlySpacedWithEndpoints count arcLengthParameterized =
@@ -809,17 +806,6 @@ evenlySpacedWithEndpoints count arcLengthParameterized =
     in
         evenlySpacedParameterValuesWithEndpoints count
             |> List.map (\t -> t * length)
-
-
-{-| -}
-every : Float -> ArcLengthParameterized -> List Float
-every distance arcLengthParameterized =
-    let
-        length =
-            arcLength arcLengthParameterized
-    in
-        List.repeat (floor (length / distance)) distance
-            |> List.indexedMap (\i v -> (toFloat i + 1) * v)
 
 
 evenlySpacedParameterValuesWithEndpoints : Int -> List Float

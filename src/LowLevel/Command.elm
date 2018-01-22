@@ -36,11 +36,6 @@ These instructions are meant to build up primitives (like in the `Curve` module)
 curves should happen at the `SubPath` level.
 
 
-## Threading State
-
-@docs CursorState, updateCursorState
-
-
 ## Moving the cursor
 
 @docs MoveTo, moveTo
@@ -74,6 +69,9 @@ curves should happen at the `SubPath` level.
 @docs arcTo, EllipticalArcArgument, clockwise, counterClockwise, largestArc, smallestArc
 @docs ArcFlag, Direction
 
+## Threading State
+
+@docs CursorState, updateCursorState
 
 ## Conversion
 

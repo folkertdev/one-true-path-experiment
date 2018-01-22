@@ -97,10 +97,15 @@ arrowHead location tangent =
 view : Model -> Html.Html Msg
 view { count, offset } =
     let
+        pointAndTangent parameterized distance =
+            Maybe.map2 (,)
+                (SubPath.pointAlong parameterized distance)
+                (SubPath.tangentAlong parameterized distance)
+
         ( locations, tangents ) =
             SubPath.evenlySpacedWithEndpoints count parameterized
                 |> List.map (\distance -> offset + distance)
-                |> List.filterMap (\d -> Maybe.map2 (,) (SubPath.pointAlong parameterized d) (SubPath.tangentAlong parameterized d))
+                |> List.filterMap (pointAndTangent parameterized)
                 |> List.unzip
 
         arrowHeads =
