@@ -55,7 +55,7 @@ step1 coordinates =
                     List.foldl (\elem ( _, previous ) -> ( previous, elem )) ( x0, x1 ) rest
 
                 r_ =
-                    List.updateAt (n - 1) (\_ -> 8 * butFinal + final) r
+                    updateAt (n - 1) (\_ -> 8 * butFinal + final) r
 
             in
                 Just ( a, b, r_ )
