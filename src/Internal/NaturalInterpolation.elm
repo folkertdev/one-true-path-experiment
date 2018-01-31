@@ -56,13 +56,35 @@ step1 coordinates =
 
                 r_ =
                     List.updateAt (n - 1) (\_ -> 8 * butFinal + final) r
-                        |> Maybe.withDefault r
+
             in
                 Just ( a, b, r_ )
 
         _ ->
             Nothing
+{-| A copy from elm-list-extra
 
+The signature of this function changed in 7.0.0, but I want 
+to support 6.0.0 to 8.0.0 for now.
+-}
+updateAt : Int -> (a -> a) -> List a -> List a
+updateAt index fn list =
+    if index < 0 then
+        list
+    else
+        let
+            head =
+                List.take index list
+
+            tail =
+                List.drop index list
+        in
+            case tail of
+                x :: xs ->
+                    head ++ fn x :: xs
+
+                _ ->
+                    list
 
 step2 : ( List Float, List Float, List Float ) -> Maybe ( List Float, List Float, List Float )
 step2 ( a, b, r ) =
