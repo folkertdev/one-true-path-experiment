@@ -29,9 +29,10 @@ module LowLevel.Command
 
 {-| Low-level access to drawing instructions.
 
-This is a low-level module that you probably shouldn't deal with.
-These instructions are meant to build up primitives (like in the `Curve` module); building of
-curves should happen at the `SubPath` level.
+**This is a low-level module that you probably shouldn't deal with.** It is much nicer to use
+the functions in the `Curve` module or the `SubPath` module.
+
+These functions are only meant to build up primitives.
 
 
 ## Moving the cursor
@@ -98,9 +99,13 @@ You may miss some constructs in comparison to SVG. Only absolute coordinates are
 supported, and the smooth curve variants are removed. These choices were
 made to keep the number of constructors small.
 
-Relative coordinates can always
-be transformed to abslute ones, and smooth (also known as short-hand) curve extensions
-can be achieved with `Curve.smoothQuadraticBezier` and `Curve.smoothCubicBezier`.
+Relative coordinates can always be transformed to abslute ones.
+
+horizontal and vertical movements can be written as `LineTo` commands,
+smooth (also known as short-hand) curve extensions can be
+achieved with `Curve.smoothQuadraticBezier` and `Curve.smoothCubicBezier`.
+
+The `SubPath.parser` will do these transformations automatically.
 -}
 type DrawTo
     = LineTo (List (Vec2 Float))
@@ -146,6 +151,8 @@ type alias ArcFlag =
 
 
 {-| Corresponds to a sweep flag of 0
+
+**Note:** this is clockwise in the "normal" coordinate system with positive y pointing up and positive x pointing right
 -}
 clockwise : Direction
 clockwise =
@@ -153,6 +160,8 @@ clockwise =
 
 
 {-| Corresponds to a sweep flag of 1
+
+**Note:** this is counter-clockwise in the "normal" coordinate system with positive y pointing up and positive x pointing right
 -}
 counterClockwise : Direction
 counterClockwise =
@@ -160,7 +169,6 @@ counterClockwise =
 
 
 {-| Corresponds to an arc flag of 1
-thDefault
 -}
 largestArc : ArcFlag
 largestArc =
@@ -174,7 +182,7 @@ smallestArc =
     SmallestArc
 
 
-{-| Move to a position on the canvas without drawing.
+{-| Move to a position on the canvas without drawing. The `M` instruction.
 -}
 moveTo : Vec2 Float -> MoveTo
 moveTo =
