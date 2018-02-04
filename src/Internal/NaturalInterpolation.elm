@@ -56,7 +56,6 @@ step1 coordinates =
 
                 r_ =
                     List.updateAt (n - 1) (\_ -> 8 * butFinal + final) r
-                        |> Maybe.withDefault r
             in
                 Just ( a, b, r_ )
 
