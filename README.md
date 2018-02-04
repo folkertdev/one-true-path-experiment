@@ -65,6 +65,7 @@ When you need more control and want to move/rotate/scale or connect curves, the 
 A `SubPath` can be `ArcLengthParameterized`, to sample the curve, animate along it or simply get its curve length.
 
 <iframe src="https://folkertdev.github.io/animation-along-path/" width="100%" height="400px" scrolling="no" frameBorder="0"></iframe>
+
 *[full source](https://github.com/folkertdev/one-true-path-experiment/blob/master/examples/EvenlySpaced.elm)*
 
 Finally, a piece of svg path syntax can be parsed into a list of `SubPath`s
