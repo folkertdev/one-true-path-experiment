@@ -36,13 +36,14 @@ The segment data type has four segment types:
   - `cubic` a cubic bezier curve segment
   - `arc` an elliptical arc segment
 
-All four of these are mathematically well-defined, and there is a wide range of
-operations that we can perform on them:
+All four of these are mathematically well-defined primitives. We can uniformly apply functions like:
 
-  - `length` the arc length of a segment
   - `angle` between two segments
   - `derivative` or curvature
   - `reverse` reverse a segment - this can be used to [let the browser fill your svg correctly][reverse]
+
+`Segment` can also be `ArcLengthParameterized`, which makes operations based on arc length possible.
+For instance, the total arc length or the location after walking some distance over the segment.
 
 These operations are backed by the great [OpenSolid] package, and in turn back many of the operations
 in `SubPath`.

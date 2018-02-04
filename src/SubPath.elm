@@ -35,6 +35,36 @@ module SubPath
 
 {-|
 
+SubPaths are the main unit of composition for this package. They can be transformed, joined and split.
+
+    import Svg
+    import Svg.Attributes (fill)
+    import Curve
+    import SubPath exposing (connect)
+
+    right =
+        Curve.linear [(0,0), (1,0)]
+
+    down =
+        Curve.linear [(0,0), (0,1)]
+
+    topRightCorner =
+        right
+            |> connect down
+
+    bottomLeftCorner
+        down
+            |> connect right
+
+    square =
+        topRightCorner
+            |> connect (reverse bottomLeftCorner)
+            |> close
+
+    view : Svg msg
+    view =
+        Svg.svg [] [ SubPath.element square [ fill "none"] ]
+
 
 ## Types
 
@@ -147,6 +177,8 @@ type alias Instructions =
 {-| Construct a subpath
 
     subpath (moveTo (0,0)) [ lineTo [ (10,10), (10, 20) ] ]
+
+**Always try to use a function from `Curve` over manual subpath construction!**
 -}
 subpath : MoveTo -> List DrawTo -> SubPath
 subpath moveto drawtos =

@@ -6,7 +6,7 @@ import Html.Attributes as Attributes
 import Html.Events as Events
 import Svg.Attributes exposing (width, height, fill, stroke)
 import Html.Attributes
-import CurveImages exposing (points, gridRect, svgGrid, nodes)
+import CurveImages exposing (gridRect, svgGrid, nodes)
 import Curve
 import SubPath
 import Path
@@ -14,6 +14,10 @@ import Geometry.Ellipse exposing (signedAngle)
 import AnimationFrame
 import Time exposing (Time)
 import Vector2 as Vec2
+
+
+points =
+    List.take 6 CurveImages.points
 
 
 mySubPath =
@@ -65,7 +69,7 @@ main =
     Html.program
         { view = view
         , update = update
-        , init = ( { count = 20, offset = 0 }, Cmd.none )
+        , init = ( { count = 10, offset = 0 }, Cmd.none )
         , subscriptions = \_ -> AnimationFrame.diffs Frame
         }
 
@@ -96,6 +100,32 @@ arrowHead location tangent =
 
 view : Model -> Html.Html Msg
 view { count, offset } =
+    let
+        pointAndTangent parameterized distance =
+            Maybe.map2 (,)
+                (SubPath.pointAlong parameterized distance)
+                (SubPath.tangentAlong parameterized distance)
+
+        ( locations, tangents ) =
+            SubPath.evenlySpacedWithEndpoints count parameterized
+                |> List.map (\distance -> offset + distance)
+                |> List.filterMap (pointAndTangent parameterized)
+                |> List.unzip
+
+        arrowHeads =
+            List.map2 arrowHead locations tangents
+                |> flip Path.element [ fill "none", stroke "black" ]
+    in
+        CurveImages.grid { width = 600, height = 400 }
+            []
+            (SubPath.element mySubPath [ fill "none", stroke "black" ]
+                :: arrowHeads
+                :: (nodes "black" points ++ nodes "red" locations)
+            )
+
+
+view2 : Model -> Html.Html Msg
+view2 { count, offset } =
     let
         pointAndTangent parameterized distance =
             Maybe.map2 (,)
