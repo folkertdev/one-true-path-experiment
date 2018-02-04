@@ -305,20 +305,6 @@ toSegment state drawto =
                 in
                     List.map2 (\f t -> LineSegment <| LineSegment2d.from f t) (start :: coordinates) coordinates
 
-            Horizontal xs ->
-                let
-                    coordinates =
-                        List.map (\x -> Point2d.fromCoordinates ( x, startY )) xs
-                in
-                    List.map2 (\f t -> LineSegment <| LineSegment2d.from f t) (start :: coordinates) coordinates
-
-            Vertical ys ->
-                let
-                    coordinates =
-                        List.map (\y -> Point2d.fromCoordinates ( startX, y )) ys
-                in
-                    List.map2 (\f t -> LineSegment <| LineSegment2d.from f t) (start :: coordinates) coordinates
-
             CurveTo coordinates_ ->
                 let
                     coordinates =

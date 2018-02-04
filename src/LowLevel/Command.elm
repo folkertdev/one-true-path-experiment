@@ -14,7 +14,6 @@ module LowLevel.Command
         , fromLowLevelDrawTo
         , fromLowLevelDrawTos
         , fromLowLevelMoveTo
-        , horizontalTo
         , largestArc
         , lineTo
         , moveTo
@@ -24,7 +23,6 @@ module LowLevel.Command
         , toLowLevelDrawTo
         , toLowLevelMoveTo
         , updateCursorState
-        , verticalTo
         , mapCoordinateDrawTo
         , merge
         )
@@ -51,7 +49,7 @@ curves should happen at the `SubPath` level.
 
 ## Straight lines
 
-@docs lineTo, horizontalTo, verticalTo
+@docs lineTo
 
 
 ## Close Path
@@ -106,8 +104,6 @@ can be achieved with `Curve.smoothQuadraticBezier` and `Curve.smoothCubicBezier`
 -}
 type DrawTo
     = LineTo (List (Vec2 Float))
-    | Horizontal (List Float)
-    | Vertical (List Float)
     | CurveTo (List ( Vec2 Float, Vec2 Float, Vec2 Float ))
     | QuadraticBezierCurveTo (List ( Vec2 Float, Vec2 Float ))
     | EllipticalArc (List EllipticalArcArgument)
@@ -190,20 +186,6 @@ moveTo =
 lineTo : List (Vec2 Float) -> DrawTo
 lineTo =
     LineTo
-
-
-{-| Specific version of `lineTo` that only moves horizontally. The `H` instruction.
--}
-horizontalTo : List Float -> DrawTo
-horizontalTo =
-    Horizontal
-
-
-{-| Specific version of `lineTo` that only moves vertically. The `V` instruction
--}
-verticalTo : List Float -> DrawTo
-verticalTo =
-    Vertical
 
 
 {-| Draw a straight line from the cursor position to the starting position of the path. The `Z` instruction.
@@ -411,12 +393,6 @@ toLowLevelDrawTo drawto =
         LineTo coordinates ->
             LowLevel.LineTo Absolute coordinates
 
-        Horizontal coordinates ->
-            LowLevel.Horizontal Absolute coordinates
-
-        Vertical coordinates ->
-            LowLevel.Vertical Absolute coordinates
-
         CurveTo coordinates ->
             LowLevel.CurveTo Absolute coordinates
 
@@ -532,18 +508,6 @@ updateCursorState drawto state =
                 maybeUpdateCursor (List.last coordinates)
                     |> noControlPoint
 
-            Horizontal coordinates ->
-                List.last coordinates
-                    |> Maybe.map (\x -> ( x, cursorY ))
-                    |> maybeUpdateCursor
-                    |> noControlPoint
-
-            Vertical coordinates ->
-                List.last coordinates
-                    |> Maybe.map (\y -> ( cursorX, y ))
-                    |> maybeUpdateCursor
-                    |> noControlPoint
-
             CurveTo coordinates ->
                 case List.last coordinates of
                     Nothing ->
@@ -579,16 +543,6 @@ mapCoordinateDrawTo f drawto =
         LineTo coordinates ->
             LineTo (List.map f coordinates)
 
-        Horizontal coordinates ->
-            coordinates
-                |> List.map ((\x -> ( x, 0 )) >> f >> Tuple.first)
-                |> Horizontal
-
-        Vertical coordinates ->
-            coordinates
-                |> List.map ((\y -> ( 0, y )) >> f >> Tuple.second)
-                |> Vertical
-
         CurveTo coordinates ->
             CurveTo (List.map (Vec3.map f) coordinates)
 
@@ -613,12 +567,6 @@ merge instruction1 instruction2 =
     case ( instruction1, instruction2 ) of
         ( LineTo p1, LineTo p2 ) ->
             Ok <| LineTo (p1 ++ p2)
-
-        ( Horizontal p1, Horizontal p2 ) ->
-            Ok <| Horizontal (p1 ++ p2)
-
-        ( Vertical p1, Vertical p2 ) ->
-            Ok <| Vertical (p1 ++ p2)
 
         ( CurveTo p1, CurveTo p2 ) ->
             Ok <| CurveTo (p1 ++ p2)
