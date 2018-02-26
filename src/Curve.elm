@@ -274,13 +274,17 @@ basis : List (Vec2 Float) -> SubPath
 basis points =
     let
         --| The ideal case where there are at least 3 points
-        commonCase points =
+        commonCase : List DrawTo -> List (Vec2 Float) -> List DrawTo
+        commonCase acc points =
             case points of
                 p0 :: p1 :: [] ->
-                    [ cubicCurveTo [ basisPoint p0 p1 p1 ], lineTo [ p1 ] ]
+                    List.reverse
+                        (lineTo [ p1 ] :: cubicCurveTo [ basisPoint p0 p1 p1 ] :: acc)
 
                 p0 :: p1 :: p :: rest ->
-                    cubicCurveTo [ basisPoint p0 p1 p ] :: commonCase (p1 :: p :: rest)
+                    commonCase
+                        (cubicCurveTo [ basisPoint p0 p1 p ] :: acc)
+                        (p1 :: p :: rest)
 
                 _ ->
                     []
@@ -293,7 +297,7 @@ basis points =
                             |> Vec2.add p1
                             |> Vec2.divideBy 6
                 in
-                    subpath (moveTo p0) (lineTo [ toFirst ] :: commonCase points)
+                    subpath (moveTo p0) (lineTo [ toFirst ] :: commonCase [] points)
 
             [ p0, p1 ] ->
                 subpath (moveTo p0) [ lineTo [ p1 ] ]
@@ -311,13 +315,14 @@ basisClosed : List (Vec2 Float) -> SubPath
 basisClosed points =
     let
         --| The ideal case where there are at least 3 points
-        commonCase close points =
+        commonCase : List (Vec3 (Vec2 Float)) -> (Vec2 Float -> Vec2 Float -> List (Vec3 (Vec2 Float))) -> List (Vec2 Float) -> List (Vec3 (Vec2 Float))
+        commonCase acc close points =
             case points of
                 p0 :: p1 :: [] ->
-                    close p0 p1
+                    List.reverse (List.reverse (close p0 p1) ++ acc)
 
                 p0 :: p1 :: p :: rest ->
-                    basisPoint p0 p1 p :: commonCase close (p1 :: p :: rest)
+                    commonCase (basisPoint p0 p1 p :: acc) close (p1 :: p :: rest)
 
                 _ ->
                     []
@@ -341,7 +346,7 @@ basisClosed points =
                             |> Vec2.divideBy 6
                 in
                     subpath (moveTo start)
-                        [ cubicCurveTo (commonCase closing (p3 :: p4 :: rest)) ]
+                        [ cubicCurveTo (commonCase [] closing (p3 :: p4 :: rest)) ]
 
             [ p0, p1 ] ->
                 subpath (moveTo p0) [ lineTo [ p1 ] ]
@@ -355,13 +360,14 @@ basisClosed points =
 basisOpen : List (Vec2 Float) -> SubPath
 basisOpen points =
     let
-        helper points =
+        helper : List (Vec3 (Vec2 Float)) -> List (Vec2 Float) -> List (Vec3 (Vec2 Float))
+        helper acc points =
             case points of
                 p0 :: p1 :: p :: rest ->
-                    basisPoint p0 p1 p :: helper (p1 :: p :: rest)
+                    helper (basisPoint p0 p1 p :: acc) (p1 :: p :: rest)
 
                 _ ->
-                    []
+                    List.reverse acc
     in
         case points of
             p0 :: p1 :: p :: rest ->
@@ -372,7 +378,7 @@ basisOpen points =
                             |> Vec2.add p
                             |> Vec2.divideBy 6
                 in
-                    subpath (moveTo start) [ cubicCurveTo (helper (p1 :: p :: rest)) ]
+                    subpath (moveTo start) [ cubicCurveTo (helper [] (p1 :: p :: rest)) ]
 
             _ ->
                 empty
@@ -434,13 +440,14 @@ cardinal tension points =
         k =
             (1 - tension) / 6
 
-        helper points =
+        helper : List (Vec3 (Vec2 Float)) -> List (Vec2 Float) -> List (Vec3 (Vec2 Float))
+        helper acc points =
             case points of
                 p0 :: p1 :: p2 :: p3 :: rest ->
-                    cardinalPoint k p0 p1 p2 p3 :: helper (p1 :: p2 :: p3 :: rest)
+                    helper (cardinalPoint k p0 p1 p2 p3 :: acc) (p1 :: p2 :: p3 :: rest)
 
                 [ p0, p1, p2 ] ->
-                    [ cardinalPoint k p0 p1 p2 p1 ]
+                    List.reverse (cardinalPoint k p0 p1 p2 p1 :: acc)
 
                 _ ->
                     []
@@ -450,7 +457,7 @@ cardinal tension points =
                 subpath (moveTo p0) [ lineTo [ p1 ] ]
 
             p0 :: p1 :: p2 :: rest ->
-                subpath (moveTo p0) [ cubicCurveTo (cardinalPoint k p0 p1 p1 p2 :: helper points) ]
+                subpath (moveTo p0) [ cubicCurveTo (cardinalPoint k p0 p1 p1 p2 :: helper [] points) ]
 
             _ ->
                 empty
@@ -483,13 +490,13 @@ cardinalClosed tension points =
         k =
             (1 - tension) / 6
 
-        helper ending points =
+        helper acc ending points =
             case points of
                 [ p0, p1, p2 ] ->
-                    ending p0 p1 p2
+                    List.reverse (List.reverse (ending p0 p1 p2) ++ acc)
 
                 p0 :: p1 :: p2 :: p3 :: rest ->
-                    cardinalPoint k p0 p1 p2 p3 :: helper ending (p1 :: p2 :: p3 :: rest)
+                    helper (cardinalPoint k p0 p1 p2 p3 :: acc) ending (p1 :: p2 :: p3 :: rest)
 
                 _ ->
                     []
@@ -512,7 +519,7 @@ cardinalClosed tension points =
                         , cardinalPoint k p2 p3 p4 p5
                         ]
                 in
-                    subpath (moveTo p4) [ cubicCurveTo (helper end points) ]
+                    subpath (moveTo p4) [ cubicCurveTo (helper [] end points) ]
 
 
 catmullRomDistance : Float -> Vec2 Float -> Vec2 Float -> ( Float, Float )
@@ -722,28 +729,32 @@ monotoneX points =
     case points of
         p0 :: p1 :: p :: rest ->
             let
+                t1 : Float
                 t1 =
                     slope3 p0 p1 p
 
+                initialInstruction : Vec3 (Vec2 Float)
                 initialInstruction =
                     monotonePoint p0 p1 (slope2 p0 p1 t1) t1
 
-                helper t0 points =
+                helper : List (Vec3 (Vec2 Float)) -> Float -> List (Vec2 Float) -> List (Vec3 (Vec2 Float))
+                helper acc t0 points =
                     case points of
                         p0 :: p1 :: p :: rest ->
                             let
+                                t1 : Float
                                 t1 =
                                     slope3 p0 p1 p
                             in
-                                monotonePoint p0 p1 t0 t1 :: helper t1 (p1 :: p :: rest)
+                                helper (monotonePoint p0 p1 t0 t1 :: acc) t1 (p1 :: p :: rest)
 
                         [ p0, p1 ] ->
-                            [ monotonePoint p0 p1 t0 (slope2 p0 p1 t0) ]
+                            List.reverse (monotonePoint p0 p1 t0 (slope2 p0 p1 t0) :: acc)
 
                         _ ->
                             []
             in
-                subpath (moveTo p0) [ cubicCurveTo (initialInstruction :: helper t1 (p1 :: p :: rest)) ]
+                subpath (moveTo p0) [ cubicCurveTo (initialInstruction :: helper [] t1 (p1 :: p :: rest)) ]
 
         [ p0, p1 ] ->
             subpath (moveTo p0) [ lineTo [ p1 ] ]
