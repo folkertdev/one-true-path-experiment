@@ -4,7 +4,14 @@ import Test exposing (..)
 import Expect
 import Curve exposing (..)
 import LowLevel.Command exposing (MoveTo(..), DrawTo(..))
-import SubPath
+import SubPath exposing (SubPath)
+
+
+{-| The number of iterations that induces a stack overflow.
+-}
+stackSmasher : Int
+stackSmasher =
+    10000
 
 
 (=>) =
@@ -119,6 +126,22 @@ testCardinal =
                 in
                     Curve.cardinal 0.5 points
                         |> Expect.equal expected
+        , test "cardinal doesn't stack overflow" <|
+            \_ ->
+                let
+                    path : SubPath
+                    path =
+                        Curve.cardinal 0.5 (List.repeat stackSmasher ( 0, 0 ))
+                in
+                    Expect.pass
+        , test "cardinal closed doesn't stack overflow" <|
+            \_ ->
+                let
+                    path : SubPath
+                    path =
+                        Curve.cardinalClosed 0.5 (List.repeat stackSmasher ( 0, 0 ))
+                in
+                    Expect.pass
         ]
 
 
@@ -203,6 +226,14 @@ testMonotone =
                     in
                         Curve.monotoneX points
                             |> Expect.equal expected
+            , test "doesn't stack overflow" <|
+                \_ ->
+                    let
+                        path : SubPath
+                        path =
+                            Curve.monotoneX (List.repeat stackSmasher ( 0, 0 ))
+                    in
+                        Expect.pass
             ]
 
 
@@ -261,6 +292,14 @@ testBasis =
                 in
                     Curve.basis points
                         |> Expect.equal expected
+        , test "basis doesn't stack overflow" <|
+            \_ ->
+                let
+                    path : SubPath
+                    path =
+                        Curve.basis (List.repeat stackSmasher ( 0, 0 ))
+                in
+                    Expect.pass
         , test "basis open gives expected output" <|
             \_ ->
                 let
@@ -286,6 +325,14 @@ testBasis =
                 in
                     Curve.basisOpen points
                         |> Expect.equal expected
+        , test "basis open doesn't stack overflow" <|
+            \_ ->
+                let
+                    path : SubPath
+                    path =
+                        Curve.basisOpen (List.repeat stackSmasher ( 0, 0 ))
+                in
+                    Expect.pass
         , test "basis closed gives expected output" <|
             \_ ->
                 let
@@ -314,4 +361,12 @@ testBasis =
                 in
                     Curve.basisClosed points
                         |> Expect.equal expected
+        , test "basis closed doesn't stack overflow" <|
+            \_ ->
+                let
+                    path : SubPath
+                    path =
+                        Curve.basisClosed (List.repeat stackSmasher ( 0, 0 ))
+                in
+                    Expect.pass
         ]
