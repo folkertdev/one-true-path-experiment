@@ -1,10 +1,10 @@
 module CurveTest exposing (..)
 
-import Test exposing (..)
-import Expect
 import Curve exposing (..)
-import LowLevel.Command exposing (MoveTo(..), DrawTo(..))
+import Expect
+import LowLevel.Command exposing (DrawTo(..), MoveTo(..))
 import SubPath exposing (SubPath)
+import Test exposing (..)
 
 
 {-| The number of iterations that induces a stack overflow.
@@ -66,8 +66,35 @@ testCatmullRom =
                         }
                             |> convert
                 in
-                    Curve.catmullRom 0.5 points
-                        |> Expect.equal expected
+                Curve.catmullRom 0.5 points
+                    |> Expect.equal expected
+        , test "reverse catmull rom gives expected output" <|
+            \_ ->
+                let
+                    expected =
+                        { moveto = MoveTo ( 50, 300 )
+                        , drawtos =
+                            [ CurveTo
+                                [ ( ( 50, 300 ), ( 115.48220313557538, 184.51779686442455 ), ( 150, 150 ) )
+                                , ( ( 174.4077682344544, 125.59223176554563 ), ( 201.50281615652946, 107.1143748231127 ), ( 225, 100 ) )
+                                , ( ( 242.50027908358396, 94.70134183997996 ), ( 259.3985449774631, 90.35777052211942 ), ( 275, 100 ) )
+                                , ( ( 303.5728284700477, 117.6589791492101 ), ( 310.67715104458006, 225.6971428110722 ), ( 350, 250 ) )
+                                , ( ( 387.1892544416877, 272.984223261231 ), ( 457.95062325807123, 267.41742213584274 ), ( 500, 250 ) )
+                                , ( ( 540.8292528272556, 233.08796973739078 ), ( 561.9232752097317, 157.81554102840957 ), ( 600, 150 ) )
+                                , ( ( 637.1510925306279, 142.37445212205927 ), ( 685.9957196353515, 182.48450132539352 ), ( 725, 200 ) )
+                                , ( ( 760.5443248134045, 215.9617500525209 ), ( 793.6239497752703, 247.7701727655472 ), ( 825, 250 ) )
+                                , ( ( 851.3840081587954, 251.87505372808639 ), ( 876.5829642941892, 219.4719877418889 ), ( 900, 225 ) )
+                                , ( ( 927.1237694606573, 231.40305339874794 ), ( 975, 300 ), ( 975, 300 ) )
+                                ]
+                            ]
+                        }
+                            |> convert
+                in
+                Curve.catmullRom 0.5 (List.reverse points)
+                    |> SubPath.reverse
+                    |> SubPath.compress
+                    |> SubPath.toString
+                    |> Expect.equal (SubPath.toString <| SubPath.compress expected)
         ]
 
 
@@ -95,8 +122,8 @@ testNatural =
                         }
                             |> convert
                 in
-                    Curve.natural points
-                        |> Expect.equal expected
+                Curve.natural points
+                    |> Expect.equal expected
         ]
 
 
@@ -124,8 +151,8 @@ testCardinal =
                         }
                             |> convert
                 in
-                    Curve.cardinal 0.5 points
-                        |> Expect.equal expected
+                Curve.cardinal 0.5 points
+                    |> Expect.equal expected
         , test "cardinal doesn't stack overflow" <|
             \_ ->
                 let
@@ -133,7 +160,7 @@ testCardinal =
                     path =
                         Curve.cardinal 0.5 (List.repeat stackSmasher ( 0, 0 ))
                 in
-                    Expect.pass
+                Expect.pass
         , test "cardinal closed doesn't stack overflow" <|
             \_ ->
                 let
@@ -141,7 +168,7 @@ testCardinal =
                     path =
                         Curve.cardinalClosed 0.5 (List.repeat stackSmasher ( 0, 0 ))
                 in
-                    Expect.pass
+                Expect.pass
         ]
 
 
@@ -150,91 +177,91 @@ testMonotone =
         f ( a, b, c, d, e, f ) =
             ( ( a, b ), ( c, d ), ( e, f ) )
     in
-        describe "monotone"
-            [ test "test against d3 output" <|
-                \_ ->
-                    let
-                        -- to replicate, use
-                        -- d3.line().curve(d3.curveMonotoneX)(jsPoints)
-                        d3Output =
-                            [ f ( 83.33333333333334, 242.06349206349205, 116.66666666666666, 184.12698412698413, 150, 150 )
-                            , f ( 175, 124.4047619047619, 200, 100, 225, 100 )
-                            , f ( 241.66666666666666, 100, 258.3333333333333, 100, 275, 100 )
-                            , f ( 300, 100, 325, 250, 350, 250 )
-                            , f ( 400, 250, 450, 250, 500, 250 )
-                            , f ( 533.3333333333334, 250, 566.6666666666666, 150, 600, 150 )
-                            , f ( 641.6666666666666, 150, 683.3333333333334, 181.01851851851853, 725, 200 )
-                            , f ( 758.3333333333334, 215.1851851851852, 791.6666666666666, 250, 825, 250 )
-                            , f ( 850, 250, 875, 225, 900, 225 )
-                            , f ( 925, 225, 950, 262.5, 975, 300 )
-                            ]
+    describe "monotone"
+        [ test "test against d3 output" <|
+            \_ ->
+                let
+                    -- to replicate, use
+                    -- d3.line().curve(d3.curveMonotoneX)(jsPoints)
+                    d3Output =
+                        [ f ( 83.33333333333334, 242.06349206349205, 116.66666666666666, 184.12698412698413, 150, 150 )
+                        , f ( 175, 124.4047619047619, 200, 100, 225, 100 )
+                        , f ( 241.66666666666666, 100, 258.3333333333333, 100, 275, 100 )
+                        , f ( 300, 100, 325, 250, 350, 250 )
+                        , f ( 400, 250, 450, 250, 500, 250 )
+                        , f ( 533.3333333333334, 250, 566.6666666666666, 150, 600, 150 )
+                        , f ( 641.6666666666666, 150, 683.3333333333334, 181.01851851851853, 725, 200 )
+                        , f ( 758.3333333333334, 215.1851851851852, 791.6666666666666, 250, 825, 250 )
+                        , f ( 850, 250, 875, 225, 900, 225 )
+                        , f ( 925, 225, 950, 262.5, 975, 300 )
+                        ]
 
-                        expected =
-                            { moveto = MoveTo ( 50, 300 )
-                            , drawtos =
-                                [ CurveTo d3Output ]
-                            }
-                                |> convert
-                    in
-                        Curve.monotoneX points
-                            |> Expect.equal expected
-            , test "produces what elm-visualization produces" <|
-                \_ ->
-                    let
-                        -- should produce
-                        -- "M0.1,0.1C0.13333333333333333,0.2866666666666666,0.16666666666666669,0.47333333333333333,0.2,0.6C0.25,0.7899999999999999,0.3,0.9,0.35,0.9C0.3833333333333333,0.9,0.4166666666666667,0.9,0.45,0.9C0.5,0.9,0.55,0.3,0.6,0.3C0.7,0.3,0.8,0.8,0.9,0.8C1,0.8,1.1,0.6666666666666666,1.2,0.6C1.3,0.5333333333333333,1.4,0.4866666666666667,1.5,0.4C1.5666666666666667,0.34222222222222226,1.6333333333333333,0.2,1.7,0.2C1.7666666666666666,0.2,1.8333333333333333,0.44999999999999996,1.9,0.7"
-                        elmVisualizationJSPoints =
-                            [ [ 0.1, 0.1 ], [ 0.2, 0.6 ], [ 0.35, 0.9 ], [ 0.45, 0.9 ], [ 0.6, 0.3 ], [ 0.9, 0.8 ], [ 1.2, 0.6 ], [ 1.5, 0.4 ], [ 1.7, 0.2 ], [ 1.9, 0.7 ] ]
+                    expected =
+                        { moveto = MoveTo ( 50, 300 )
+                        , drawtos =
+                            [ CurveTo d3Output ]
+                        }
+                            |> convert
+                in
+                Curve.monotoneX points
+                    |> Expect.equal expected
+        , test "produces what elm-visualization produces" <|
+            \_ ->
+                let
+                    -- should produce
+                    -- "M0.1,0.1C0.13333333333333333,0.2866666666666666,0.16666666666666669,0.47333333333333333,0.2,0.6C0.25,0.7899999999999999,0.3,0.9,0.35,0.9C0.3833333333333333,0.9,0.4166666666666667,0.9,0.45,0.9C0.5,0.9,0.55,0.3,0.6,0.3C0.7,0.3,0.8,0.8,0.9,0.8C1,0.8,1.1,0.6666666666666666,1.2,0.6C1.3,0.5333333333333333,1.4,0.4866666666666667,1.5,0.4C1.5666666666666667,0.34222222222222226,1.6333333333333333,0.2,1.7,0.2C1.7666666666666666,0.2,1.8333333333333333,0.44999999999999996,1.9,0.7"
+                    elmVisualizationJSPoints =
+                        [ [ 0.1, 0.1 ], [ 0.2, 0.6 ], [ 0.35, 0.9 ], [ 0.45, 0.9 ], [ 0.6, 0.3 ], [ 0.9, 0.8 ], [ 1.2, 0.6 ], [ 1.5, 0.4 ], [ 1.7, 0.2 ], [ 1.9, 0.7 ] ]
 
-                        preparedPoints =
-                            [ ( 94.5, 365 ), ( 139, 190 ), ( 205.75, 85 ), ( 250.25, 85 ), ( 317, 295 ), ( 450.5, 120 ), ( 584, 190 ), ( 717.5, 260 ), ( 806.5, 330 ), ( 895.5, 155.00000000000003 ) ]
+                    preparedPoints =
+                        [ ( 94.5, 365 ), ( 139, 190 ), ( 205.75, 85 ), ( 250.25, 85 ), ( 317, 295 ), ( 450.5, 120 ), ( 584, 190 ), ( 717.5, 260 ), ( 806.5, 330 ), ( 895.5, 155.00000000000003 ) ]
 
-                        preparedJSPoints =
-                            [ [ 94.5, 365 ], [ 139, 190 ], [ 205.75, 85 ], [ 250.25, 85 ], [ 317, 295 ], [ 450.5, 120 ], [ 584, 190 ], [ 717.5, 260 ], [ 806.5, 330 ], [ 895.5, 155.00000000000003 ] ]
+                    preparedJSPoints =
+                        [ [ 94.5, 365 ], [ 139, 190 ], [ 205.75, 85 ], [ 250.25, 85 ], [ 317, 295 ], [ 450.5, 120 ], [ 584, 190 ], [ 717.5, 260 ], [ 806.5, 330 ], [ 895.5, 155.00000000000003 ] ]
 
-                        points : List ( Float, Float )
-                        points =
-                            [ ( 0.1, 0.1 )
-                            , ( 0.2, 0.6 )
-                            , ( 0.35, 0.9 )
-                            , ( 0.45, 0.9 )
-                            , ( 0.6, 0.3 )
-                            , ( 0.9, 0.8 )
-                            , ( 1.2, 0.6 )
-                            , ( 1.5, 0.4 )
-                            , ( 1.7, 0.2 )
-                            , ( 1.9, 0.7 )
-                            ]
+                    points : List ( Float, Float )
+                    points =
+                        [ ( 0.1, 0.1 )
+                        , ( 0.2, 0.6 )
+                        , ( 0.35, 0.9 )
+                        , ( 0.45, 0.9 )
+                        , ( 0.6, 0.3 )
+                        , ( 0.9, 0.8 )
+                        , ( 1.2, 0.6 )
+                        , ( 1.5, 0.4 )
+                        , ( 1.7, 0.2 )
+                        , ( 1.9, 0.7 )
+                        ]
 
-                        expected =
-                            { moveto = MoveTo ( 0.1, 0.1 )
-                            , drawtos =
-                                [ CurveTo
-                                    [ f ( 0.13333333333333333, 0.2866666666666666, 0.16666666666666669, 0.47333333333333333, 0.2, 0.6 )
-                                    , f ( 0.25, 0.7899999999999999, 0.3, 0.9, 0.35, 0.9 )
-                                    , f ( 0.3833333333333333, 0.9, 0.4166666666666667, 0.9, 0.45, 0.9 )
-                                    , f ( 0.5, 0.9, 0.55, 0.3, 0.6, 0.3 )
-                                    , f ( 0.7, 0.3, 0.8, 0.8, 0.9, 0.8 )
-                                    , f ( 1, 0.8, 1.1, 0.6666666666666666, 1.2, 0.6 )
-                                    , f ( 1.3, 0.5333333333333333, 1.4, 0.4866666666666667, 1.5, 0.4 )
-                                    , f ( 1.5666666666666667, 0.34222222222222226, 1.6333333333333333, 0.2, 1.7, 0.2 )
-                                    , f ( 1.7666666666666666, 0.2, 1.8333333333333333, 0.44999999999999996, 1.9, 0.7 )
-                                    ]
+                    expected =
+                        { moveto = MoveTo ( 0.1, 0.1 )
+                        , drawtos =
+                            [ CurveTo
+                                [ f ( 0.13333333333333333, 0.2866666666666666, 0.16666666666666669, 0.47333333333333333, 0.2, 0.6 )
+                                , f ( 0.25, 0.7899999999999999, 0.3, 0.9, 0.35, 0.9 )
+                                , f ( 0.3833333333333333, 0.9, 0.4166666666666667, 0.9, 0.45, 0.9 )
+                                , f ( 0.5, 0.9, 0.55, 0.3, 0.6, 0.3 )
+                                , f ( 0.7, 0.3, 0.8, 0.8, 0.9, 0.8 )
+                                , f ( 1, 0.8, 1.1, 0.6666666666666666, 1.2, 0.6 )
+                                , f ( 1.3, 0.5333333333333333, 1.4, 0.4866666666666667, 1.5, 0.4 )
+                                , f ( 1.5666666666666667, 0.34222222222222226, 1.6333333333333333, 0.2, 1.7, 0.2 )
+                                , f ( 1.7666666666666666, 0.2, 1.8333333333333333, 0.44999999999999996, 1.9, 0.7 )
                                 ]
-                            }
-                                |> convert
-                    in
-                        Curve.monotoneX points
-                            |> Expect.equal expected
-            , test "doesn't stack overflow" <|
-                \_ ->
-                    let
-                        path : SubPath
-                        path =
-                            Curve.monotoneX (List.repeat stackSmasher ( 0, 0 ))
-                    in
-                        Expect.pass
-            ]
+                            ]
+                        }
+                            |> convert
+                in
+                Curve.monotoneX points
+                    |> Expect.equal expected
+        , test "doesn't stack overflow" <|
+            \_ ->
+                let
+                    path : SubPath
+                    path =
+                        Curve.monotoneX (List.repeat stackSmasher ( 0, 0 ))
+                in
+                Expect.pass
+        ]
 
 
 testBundle =
@@ -261,8 +288,8 @@ testBundle =
                         }
                             |> convert
                 in
-                    Curve.bundle 0.5 points
-                        |> Expect.equal expected
+                Curve.bundle 0.5 points
+                    |> Expect.equal expected
         ]
 
 
@@ -290,8 +317,8 @@ testBasis =
                         }
                             |> convert
                 in
-                    Curve.basis points
-                        |> Expect.equal expected
+                Curve.basis points
+                    |> Expect.equal expected
         , test "basis doesn't stack overflow" <|
             \_ ->
                 let
@@ -299,7 +326,7 @@ testBasis =
                     path =
                         Curve.basis (List.repeat stackSmasher ( 0, 0 ))
                 in
-                    Expect.pass
+                Expect.pass
         , test "basis open gives expected output" <|
             \_ ->
                 let
@@ -323,8 +350,8 @@ testBasis =
                         }
                             |> convert
                 in
-                    Curve.basisOpen points
-                        |> Expect.equal expected
+                Curve.basisOpen points
+                    |> Expect.equal expected
         , test "basis open doesn't stack overflow" <|
             \_ ->
                 let
@@ -332,7 +359,7 @@ testBasis =
                     path =
                         Curve.basisOpen (List.repeat stackSmasher ( 0, 0 ))
                 in
-                    Expect.pass
+                Expect.pass
         , test "basis closed gives expected output" <|
             \_ ->
                 let
@@ -359,8 +386,8 @@ testBasis =
                         }
                             |> convert
                 in
-                    Curve.basisClosed points
-                        |> Expect.equal expected
+                Curve.basisClosed points
+                    |> Expect.equal expected
         , test "basis closed doesn't stack overflow" <|
             \_ ->
                 let
@@ -368,5 +395,5 @@ testBasis =
                     path =
                         Curve.basisClosed (List.repeat stackSmasher ( 0, 0 ))
                 in
-                    Expect.pass
+                Expect.pass
         ]
