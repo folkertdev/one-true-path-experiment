@@ -258,7 +258,7 @@ reverse segment =
 
 This function needs the previous segment to the starting point and (for bezier curves) the control points
 
-    import LowLevel.Command exposing (DrawTo(EllipticalArc), CursorState)
+    import LowLevel.Command exposing (DrawTo(EllipticalArc), CursorState, clockwise, largestArc)
 
     start : CursorState
     start = { start = (0,0), cursor = (0,0), previousControlPoint = Nothing }

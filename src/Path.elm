@@ -59,11 +59,12 @@ element path attributes =
 
 {-| Turn a `Path` into a `String`. The result is ready to be used with the `d` attribute.
 
+    import Curve
+    import SubPath exposing (SubPath)
 
     myPath : SubPath
     myPath =
-        subpath (moveTo (0,0)) [ lineTo [ (42, 73) ] ]
-
+        Curve.linear [ (0,0), (42, 73) ]
 
     Path.toString [ myPath ]
         --> "M0,0 L42,73"
@@ -85,12 +86,12 @@ toString =
 
 {-| Parse a path string into a `Path`
 
-    import SubPath exposing (SubPath, subpath)
-    import LowLevel.Command exposing (moveTo, lineTo)
+    import Curve
+    import SubPath exposing (SubPath)
 
     expected : SubPath
     expected =
-        subpath (moveTo (0,0)) [ lineTo [ (42, 73) ] ]
+        Curve.linear [ (0,0), (42, 73) ]
 
     parse "M0,0 l42,73"
         --> Ok [expected]

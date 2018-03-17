@@ -34,14 +34,17 @@ module SubPath
         , toStringWith
         , Option
         , decimalPlaces
+        , mergeAdjacent
         )
 
 {-|
 
-SubPaths are the main unit of composition for this package. They can be transformed, joined and split.
+`SubPath`s are the most important type in this package.
+
+In most cases they are generated with functions from the `Curve` module.
 
     import Svg
-    import Svg.Attributes (fill)
+    import Svg.Attributes exposing (fill)
     import Curve
     import SubPath exposing (connect)
 
@@ -50,6 +53,8 @@ SubPaths are the main unit of composition for this package. They can be transfor
 
     down =
         Curve.linear [(0,0), (0,1)]
+
+This module has several functions for composing subpaths
 
     topRightCorner =
         right
@@ -63,6 +68,8 @@ SubPaths are the main unit of composition for this package. They can be transfor
         topRightCorner
             |> connect (reverse bottomLeftCorner)
             |> close
+
+And can generate svg elements
 
     view : Svg msg
     view =
@@ -82,7 +89,7 @@ SubPaths are the main unit of composition for this package. They can be transfor
 ## Conversion
 
 @docs element, toString, toStringWith
-@docs Option, decimalPlaces
+@docs Option, decimalPlaces, mergeAdjacent
 
 
 @docs reverse, compress
@@ -170,6 +177,16 @@ A subpath is one moveto command followed by an arbitrary number of drawto comman
 **Note:** Equality with the default `==` function in unreliable for `SubPath`. The easiest way to check for
 equality is to use `SubPath.toString` on both arguments.
 
+If you need more "fuzzy" equality use `toStringWith`, for instance:
+
+    options : List Option
+    options =
+        [ decimalPlaces 3, mergeAdjacent ]
+
+    equalSubpaths : SubPath -> SubPath -> Bool
+    equalSubpaths a b =
+        toStringWith options a == toStringWith options b
+
 -}
 type SubPath
     = SubPath Instructions
@@ -181,6 +198,8 @@ type alias Instructions =
 
 
 {-| Construct a subpath
+
+    import LowLevel.Command exposing (moveTo, lineTo)
 
     subpath (moveTo (0,0)) [ lineTo [ (10,10), (10, 20) ] ]
 
@@ -214,18 +233,18 @@ unwrap subpath =
 -}
 type Option
     = DecimalPlaces Int
-    | WithCompression Bool
+    | MergeAdjacent
 
 
 type alias Config =
     { decimalPlaces : Maybe Int
-    , compress : Bool
+    , mergeAdjacent : Bool
     }
 
 
 defaultConfig : Config
 defaultConfig =
-    { decimalPlaces = Nothing, compress = False }
+    { decimalPlaces = Nothing, mergeAdjacent = False }
 
 
 optionFolder : Option -> Config -> Config
@@ -234,22 +253,56 @@ optionFolder option config =
         DecimalPlaces n ->
             { config | decimalPlaces = Just n }
 
-        WithCompression b ->
-            { config | compress = b }
+        MergeAdjacent ->
+            { config | mergeAdjacent = True }
 
 
 {-| Set the maximum number of decimal places in the output
+
+    import Curve
+
+    line : SubPath
+    line = Curve.linear [ (0, 0), (1/3, 1/7) ]
+
+    SubPath.toString line
+        --> "M0,0 L0.3333333333333333,0.14285714285714285"
+
+    SubPath.toStringWith [ decimalPlaces 3 ] line
+        --> "M0,0 L0.333,0.143"
 -}
 decimalPlaces : Int -> Option
 decimalPlaces =
     DecimalPlaces
 
 
-{-| Set the maximum number of decimal places in the output
+{-| Join adjacent instructions where possible
+This can save a few characters, but more importantly makes
+comparison of subpaths (based on the ouput string) more reliable.
+
+    import Curve
+
+    right : SubPath
+    right = Curve.linear [ (0, 0), (1, 0) ]
+
+    down : SubPath
+    down = Curve.linear [ (0, 0), (0, 1) ]
+
+    line : SubPath
+    line =
+        right
+            |> continue down
+
+    SubPath.toString line
+        --> "M0,0 L1,0 L1,1"
+
+    SubPath.toStringWith [ mergeAdjacent ] line
+        --> "M0,0 L1,0 1,1"
+
+
 -}
-withCompression : Option
-withCompression =
-    WithCompression True
+mergeAdjacent : Option
+mergeAdjacent =
+    MergeAdjacent
 
 
 {-| Convert a subpath into SVG path notation
@@ -263,9 +316,7 @@ withCompression =
 -}
 toString : SubPath -> String
 toString subpath =
-    toLowLevel subpath
-        |> Maybe.map (LowLevel.toString << List.singleton)
-        |> Maybe.withDefault ""
+    toStringWith [] subpath
 
 
 {-| toString with options
@@ -285,7 +336,7 @@ toStringWith options subpath =
                     [ LowLevel.decimalPlaces n ]
     in
         subpath
-            |> (if config.compress then
+            |> (if config.mergeAdjacent then
                     compress
                 else
                     identity
@@ -458,9 +509,8 @@ It is assumed that for every two adjacent segments in the list, the first segmen
 
     [ line (0,0) (10,10) , line (10, 10) (20, 10) ]
         |> fromSegments
-        |> SubPath.compress
-        |> SubPath.toString
-        --> SubPath.toString (Curve.linear [ (0,0), (10,10), (20, 10) ])
+        |> SubPath.toStringWith [ mergeAdjacent ]
+        --> SubPath.toString <| Curve.linear [ (0,0), (10,10), (20, 10) ]
 -}
 fromSegments : List Segment -> SubPath
 fromSegments segments =
@@ -473,6 +523,9 @@ fromSegments segments =
 
 
 {-| Convert a subpath to its `Segment`s
+
+    import Curve
+    import Segment exposing (line)
 
     Curve.linear [ (0,0), (10,10), (20, 10) ]
         |> toSegments
