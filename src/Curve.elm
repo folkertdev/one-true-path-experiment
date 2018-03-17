@@ -457,7 +457,7 @@ cardinal tension points =
                 subpath (moveTo p0) [ lineTo [ p1 ] ]
 
             p0 :: p1 :: p2 :: rest ->
-                subpath (moveTo p0) [ cubicCurveTo (cardinalPoint k p0 p1 p1 p2 :: helper [] points) ]
+                subpath (moveTo p0) [ cubicCurveTo (cardinalPoint k p1 p0 p1 p2 :: helper [] points) ]
 
             _ ->
                 empty

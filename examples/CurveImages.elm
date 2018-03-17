@@ -298,6 +298,17 @@ basis =
     diagram "basis" Curve.basis points
 
 
+basisClosedReversed =
+    let
+        function =
+            List.reverse
+                >> Curve.basisClosed
+                >> SubPath.reverse
+                >> SubPath.compress
+    in
+        diagram "basis closed reversed" function points
+
+
 basisClosed =
     diagram "basis closed" Curve.basisClosed points
 
