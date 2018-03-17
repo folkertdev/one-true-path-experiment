@@ -31,6 +31,9 @@ module SubPath
         , evenlySpaced
         , evenlySpacedWithEndpoints
         , evenlySpacedPoints
+        , toStringWith
+        , Option
+        , decimalPlaces
         )
 
 {-|
@@ -78,7 +81,10 @@ SubPaths are the main unit of composition for this package. They can be transfor
 
 ## Conversion
 
-@docs element, toString
+@docs element, toString, toStringWith
+@docs Option, decimalPlaces
+
+
 @docs reverse, compress
 
 
@@ -204,6 +210,48 @@ unwrap subpath =
             Just { internal | drawtos = Deque.toList internal.drawtos }
 
 
+{-| Formatting options
+-}
+type Option
+    = DecimalPlaces Int
+    | WithCompression Bool
+
+
+type alias Config =
+    { decimalPlaces : Maybe Int
+    , compress : Bool
+    }
+
+
+defaultConfig : Config
+defaultConfig =
+    { decimalPlaces = Nothing, compress = False }
+
+
+optionFolder : Option -> Config -> Config
+optionFolder option config =
+    case option of
+        DecimalPlaces n ->
+            { config | decimalPlaces = Just n }
+
+        WithCompression b ->
+            { config | compress = b }
+
+
+{-| Set the maximum number of decimal places in the output
+-}
+decimalPlaces : Int -> Option
+decimalPlaces =
+    DecimalPlaces
+
+
+{-| Set the maximum number of decimal places in the output
+-}
+withCompression : Option
+withCompression =
+    WithCompression True
+
+
 {-| Convert a subpath into SVG path notation
 
     import Curve
@@ -218,6 +266,33 @@ toString subpath =
     toLowLevel subpath
         |> Maybe.map (LowLevel.toString << List.singleton)
         |> Maybe.withDefault ""
+
+
+{-| toString with options
+-}
+toStringWith : List Option -> SubPath -> String
+toStringWith options subpath =
+    let
+        config =
+            List.foldl optionFolder defaultConfig options
+
+        lowLevelOptions =
+            case config.decimalPlaces of
+                Nothing ->
+                    []
+
+                Just n ->
+                    [ LowLevel.decimalPlaces n ]
+    in
+        subpath
+            |> (if config.compress then
+                    compress
+                else
+                    identity
+               )
+            |> toLowLevel
+            |> Maybe.map (LowLevel.toStringWith lowLevelOptions << List.singleton)
+            |> Maybe.withDefault ""
 
 
 {-| Construct an svg path element from a `Path` with the given attributes
