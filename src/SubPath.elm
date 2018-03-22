@@ -1,58 +1,56 @@
 module SubPath
     exposing
-        ( SubPath
+        ( ArcLengthParameterized
+        , Option
+        , SubPath
+        , arcLength
+        , arcLengthParameterized
+        , arcLengthToParameterValue
         , close
+        , compress
         , connect
         , continue
         , continueSmooth
+        , decimalPlaces
         , element
         , empty
+        , evenlySpaced
+        , evenlySpacedPoints
+        , evenlySpacedWithEndpoints
         , fromLowLevel
         , fromSegments
         , mapCoordinate
         , mapWithCursorState
+        , mergeAdjacent
+        , parameterValueToArcLength
+        , pointAlong
+        , reverse
         , rotate
         , scale
         , subpath
+        , tangentAlong
         , toLowLevel
         , toSegments
         , toString
+        , toStringWith
         , translate
         , unwrap
-        , reverse
-        , compress
-        , ArcLengthParameterized
-        , arcLengthParameterized
-        , arcLength
-        , pointAlong
-        , tangentAlong
-        , parameterValueToArcLength
-        , arcLengthToParameterValue
-        , evenlySpaced
-        , evenlySpacedWithEndpoints
-        , evenlySpacedPoints
-        , toStringWith
-        , Option
-        , decimalPlaces
-        , mergeAdjacent
         )
 
-{-|
-
-`SubPath`s are the most important type in this package.
+{-| `SubPath`s are the most important type in this package.
 
 In most cases they are generated with functions from the `Curve` module.
 
-    import Svg
-    import Svg.Attributes exposing (fill)
     import Curve
     import SubPath exposing (connect)
+    import Svg
+    import Svg.Attributes exposing (fill)
 
     right =
-        Curve.linear [(0,0), (1,0)]
+        Curve.linear [ ( 0, 0 ), ( 1, 0 ) ]
 
     down =
-        Curve.linear [(0,0), (0,1)]
+        Curve.linear [ ( 0, 0 ), ( 0, 1 ) ]
 
 This module has several functions for composing subpaths
 
@@ -73,7 +71,7 @@ And can generate svg elements
 
     view : Svg msg
     view =
-        Svg.svg [] [ SubPath.element square [ fill "none"] ]
+        Svg.svg [] [ SubPath.element square [ fill "none" ] ]
 
 
 ## Types
@@ -90,7 +88,6 @@ And can generate svg elements
 
 @docs element, toString, toStringWith
 @docs Option, decimalPlaces, mergeAdjacent
-
 
 @docs reverse, compress
 
@@ -130,7 +127,6 @@ And can generate svg elements
         |> SubPath.toString
         --> "M0,0 Q0.5,-0.5 1,0 Z"
 
-
 @docs continue , connect, continueSmooth, close
 
 
@@ -138,6 +134,7 @@ And can generate svg elements
 
 @docs translate, rotate, scale
 @docs mapCoordinate, mapWithCursorState
+
 
 ## Arc Length Parameterization
 
@@ -204,6 +201,7 @@ type alias Instructions =
     subpath (moveTo (0,0)) [ lineTo [ (10,10), (10, 20) ] ]
 
 **Always try to use a function from `Curve` over manual subpath construction!**
+
 -}
 subpath : MoveTo -> List DrawTo -> SubPath
 subpath moveto drawtos =
@@ -269,6 +267,7 @@ optionFolder option config =
 
     SubPath.toStringWith [ decimalPlaces 3 ] line
         --> "M0,0 L0.333,0.143"
+
 -}
 decimalPlaces : Int -> Option
 decimalPlaces =
@@ -298,7 +297,6 @@ comparison of subpaths (based on the ouput string) more reliable.
     SubPath.toStringWith [ mergeAdjacent ] line
         --> "M0,0 L1,0 1,1"
 
-
 -}
 mergeAdjacent : Option
 mergeAdjacent =
@@ -313,6 +311,7 @@ mergeAdjacent =
     line = Curve.linear [ (0,0), (10,10), (10, 20) ]
 
     SubPath.toString line --> "M0,0 L10,10 10,20"
+
 -}
 toString : SubPath -> String
 toString subpath =
@@ -335,21 +334,22 @@ toStringWith options subpath =
                 Just n ->
                     [ LowLevel.decimalPlaces n ]
     in
-        subpath
-            |> (if config.mergeAdjacent then
-                    compress
-                else
-                    identity
-               )
-            |> toLowLevel
-            |> Maybe.map (LowLevel.toStringWith lowLevelOptions << List.singleton)
-            |> Maybe.withDefault ""
+    subpath
+        |> (if config.mergeAdjacent then
+                compress
+            else
+                identity
+           )
+        |> toLowLevel
+        |> Maybe.map (LowLevel.toStringWith lowLevelOptions << List.singleton)
+        |> Maybe.withDefault ""
 
 
 {-| Construct an svg path element from a `Path` with the given attributes
 
     Svg.svg []
         [ SubPath.element mySubPath [ stroke "black" ] ]
+
 -}
 element : SubPath -> List (Svg.Attribute msg) -> Svg.Svg msg
 element path attributes =
@@ -380,17 +380,16 @@ mapWithCursorState mapDrawTo subpath =
                             { start = cursorState.start, cursor = cursorState.cursor, previousControlPoint = Nothing }
                                 |> Command.updateCursorState drawto
                     in
-                        ( new
-                        , mapDrawTo cursorState drawto :: accum
-                        )
+                    ( new
+                    , mapDrawTo cursorState drawto :: accum
+                    )
             in
-                Deque.foldl folder ( { start = start, cursor = start, previousControlPoint = Nothing }, [] ) drawtos
-                    |> Tuple.second
-                    |> List.reverse
+            Deque.foldl folder ( { start = start, cursor = start, previousControlPoint = Nothing }, [] ) drawtos
+                |> Tuple.second
+                |> List.reverse
 
 
 {-| Start the second subpath where the first one ends
-
 -}
 continue : SubPath -> SubPath -> SubPath
 continue =
@@ -400,10 +399,10 @@ continue =
                 distance =
                     Vec2.sub (finalPoint left) (firstPoint right)
             in
-                unsafeConcatenate left (mapCoordinateInstructions (Vec2.add distance) right)
-                    |> SubPath
+            unsafeConcatenate left (mapCoordinateInstructions (Vec2.add distance) right)
+                |> SubPath
     in
-        map2 helper
+    map2 helper
 
 
 {-| Start the second subpath where the first one ends, and rotate it to continue smoothly
@@ -426,8 +425,8 @@ continueSmooth right left =
                             Segment.angle final first
                                 |> negate
                     in
-                        left
-                            |> continue (rotate angle right)
+                    left
+                        |> continue (rotate angle right)
 
 
 {-| Join two subpaths, connecting them with a straight line
@@ -439,7 +438,7 @@ connect =
             unsafeConcatenate (pushBack (Command.lineTo [ firstPoint right ]) left) right
                 |> SubPath
     in
-        map2 helper
+    map2 helper
 
 
 {-| Append a ClosePath at the end of the subpath (if none is present)
@@ -495,7 +494,7 @@ finalCursorState { moveto, drawtos } =
         initial =
             { start = start, cursor = start, previousControlPoint = Nothing }
     in
-        Deque.foldl Command.updateCursorState initial drawtos
+    Deque.foldl Command.updateCursorState initial drawtos
 
 
 {-| Convert a list of segments to a path
@@ -511,6 +510,7 @@ It is assumed that for every two adjacent segments in the list, the first segmen
         |> fromSegments
         |> SubPath.toStringWith [ mergeAdjacent ]
         --> SubPath.toString <| Curve.linear [ (0,0), (10,10), (20, 10) ]
+
 -}
 fromSegments : List Segment -> SubPath
 fromSegments segments =
@@ -530,6 +530,7 @@ fromSegments segments =
     Curve.linear [ (0,0), (10,10), (20, 10) ]
         |> toSegments
         --> [ line (0,0) (10,10) , line (10, 10) (20, 10) ]
+
 -}
 toSegments : SubPath -> List Segment
 toSegments subpath =
@@ -555,10 +556,10 @@ toSegments subpath =
                                         |> Maybe.map Segment.toCursorState
                                         |> Maybe.withDefault previousState
                             in
-                                ( finalNewSegment, accum ++ newSegments )
+                            ( finalNewSegment, accum ++ newSegments )
                     in
-                        List.foldl folder ( cursorState, [] ) (Deque.toList drawtos)
-                            |> Tuple.second
+                    List.foldl folder ( cursorState, [] ) (Deque.toList drawtos)
+                        |> Tuple.second
 
 
 {-| Reverse a subpath
@@ -566,7 +567,7 @@ toSegments subpath =
 The direction of a subpath [can be important][reverse] if you want to use SVG fills.
 Another use is in composing subpaths:
 
-    arrowHead : (Float, Float) -> Float -> SubPath
+    arrowHead : ( Float, Float ) -> Float -> SubPath
     arrowHead location angle =
         let
             line =
@@ -579,11 +580,11 @@ Another use is in composing subpaths:
             b =
                 SubPath.rotate (angle + (pi + pi / 4)) line
         in
-            SubPath.reverse a
-                |> SubPath.continue b
-
+        SubPath.reverse a
+            |> SubPath.continue b
 
 [reverse]: https://pomax.github.io/svg-path-reverse/
+
 -}
 reverse : SubPath -> SubPath
 reverse =
@@ -591,7 +592,7 @@ reverse =
         reverseMap f =
             List.foldl (\elem accum -> f elem :: accum) []
     in
-        fromSegments << reverseMap Segment.reverse << toSegments
+    fromSegments << reverseMap Segment.reverse << toSegments
 
 
 {-| Try to merge adjacent instructions
@@ -600,6 +601,7 @@ This conversion is costly (timewise), but can shorten a subpath
 considerably, meaning other functions are faster.
 
 Additionally, the toString output can become shorter.
+
 -}
 compress : SubPath -> SubPath
 compress subpath =
@@ -612,7 +614,6 @@ compress subpath =
 
 
 {-| merge adjacent instructions
-
 -}
 compressHelper : Deque DrawTo -> Deque DrawTo
 compressHelper drawtos =
@@ -625,15 +626,15 @@ compressHelper drawtos =
                 Err _ ->
                     ( instruction, previous :: accum )
     in
-        case Deque.toList drawtos of
-            [] ->
-                Deque.empty
+    case Deque.toList drawtos of
+        [] ->
+            Deque.empty
 
-            first :: rest ->
-                List.foldl folder ( first, [] ) rest
-                    |> uncurry (::)
-                    |> List.reverse
-                    |> Deque.fromList
+        first :: rest ->
+            List.foldl folder ( first, [] ) rest
+                |> uncurry (::)
+                |> List.reverse
+                |> Deque.fromList
 
 
 {-| Translate the subpath by a vector
@@ -679,7 +680,7 @@ rotate angle subpath =
                         |> cleanVec2
                         |> Vec2.add firstPoint
             in
-                mapCoordinate transform subpath
+            mapCoordinate transform subpath
 
 
 {-| Scale the subpath in the x and y direction
@@ -688,30 +689,38 @@ For more complex scaling operations, define a transformation matrix and use `map
 
 -}
 scale : Vec2 Float -> SubPath -> SubPath
-scale vec subpath =
+scale ( scaleX, scaleY ) subpath =
     case subpath of
         Empty ->
             Empty
 
         SubPath { moveto, drawtos } ->
             let
-                (MoveTo firstPoint) =
+                (MoveTo origin) =
                     moveto
 
-                transform point =
-                    point
-                        |> flip Vec2.sub firstPoint
-                        |> flip Vec3.fromV2 0
-                        |> Mat4.transform (Mat4.makeScale (Vec3.fromV2 vec 0))
-                        |> (\( x, y, z ) -> ( x, y ))
-                        |> Vec2.add firstPoint
+                ds =
+                    Deque.toList drawtos
+                        |> List.map (Command.scaleDrawTo { origin = origin, scaleX = scaleX, scaleY = scaleY })
+                        |> Deque.fromList
             in
-                mapCoordinate transform subpath
+            SubPath { moveto = moveto, drawtos = ds }
+
+
+
+{-
+   SubPath
+       { moveto = moveto
+       , drawtos =
+           Deque.map (Command.scaleDrawTo { origin = origin, scaleX = scaleX, scaleY = scaleY }) drawtos
+       }
+-}
 
 
 {-| Converting a svg-path-lowlevel subpath into a one-true-path subpath. Used in parsing
 
 > Beware that the moveto is always interpreted as **Absolute**.
+
 -}
 fromLowLevel : LowLevel.SubPath -> SubPath
 fromLowLevel { moveto, drawtos } =
@@ -722,7 +731,7 @@ fromLowLevel { moveto, drawtos } =
                 initialCursorState =
                     { start = target, cursor = target, previousControlPoint = Nothing }
             in
-                subpath (MoveTo target) (Tuple.second <| Command.fromLowLevelDrawTos drawtos initialCursorState)
+            subpath (MoveTo target) (Tuple.second <| Command.fromLowLevelDrawTos drawtos initialCursorState)
 
 
 {-| Converting a one-true-path subpath into a svg-path-lowlevel subpath. Used in toString
@@ -757,10 +766,12 @@ type ArcLengthParameterized
 For calculating the parameterization, approximations are used. To bound the error that approximations introduce,
 you can supply a `tolerance`: Operations (arcLength, pointOn, ect.) are at most `tolerance` away from the truth.
 
-    tolerance = 1e-4
+    tolerance =
+        1.0e-4
 
     parameterized =
         arcLengthParameterized tolerance mySubPath
+
 -}
 arcLengthParameterized : Float -> SubPath -> ArcLengthParameterized
 arcLengthParameterized tolerance subpath =
@@ -787,18 +798,18 @@ arcLengthParameterizedHelper tolerance segments =
                 rightParameterized =
                     arcLengthParameterizedHelper tolerance rightSegments
             in
-                case rightParameterized of
-                    None ->
-                        leftParameterized
+            case rightParameterized of
+                None ->
+                    leftParameterized
 
-                    _ ->
-                        Node
-                            { lengthAtSplit = arcLength leftParameterized
-                            , totalLength = arcLength leftParameterized + arcLength rightParameterized
-                            , left = leftParameterized
-                            , right = rightParameterized
-                            , tolerance = tolerance
-                            }
+                _ ->
+                    Node
+                        { lengthAtSplit = arcLength leftParameterized
+                        , totalLength = arcLength leftParameterized + arcLength rightParameterized
+                        , left = leftParameterized
+                        , right = rightParameterized
+                        , tolerance = tolerance
+                        }
 
 
 {-| Find the total arc length of an elliptical arc. This will be accurate to within the tolerance given when calling arcLengthParameterized.
@@ -828,36 +839,36 @@ traverse : (Segment.ArcLengthParameterized -> Float -> Maybe a) -> ArcLengthPara
 traverse tagger arcLengthParameterized t =
     let
         clamp totalLength tolerance length =
-            if (abs (length - totalLength) <= tolerance) then
+            if abs (length - totalLength) <= tolerance then
                 totalLength
-            else if (abs length <= tolerance) then
+            else if abs length <= tolerance then
                 0
             else
                 length
     in
-        case arcLengthParameterized of
-            None ->
-                Nothing
+    case arcLengthParameterized of
+        None ->
+            Nothing
 
-            Leaf { segment, tolerance } ->
-                let
-                    totalLength =
-                        Segment.arcLength segment
+        Leaf { segment, tolerance } ->
+            let
+                totalLength =
+                    Segment.arcLength segment
 
-                    answer =
-                        tagger segment (clamp totalLength tolerance t)
-                in
-                    answer
+                answer =
+                    tagger segment (clamp totalLength tolerance t)
+            in
+            answer
 
-            Node { totalLength, lengthAtSplit, left, right, tolerance } ->
-                let
-                    clamped =
-                        clamp totalLength tolerance t
-                in
-                    if clamped <= lengthAtSplit then
-                        traverse tagger left clamped
-                    else
-                        traverse tagger right (clamped - lengthAtSplit)
+        Node { totalLength, lengthAtSplit, left, right, tolerance } ->
+            let
+                clamped =
+                    clamp totalLength tolerance t
+            in
+            if clamped <= lengthAtSplit then
+                traverse tagger left clamped
+            else
+                traverse tagger right (clamped - lengthAtSplit)
 
 
 {-| A point at some distance along the curve.
@@ -871,7 +882,6 @@ traverse tagger arcLengthParameterized t =
 
     pointAlong parameterized (arcLength parameterized / 2)
         --> Just (5, 0)
-
 
 -}
 pointAlong : ArcLengthParameterized -> Float -> Maybe ( Float, Float )
@@ -938,8 +948,6 @@ evenlySpacedPoints count arcLengthParameterized =
 
 
 {-| Evenly splits the curve into `count` segments, giving their length along the curve
-
-
 -}
 evenlySpaced : Int -> ArcLengthParameterized -> List Float
 evenlySpaced count arcLengthParameterized =
@@ -947,16 +955,17 @@ evenlySpaced count arcLengthParameterized =
         length =
             arcLength arcLengthParameterized
     in
-        evenlySpacedParameterValues count
-            |> List.map (\t -> t * length)
+    evenlySpacedParameterValues count
+        |> List.map (\t -> t * length)
 
 
 {-| Similar to `evenlySpaced`, but also gives the start and end point of the curve
 
-    evenlySpacedPoints : Int -> ArcLengthParameterized -> List (Float, Float)
+    evenlySpacedPoints : Int -> ArcLengthParameterized -> List ( Float, Float )
     evenlySpacedPoints count arcLengthParameterized =
         evenlySpacedWithEndpoints count arcLengthParameterized
             |> List.filterMap (pointAlong arcLengthParameterized)
+
 -}
 evenlySpacedWithEndpoints : Int -> ArcLengthParameterized -> List Float
 evenlySpacedWithEndpoints count arcLengthParameterized =
@@ -964,8 +973,8 @@ evenlySpacedWithEndpoints count arcLengthParameterized =
         length =
             arcLength arcLengthParameterized
     in
-        evenlySpacedParameterValuesWithEndpoints count
-            |> List.map (\t -> t * length)
+    evenlySpacedParameterValuesWithEndpoints count
+        |> List.map (\t -> t * length)
 
 
 evenlySpacedParameterValuesWithEndpoints : Int -> List Float
@@ -983,12 +992,12 @@ evenlySpacedParameterValuesWithEndpoints count =
             intermediate =
                 helper (max 0 (count - 2))
         in
-            0 :: intermediate ++ [ 1 ]
+        0 :: intermediate ++ [ 1 ]
 
 
 evenlySpacedParameterValues : Int -> List Float
 evenlySpacedParameterValues count =
-    List.repeat (count - 1) (1 / (toFloat count))
+    List.repeat (count - 1) (1 / toFloat count)
         |> List.indexedMap (\i v -> (toFloat i + 1) * v)
 
 
