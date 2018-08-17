@@ -38,33 +38,38 @@ Supports all the curves defined by [D3 Shape](https://github.com/d3/d3-shape#cur
 
 ## Linear
 
+Draw a straight line connecting the data points. The closed variant repeats
+the final point to create a closed curve.
+
 @docs linear, linearClosed
 
 
 ## Bezier
+
+Helpers for bezier curves. Quadratic bezier segments have a start and end point, and 1 control point.
+Cubic beziers have 2 control points. The smooth variants can use the previous control point to draw the next segment.
+
+The first argument is the starting point, the second argument a list of extensions.
 
 @docs cubicBezier , smoothCubicBezier , quadraticBezier , smoothQuadraticBezier
 
 
 ## Step
 
+Step goes some distance to the right, then to the y-coordinate of the next data point, and then draws to the next point.
+
+The first argument determines where the step is.
+
+* `step 1 points` is `stepAfter`
+* `step 0 points` is `stepBefore`
+* `step 0.5 points` steps exactly in the middle
+
 @docs step, stepBefore, stepAfter
-
-
-## Basis
-
-@docs basis, basisClosed, basisOpen, bundle
-
-
-## Cardinal
-
-@docs cardinal, cardinalClosed, cardinalOpen
 
 
 ## Catmull-Rom
 
-Catmull-Rom splines are a special case of cardinal splines. These curves are great for animation, because the data points are
-hit exactly and the curve is smooth.
+Catmull-Rom is perfect for animation, because data points are hit exactly and the curve is smooth.
 
 @docs catmullRom, catmullRomClosed, catmullRomOpen
 
@@ -76,7 +81,7 @@ It cannot first go down and then go up.
 
 <img style="max-width: 100%;" src="https://upload.wikimedia.org/wikipedia/en/f/fe/MonotCubInt.png" />
 
-Notice that around 0.45, the cubic interpolation dives below the y-coordinate of the next point, whereas the monotone interpolation does not.
+Around 0.45, the cubic interpolation dives below the y-coordinate of the next point, whereas the monotone interpolation does not.
 
 A nice consequence is that there are no weird bumps in the curve between the data points.
 
@@ -87,6 +92,13 @@ A nice consequence is that there are no weird bumps in the curve between the dat
 
 @docs natural
 
+## Basis
+
+@docs basis, basisClosed, basisOpen, bundle
+
+## Cardinal
+
+@docs cardinal, cardinalClosed, cardinalOpen
 
 ## Transformations
 
@@ -138,7 +150,7 @@ area points =
             |> close
 
 
-{-| Draw straight lines between the data points.
+{-| Draw straigt lines between the data points
 
 <img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/linear.svg" />
 
@@ -151,6 +163,21 @@ linear points =
 
         x :: xs ->
             subpath (moveTo x) [ lineTo xs ]
+
+
+{-| Draw a straigt line between the data points, connecting the ends.
+
+<img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/linearClosed.svg" />
+
+-}
+linearClosed : List (Vec2 Float) -> SubPath
+linearClosed points =
+    case points of
+        [] ->
+            empty
+
+        x :: xs ->
+            subpath (moveTo x) [ lineTo xs, closePath ]
 
 
 {-| Shorthand to draw a sequence of cubic bezier segments
@@ -209,21 +236,6 @@ smoothQuadraticBezier start first points =
             { moveto = LowLevel.MoveTo Absolute start, drawtos = lowLevelDrawTos }
     in
         SubPath.fromLowLevel lowLevelSubPath
-
-
-{-| Draw a straigt line between the data points, connecting the ends.
-
-<img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/linearClosed.svg" />
-
--}
-linearClosed : List (Vec2 Float) -> SubPath
-linearClosed points =
-    case points of
-        [] ->
-            empty
-
-        x :: xs ->
-            subpath (moveTo x) [ lineTo xs, closePath ]
 
 
 {-| Convert `(angle, radius)` pairs to `(x, y)` coordinates, relative to the given vector.
@@ -723,10 +735,8 @@ monotonePoint ( x0, y0 ) ( x1, y1 ) t0 t1 =
         )
 
 
-{-| Draw a curve monotone in y assuming the points are monotone in x.
+{-|
 <img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/monotoneX.svg" />
-
-Note, does not deal well with coincident points
 
 -}
 monotoneX : List (Vec2 Float) -> SubPath
@@ -768,7 +778,7 @@ monotoneX points =
             empty
 
 
-{-| Draw a curve monotone in y assuming the points are monotone in x.
+{-|
 <img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/monotoneY.svg" />
 -}
 monotoneY : List (Vec2 Float) -> SubPath
@@ -808,15 +818,7 @@ natural points =
             subpath (moveTo p) [ cubicCurveTo (naturalControlPoints points) ]
 
 
-{-| Step goes some distance to the right, then to the y-coordinate of the next data point, and then draws to the next point.
-
-The first argument determines where the step is.
-
-  - `step 1 points` is `stepAfter`
-  - `step 0 points` is `stepBefore`
-  - `step 0.5 points` steps exactly in the middle
-
-<img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/step.svg" />
+{-| <img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/step.svg" />
 
 -}
 step : Float -> List (Vec2 Float) -> SubPath

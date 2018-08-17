@@ -15,12 +15,16 @@ import Color
 import Color.Interpolate as Color exposing (Space(LAB))
 import Color.Convert as Color
 import Color.Manipulate as Color
+import Vector2 as Vec2 exposing (Vec2)
+import SubPath exposing (SubPath)
+import Simplify
 
 
 main =
     Html.div []
         [ linear
         , linearClosed
+        , simplified
         , step
         , stepBefore
         , stepAfter
@@ -199,6 +203,18 @@ colorAt value =
     Color.interpolate LAB (Color.rgb 255 192 203) Color.purple value |> Color.saturate 0.5
 
 
+simplified =
+    stacked "simplified"
+        (\factor points ->
+            points
+                |> Simplify.simplify factor
+                |> Debug.log "in simplified"
+                |> Curve.linear
+        )
+        points
+
+
+stacked : String -> (Float -> List (Vec2 Float) -> SubPath) -> List (Vec2 Float) -> Svg msg
 stacked name toPath points =
     let
         values =
