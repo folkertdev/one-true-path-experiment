@@ -1,14 +1,11 @@
-module Geometry.CubicBezier exposing (CubicBezier, fromQuadratic, fromPoints, at, arcLength, chunks, chord)
+module Geometry.CubicBezier exposing (CubicBezier, arcLength, at, chord, chunks, fromPoints, fromQuadratic)
 
-{-|
-
-
-The implementation for the arc length estimate is from https://hackage.haskell.org/package/cubicbezier
+{-| The implementation for the arc length estimate is from <https://hackage.haskell.org/package/cubicbezier>
 -}
 
-import Vector2 exposing (Vec2, Float2)
-import Geometry.Line as Line
 import Geometry.Approximate as Approximate
+import Geometry.Line as Line
+import Vector2 exposing (Float2, Vec2)
 
 
 type CubicBezier
@@ -36,7 +33,7 @@ at t (CubicBezier p0 p1 p2 p3) =
         q2 =
             quadraticAtT p1 p2 p3 t
     in
-        Vector2.add (Vector2.scale (1 - t) q1) (Vector2.scale t q2)
+    Vector2.add (Vector2.scale (1 - t) q1) (Vector2.scale t q2)
 
 
 quadraticAtT ( x0, y0 ) ( x1, y1 ) ( x2, y2 ) t =
@@ -44,14 +41,15 @@ quadraticAtT ( x0, y0 ) ( x1, y1 ) ( x2, y2 ) t =
         f p0 p1 p2 t =
             (p0 - 2 * p1 + p2) * (t * t) + 2 * (p1 - p0) * t + p0
     in
-        ( f x0 x1 x2 t
-        , f y0 y1 y2 t
-        )
+    ( f x0 x1 x2 t
+    , f y0 y1 y2 t
+    )
 
 
 signum x =
     if x < 0 then
         -1
+
     else
         1
 
@@ -73,9 +71,10 @@ arcLength : Float -> CubicBezier -> Float
 arcLength t ((CubicBezier c0 c1 c2 c3) as curve) =
     if True then
         2
+
     else
         curve
-            |> flip splitBezier t
+            |> (\a -> splitBezier a t)
             |> Tuple.first
             |> chunks 0
             |> List.map chordLength
@@ -93,39 +92,42 @@ chunks itersLeft ((CubicBezier c0 c1 c2 c3) as curve) =
         _ =
             Debug.log "iters left" ( itersLeft, curve )
     in
-        if itersLeft <= 0 then
-            [ curve ]
-        else if c0 == c1 && c0 == c2 && c0 == c3 then
-            []
-        else
+    if itersLeft <= 0 then
+        [ curve ]
+
+    else if c0 == c1 && c0 == c2 && c0 == c3 then
+        []
+
+    else
+        let
+            _ =
+                Debug.log "iters left" ( itersLeft, curve )
+
+            chord =
+                chordLength curve
+
+            outline =
+                outlineLength curve
+
+            average =
+                (chord + outline) / 2
+        in
+        if (average - chord) / average > 0.01 then
             let
-                _ =
-                    Debug.log "iters left" ( itersLeft, curve )
-
-                chord =
-                    chordLength curve
-
-                outline =
-                    outlineLength curve
-
-                average =
-                    (chord + outline) / 2
+                ( left, right ) =
+                    splitBezier curve 0.5
             in
-                if (average - chord) / average > 0.01 then
-                    let
-                        ( left, right ) =
-                            splitBezier curve 0.5
-                    in
-                        chunks (itersLeft - 1) left ++ chunks (itersLeft - 1) right
-                else
-                    [ curve ]
+            chunks (itersLeft - 1) left ++ chunks (itersLeft - 1) right
+
+        else
+            [ curve ]
 
 
 arcLengthParameterization : CubicBezier -> (Float -> Maybe ( Float, Float ))
 arcLengthParameterization ((CubicBezier c0 c1 c2 c3) as curve) s =
     let
         config =
-            { split = flip splitBezier
+            { split = \b a -> splitBezier a b
             , upperBound = outlineLength
             , lowerBound = chordLength
             , percentageError = 0.01
@@ -133,7 +135,7 @@ arcLengthParameterization ((CubicBezier c0 c1 c2 c3) as curve) s =
             , length = arcLength 1.0
             }
     in
-        Approximate.approximate config curve s
+    Approximate.approximate config curve s
 
 
 chordLength : CubicBezier -> Float
@@ -174,7 +176,7 @@ splitBezier (CubicBezier a b c d) t =
         mid =
             interpolateVector abbc bccd t
     in
-        ( CubicBezier a ab abbc mid, CubicBezier mid bccd cd d )
+    ( CubicBezier a ab abbc mid, CubicBezier mid bccd cd d )
 
 
 evalBezierDeriv : CubicBezier -> Float -> ( Vec2 Float, Vec2 Float )
@@ -203,4 +205,4 @@ evalBezierDeriv (CubicBezier a b c d) t =
                 |> Vector2.scale u
                 |> Vector2.add (Vector2.scale (t * t) dc)
     in
-        ( p, p_ )
+    ( p, p_ )

@@ -1,17 +1,17 @@
-module Geometry.Ellipse
-    exposing
-        ( CenterParameterization
-        , EndpointParameterization
-        , centerToEndpoint
-        , endpointToCenter
-        , mod2pi
-        , validateRadii
-        , signedAngle
-        )
+module Geometry.Ellipse exposing
+    ( CenterParameterization
+    , EndpointParameterization
+    , centerToEndpoint
+    , endpointToCenter
+    , mod2pi
+    , signedAngle
+    , validateRadii
+    )
 
-import Matrix2 exposing (..)
+-- import Matrix2 exposing (..)
+
 import Path.LowLevel as LowLevel exposing (ArcFlag(..), Direction(..))
-import Vector2 as Vec2 exposing (..)
+import Vector2d exposing (Vector2d)
 
 
 tau : Float
@@ -20,8 +20,8 @@ tau =
 
 
 type alias EndpointParameterization =
-    { start : Vec2 Float
-    , end : Vec2 Float
+    { start : ( Float, Float )
+    , end : ( Float, Float )
     , radii : ( Float, Float )
     , xAxisRotate : Float
     , arcFlag : ArcFlag
@@ -30,7 +30,7 @@ type alias EndpointParameterization =
 
 
 type alias CenterParameterization =
-    { center : Vec2 Float
+    { center : ( Float, Float )
     , radii : ( Float, Float )
     , startAngle : Float
     , deltaTheta : Float
@@ -50,10 +50,11 @@ validateRadii ({ radii } as parameterization) =
         v =
             x1_ ^ 2 / rx ^ 2 + y1_ ^ 2 / ry ^ 2
     in
-        if v <= 1 then
-            parameterization
-        else
-            { parameterization | radii = ( sqrt v * rx, sqrt v * ry ) }
+    if v <= 1 then
+        parameterization
+
+    else
+        { parameterization | radii = ( sqrt v * rx, sqrt v * ry ) }
 
 
 normalize : CenterParameterization -> CenterParameterization
@@ -81,18 +82,34 @@ mod2pi_ x =
     x - toFloat (truncate (x / (2 * pi))) * 2 * pi
 
 
-conversionMatrix : Float -> Mat2 Float
+conversionMatrix : Float -> ( ( Float, Float ), ( Float, Float ) )
 conversionMatrix xAxisRotate =
     ( ( cos xAxisRotate, -1 * sin xAxisRotate )
     , ( sin xAxisRotate, cos xAxisRotate )
     )
 
 
-inverseConversionMatrix : Float -> Mat2 Float
+inverseConversionMatrix : Float -> ( ( Float, Float ), ( Float, Float ) )
 inverseConversionMatrix xAxisRotate =
     ( ( cos xAxisRotate, sin xAxisRotate )
     , ( -1 * sin xAxisRotate, cos xAxisRotate )
     )
+
+
+matrixMulVector : ( ( Float, Float ), ( Float, Float ) ) -> ( Float, Float ) -> Vector2d
+matrixMulVector ( ab, cd ) vec =
+    let
+        vector =
+            Vector2d.fromComponents vec
+
+        row1 =
+            Vector2d.fromComponents ab
+
+        row2 =
+            Vector2d.fromComponents cd
+    in
+    Vector2d.fromComponents
+        ( Vector2d.dotProduct row1 vector, Vector2d.dotProduct row2 vector )
 
 
 centerToEndpoint : CenterParameterization -> EndpointParameterization
@@ -109,39 +126,45 @@ centerToEndpoint { center, radii, startAngle, deltaTheta, xAxisRotate } =
 
         p1 =
             ( rx * cos startAngle, ry * sin startAngle )
-                |> Matrix2.mulVector conversion
-                |> Vec2.add center
+                |> matrixMulVector conversion
+                |> Vector2d.sum (Vector2d.fromComponents center)
+                |> Vector2d.components
 
         p2 =
             ( rx * cos endAngle, ry * sin endAngle )
-                |> Matrix2.mulVector conversion
-                |> Vec2.add center
+                |> matrixMulVector conversion
+                |> Vector2d.sum (Vector2d.fromComponents center)
+                |> Vector2d.components
 
         ( arcFlag, direction ) =
             LowLevel.decodeFlags
                 ( if abs deltaTheta > pi then
                     1
+
                   else
                     0
                 , if deltaTheta > 0 then
                     1
+
                   else
                     0
                 )
                 |> Maybe.withDefault ( SmallestArc, CounterClockwise )
     in
-        { start = p1, end = p2, radii = radii, arcFlag = arcFlag, direction = direction, xAxisRotate = xAxisRotate }
+    { start = p1, end = p2, radii = radii, arcFlag = arcFlag, direction = direction, xAxisRotate = xAxisRotate }
 
 
-coordinatePrime : EndpointParameterization -> Vec2 Float
+coordinatePrime : EndpointParameterization -> ( Float, Float )
 coordinatePrime { start, end, xAxisRotate } =
     let
         rotate =
             inverseConversionMatrix xAxisRotate
     in
-        Vec2.map2 (-) start end
-            |> Vec2.divideBy 2
-            |> Matrix2.mulVector rotate
+    Vector2d.difference (Vector2d.fromComponents start) (Vector2d.fromComponents end)
+        |> Vector2d.scaleBy 0.5
+        |> Vector2d.components
+        |> matrixMulVector rotate
+        |> Vector2d.components
 
 
 endpointToCenter : EndpointParameterization -> CenterParameterization
@@ -154,8 +177,9 @@ endpointToCenter ({ start, end, radii, xAxisRotate, arcFlag, direction } as para
             coordinatePrime parameterization
 
         sign =
-            if uncurry (==) (LowLevel.encodeFlags ( arcFlag, direction )) then
+            if (\( a, b ) -> (==) a b) (LowLevel.encodeFlags ( arcFlag, direction )) then
                 -1
+
             else
                 1
 
@@ -171,53 +195,70 @@ endpointToCenter ({ start, end, radii, xAxisRotate, arcFlag, direction } as para
         root =
             if denominator == 0 || numerator < 0 then
                 0
+
             else
                 sign * sqrt (numerator / denominator)
 
         center_ =
-            ( ((rx * y1_) / ry) * root
-            , (-1 * ((ry * x1_) / rx)) * root
-            )
+            Vector2d.fromComponents
+                ( ((rx * y1_) / ry) * root
+                , (-1 * ((ry * x1_) / rx)) * root
+                )
 
         center =
             center_
-                |> Matrix2.mulVector (conversionMatrix xAxisRotate)
-                |> Vec2.add
-                    (Vec2.add start end
-                        |> Vec2.divideBy 2
+                |> Vector2d.components
+                |> matrixMulVector (conversionMatrix xAxisRotate)
+                |> Vector2d.sum
+                    (Vector2d.sum (Vector2d.fromComponents start) (Vector2d.fromComponents end)
+                        |> Vector2d.scaleBy 0.5
                     )
 
         p1 =
-            ( x1_, y1_ )
+            Vector2d.fromComponents
+                ( x1_, y1_ )
+
+        ( radiusX, radiusY ) =
+            radii
 
         startAngle =
             let
                 temp =
-                    Vec2.map2 (-) p1 center_
-                        |> flip (Vec2.map2 (/)) radii
-                        |> signedAngle ( 1, 0 )
+                    Vector2d.difference p1 center_
+                        |> Vector2d.components
+                        |> (\( x, y ) -> ( x / radiusX, y / radiusY ))
+                        |> Vector2d.fromComponents
+                        |> signedAngle (Vector2d.fromComponents ( 1, 0 ))
 
                 ( _, fs ) =
                     LowLevel.encodeFlags ( arcFlag, direction )
             in
-                (if fs == 0 && deltaTheta > 0 then
-                    temp - tau
-                 else if fs == 1 && deltaTheta < 0 then
-                    temp + tau
-                 else
-                    temp
-                )
-                    |> mod2pi_
+            (if fs == 0 && deltaTheta > 0 then
+                temp - tau
+
+             else if fs == 1 && deltaTheta < 0 then
+                temp + tau
+
+             else
+                temp
+            )
+                |> mod2pi_
 
         deltaTheta =
             let
                 first =
-                    Vec2.map2 (/) (Vec2.map2 (-) p1 center_) radii
+                    Vector2d.difference p1 center_
+                        |> Vector2d.components
+                        |> (\( x, y ) -> ( x / radiusX, y / radiusY ))
+                        |> Vector2d.fromComponents
 
                 second =
-                    Vec2.map2 (/) (Vec2.map2 (-) (Vec2.negate p1) center_) radii
+                    Vector2d.difference (Vector2d.scaleBy -1 p1) center_
+                        |> Vector2d.components
+                        |> (\( x, y ) -> ( x / radiusX, y / radiusY ))
+                        |> Vector2d.fromComponents
             in
-                signedAngle first second
+            signedAngle first second
 
         {-
            case ( arcFlag, direction ) of
@@ -234,45 +275,24 @@ endpointToCenter ({ start, end, radii, xAxisRotate, arcFlag, direction } as para
                    angle first second
         -}
         result =
-            { center = center
+            { center = Vector2d.components center
             , xAxisRotate = xAxisRotate
             , startAngle = startAngle
             , deltaTheta = deltaTheta
             , radii = radii
             }
     in
-        result
+    result
 
 
-{-| A signed angle between two vectors (the standard implementation is unsigned)
--}
-signedAngle : Vec2 Float -> Vec2 Float -> Float
+signedAngle : Vector2d -> Vector2d -> Float
 signedAngle u v =
     let
-        ( ux, uy ) =
-            u
-
-        ( vx, vy ) =
-            v
-
         sign =
-            if ux * vy - uy * vx < 0 then
+            if Vector2d.crossProduct u v < 0 then
                 -1
+
             else
                 1
-
-        argument =
-            Vec2.dot u v
-                / (Vec2.length u * Vec2.length v)
-                |> clamp -1 1
-
-        _ =
-            if argument < -1 || argument > 1 then
-                Debug.log "argument is wrong" argument
-            else
-                0
-
-        q =
-            acos argument
     in
-        sign * abs q
+    sign * abs (acos (Vector2d.dotProduct u v / (Vector2d.length u * Vector2d.length v)))

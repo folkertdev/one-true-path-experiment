@@ -1,4 +1,4 @@
-module CurveTest exposing (..)
+module CurveTest exposing (convert, jsPoints, points, stackSmasher, testBasis, testBundle, testCardinal, testCatmullRom, testMonotone, testNatural)
 
 import Curve exposing (..)
 import Expect
@@ -11,12 +11,12 @@ import Test exposing (..)
 -}
 stackSmasher : Int
 stackSmasher =
-    10000
+    10
 
 
 convert : { drawtos : List DrawTo, moveto : MoveTo } -> SubPath
 convert { moveto, drawtos } =
-    SubPath.subpath moveto drawtos
+    SubPath.with moveto drawtos
 
 
 points : List ( Float, Float )
@@ -65,19 +65,19 @@ testCatmullRom =
             }
                 |> convert
     in
-        describe "catmull rom"
-            [ test "catmull rom gives expected output" <|
-                \_ ->
-                    Curve.catmullRom 0.5 points
-                        |> Expect.equal expected
-            , test "reverse catmull rom gives expected output" <|
-                \_ ->
-                    Curve.catmullRom 0.5 (List.reverse points)
-                        |> SubPath.reverse
-                        |> SubPath.compress
-                        |> SubPath.toStringWith [ decimalPlaces 3 ]
-                        |> Expect.equal (SubPath.toStringWith [ decimalPlaces 3 ] <| SubPath.compress expected)
-            ]
+    describe "catmull rom"
+        [ test "catmull rom gives expected output" <|
+            \_ ->
+                Curve.catmullRom 0.5 points
+                    |> Expect.equal expected
+        , test "reverse catmull rom gives expected output" <|
+            \_ ->
+                Curve.catmullRom 0.5 (List.reverse points)
+                    |> SubPath.reverse
+                    |> SubPath.compress
+                    |> SubPath.toStringWith [ decimalPlaces 3 ]
+                    |> Expect.equal (SubPath.toStringWith [ decimalPlaces 3 ] <| SubPath.compress expected)
+        ]
 
 
 testNatural : Test
@@ -102,19 +102,19 @@ testNatural =
             }
                 |> convert
     in
-        describe "natural"
-            [ test "natural gives expected output" <|
-                \_ ->
-                    Curve.natural points
-                        |> Expect.equal expected
-            , test "reverse natural gives expected output" <|
-                \_ ->
-                    Curve.natural (List.reverse points)
-                        |> SubPath.reverse
-                        |> SubPath.compress
-                        |> SubPath.toStringWith [ decimalPlaces 3 ]
-                        |> Expect.equal (SubPath.toStringWith [ decimalPlaces 3 ] <| SubPath.compress expected)
-            ]
+    describe "natural"
+        [ test "natural gives expected output" <|
+            \_ ->
+                Curve.natural points
+                    |> Expect.equal expected
+        , test "reverse natural gives expected output" <|
+            \_ ->
+                Curve.natural (List.reverse points)
+                    |> SubPath.reverse
+                    |> SubPath.compress
+                    |> SubPath.toStringWith [ decimalPlaces 3 ]
+                    |> Expect.equal (SubPath.toStringWith [ decimalPlaces 3 ] <| SubPath.compress expected)
+        ]
 
 
 testCardinal : Test
@@ -140,134 +140,140 @@ testCardinal =
             }
                 |> convert
     in
-        describe "cardinal"
-            [ test "catmull rom gives expected output" <|
-                \_ ->
-                    Curve.cardinal 0.5 points
-                        |> Expect.equal expected
-            , test "reverse cardinal gives expected output" <|
-                \_ ->
-                    Curve.cardinal 0.5 (List.reverse points)
-                        |> SubPath.reverse
-                        |> SubPath.compress
-                        |> SubPath.toStringWith [ decimalPlaces 3 ]
-                        |> Expect.equal (SubPath.toStringWith [ decimalPlaces 3 ] <| SubPath.compress expected)
-            , test "cardinal doesn't stack overflow" <|
-                \_ ->
-                    let
-                        path : SubPath
-                        path =
-                            Curve.cardinal 0.5 (List.repeat stackSmasher ( 0, 0 ))
-                    in
-                        Expect.pass
-            , test "cardinal closed doesn't stack overflow" <|
-                \_ ->
-                    let
-                        path : SubPath
-                        path =
-                            Curve.cardinalClosed 0.5 (List.repeat stackSmasher ( 0, 0 ))
-                    in
-                        Expect.pass
-            ]
+    describe "cardinal"
+        [ test "catmull rom gives expected output" <|
+            \_ ->
+                Curve.cardinal 0.5 points
+                    |> Expect.equal expected
+        , test "reverse cardinal gives expected output" <|
+            \_ ->
+                Curve.cardinal 0.5 (List.reverse points)
+                    |> SubPath.reverse
+                    |> SubPath.compress
+                    |> SubPath.toStringWith [ decimalPlaces 3 ]
+                    |> Expect.equal (SubPath.toStringWith [ decimalPlaces 3 ] <| SubPath.compress expected)
+        , test "cardinal doesn't stack overflow" <|
+            \_ ->
+                let
+                    path : SubPath
+                    path =
+                        Curve.cardinal 0.5 (List.repeat stackSmasher ( 0, 0 ))
+                in
+                Expect.pass
+        , test "cardinal closed doesn't stack overflow" <|
+            \_ ->
+                let
+                    path : SubPath
+                    path =
+                        Curve.cardinalClosed 0.5 (List.repeat stackSmasher ( 0, 0 ))
+                in
+                Expect.pass
+        ]
 
 
 testMonotone : Test
 testMonotone =
     let
-        f ( a, b, c, d, e, f ) =
-            ( ( a, b ), ( c, d ), ( e, f ) )
-
         -- to replicate, use
         -- d3.line().curve(d3.curveMonotoneX)(jsPoints)
         d3Output =
-            [ f ( 83.33333333333334, 242.06349206349205, 116.66666666666666, 184.12698412698413, 150, 150 )
-            , f ( 175, 124.4047619047619, 200, 100, 225, 100 )
-            , f ( 241.66666666666666, 100, 258.3333333333333, 100, 275, 100 )
-            , f ( 300, 100, 325, 250, 350, 250 )
-            , f ( 400, 250, 450, 250, 500, 250 )
-            , f ( 533.3333333333334, 250, 566.6666666666666, 150, 600, 150 )
-            , f ( 641.6666666666666, 150, 683.3333333333334, 181.01851851851853, 725, 200 )
-            , f ( 758.3333333333334, 215.1851851851852, 791.6666666666666, 250, 825, 250 )
-            , f ( 850, 250, 875, 225, 900, 225 )
-            , f ( 925, 225, 950, 262.5, 975, 300 )
+            [ ( ( 83.33333333333334, 242.06349206349205 ), ( 116.66666666666666, 184.12698412698413 ), ( 150, 150 ) )
+            , ( ( 175, 124.4047619047619 ), ( 200, 100 ), ( 225, 100 ) )
+            , ( ( 241.66666666666666, 100 ), ( 258.3333333333333, 100 ), ( 275, 100 ) )
+            , ( ( 300, 100 ), ( 325, 250 ), ( 350, 250 ) )
+            , ( ( 400, 250 ), ( 450, 250 ), ( 500, 250 ) )
+            , ( ( 533.3333333333334, 250 ), ( 566.6666666666666, 150 ), ( 600, 150 ) )
+            , ( ( 641.6666666666666, 150 ), ( 683.3333333333334, 181.01851851851853 ), ( 725, 200 ) )
+            , ( ( 758.3333333333334, 215.1851851851852 ), ( 791.6666666666666, 250 ), ( 825, 250 ) )
+            , ( ( 850, 250 ), ( 875, 225 ), ( 900, 225 ) )
+            , ( ( 925, 225 ), ( 950, 262.5 ), ( 975, 300 ) )
             ]
-
-        expected =
-            { moveto = MoveTo ( 50, 300 )
-            , drawtos =
-                [ CurveTo d3Output ]
-            }
-                |> convert
     in
-        describe "monotone"
-            [ test "test against d3 output" <|
-                \_ ->
-                    Curve.monotoneX points
-                        |> Expect.equal expected
-            , test "produces what elm-visualization produces" <|
-                \_ ->
-                    let
-                        -- should produce
-                        -- "M0.1,0.1C0.13333333333333333,0.2866666666666666,0.16666666666666669,0.47333333333333333,0.2,0.6C0.25,0.7899999999999999,0.3,0.9,0.35,0.9C0.3833333333333333,0.9,0.4166666666666667,0.9,0.45,0.9C0.5,0.9,0.55,0.3,0.6,0.3C0.7,0.3,0.8,0.8,0.9,0.8C1,0.8,1.1,0.6666666666666666,1.2,0.6C1.3,0.5333333333333333,1.4,0.4866666666666667,1.5,0.4C1.5666666666666667,0.34222222222222226,1.6333333333333333,0.2,1.7,0.2C1.7666666666666666,0.2,1.8333333333333333,0.44999999999999996,1.9,0.7"
-                        elmVisualizationJSPoints =
-                            [ [ 0.1, 0.1 ], [ 0.2, 0.6 ], [ 0.35, 0.9 ], [ 0.45, 0.9 ], [ 0.6, 0.3 ], [ 0.9, 0.8 ], [ 1.2, 0.6 ], [ 1.5, 0.4 ], [ 1.7, 0.2 ], [ 1.9, 0.7 ] ]
+    describe "monotone"
+        [ test "test against d3 output" <|
+            \_ ->
+                let
+                    expected =
+                        { moveto = MoveTo ( 50, 300 )
+                        , drawtos =
+                            [ CurveTo d3Output ]
+                        }
+                            |> convert
+                in
+                Curve.monotoneX points
+                    |> Expect.equal expected
+        , test "produces what elm-visualization produces" <|
+            \_ ->
+                let
+                    -- should produce
+                    -- "M0.1,0.1C0.13333333333333333,0.2866666666666666,0.16666666666666669,0.47333333333333333,0.2,0.6C0.25,0.7899999999999999,0.3,0.9,0.35,0.9C0.3833333333333333,0.9,0.4166666666666667,0.9,0.45,0.9C0.5,0.9,0.55,0.3,0.6,0.3C0.7,0.3,0.8,0.8,0.9,0.8C1,0.8,1.1,0.6666666666666666,1.2,0.6C1.3,0.5333333333333333,1.4,0.4866666666666667,1.5,0.4C1.5666666666666667,0.34222222222222226,1.6333333333333333,0.2,1.7,0.2C1.7666666666666666,0.2,1.8333333333333333,0.44999999999999996,1.9,0.7"
+                    elmVisualizationJSPoints =
+                        [ [ 0.1, 0.1 ], [ 0.2, 0.6 ], [ 0.35, 0.9 ], [ 0.45, 0.9 ], [ 0.6, 0.3 ], [ 0.9, 0.8 ], [ 1.2, 0.6 ], [ 1.5, 0.4 ], [ 1.7, 0.2 ], [ 1.9, 0.7 ] ]
 
-                        preparedPoints =
-                            [ ( 94.5, 365 ), ( 139, 190 ), ( 205.75, 85 ), ( 250.25, 85 ), ( 317, 295 ), ( 450.5, 120 ), ( 584, 190 ), ( 717.5, 260 ), ( 806.5, 330 ), ( 895.5, 155.00000000000003 ) ]
+                    preparedPoints =
+                        [ ( 94.5, 365 ), ( 139, 190 ), ( 205.75, 85 ), ( 250.25, 85 ), ( 317, 295 ), ( 450.5, 120 ), ( 584, 190 ), ( 717.5, 260 ), ( 806.5, 330 ), ( 895.5, 155.00000000000003 ) ]
 
-                        preparedJSPoints =
-                            [ [ 94.5, 365 ], [ 139, 190 ], [ 205.75, 85 ], [ 250.25, 85 ], [ 317, 295 ], [ 450.5, 120 ], [ 584, 190 ], [ 717.5, 260 ], [ 806.5, 330 ], [ 895.5, 155.00000000000003 ] ]
+                    preparedJSPoints =
+                        [ [ 94.5, 365 ], [ 139, 190 ], [ 205.75, 85 ], [ 250.25, 85 ], [ 317, 295 ], [ 450.5, 120 ], [ 584, 190 ], [ 717.5, 260 ], [ 806.5, 330 ], [ 895.5, 155.00000000000003 ] ]
 
-                        points : List ( Float, Float )
-                        points =
-                            [ ( 0.1, 0.1 )
-                            , ( 0.2, 0.6 )
-                            , ( 0.35, 0.9 )
-                            , ( 0.45, 0.9 )
-                            , ( 0.6, 0.3 )
-                            , ( 0.9, 0.8 )
-                            , ( 1.2, 0.6 )
-                            , ( 1.5, 0.4 )
-                            , ( 1.7, 0.2 )
-                            , ( 1.9, 0.7 )
-                            ]
+                    monotoneTestPoints : List ( Float, Float )
+                    monotoneTestPoints =
+                        [ ( 0.1, 0.1 )
+                        , ( 0.2, 0.6 )
+                        , ( 0.35, 0.9 )
+                        , ( 0.45, 0.9 )
+                        , ( 0.6, 0.3 )
+                        , ( 0.9, 0.8 )
+                        , ( 1.2, 0.6 )
+                        , ( 1.5, 0.4 )
+                        , ( 1.7, 0.2 )
+                        , ( 1.9, 0.7 )
+                        ]
 
-                        expected =
-                            { moveto = MoveTo ( 0.1, 0.1 )
-                            , drawtos =
-                                [ CurveTo
-                                    [ f ( 0.13333333333333333, 0.2866666666666666, 0.16666666666666669, 0.47333333333333333, 0.2, 0.6 )
-                                    , f ( 0.25, 0.7899999999999999, 0.3, 0.9, 0.35, 0.9 )
-                                    , f ( 0.3833333333333333, 0.9, 0.4166666666666667, 0.9, 0.45, 0.9 )
-                                    , f ( 0.5, 0.9, 0.55, 0.3, 0.6, 0.3 )
-                                    , f ( 0.7, 0.3, 0.8, 0.8, 0.9, 0.8 )
-                                    , f ( 1, 0.8, 1.1, 0.6666666666666666, 1.2, 0.6 )
-                                    , f ( 1.3, 0.5333333333333333, 1.4, 0.4866666666666667, 1.5, 0.4 )
-                                    , f ( 1.5666666666666667, 0.34222222222222226, 1.6333333333333333, 0.2, 1.7, 0.2 )
-                                    , f ( 1.7666666666666666, 0.2, 1.8333333333333333, 0.44999999999999996, 1.9, 0.7 )
-                                    ]
+                    expected =
+                        { moveto = MoveTo ( 0.1, 0.1 )
+                        , drawtos =
+                            [ CurveTo
+                                [ ( ( 0.13333333333333333, 0.2866666666666666 ), ( 0.16666666666666669, 0.47333333333333333 ), ( 0.2, 0.6 ) )
+                                , ( ( 0.25, 0.7899999999999999 ), ( 0.3, 0.9 ), ( 0.35, 0.9 ) )
+                                , ( ( 0.3833333333333333, 0.9 ), ( 0.4166666666666667, 0.9 ), ( 0.45, 0.9 ) )
+                                , ( ( 0.5, 0.9 ), ( 0.55, 0.3 ), ( 0.6, 0.3 ) )
+                                , ( ( 0.7, 0.3 ), ( 0.8, 0.8 ), ( 0.9, 0.8 ) )
+                                , ( ( 1, 0.8 ), ( 1.1, 0.6666666666666666 ), ( 1.2, 0.6 ) )
+                                , ( ( 1.3, 0.5333333333333333 ), ( 1.4, 0.4866666666666667 ), ( 1.5, 0.4 ) )
+                                , ( ( 1.5666666666666667, 0.34222222222222226 ), ( 1.6333333333333333, 0.2 ), ( 1.7, 0.2 ) )
+                                , ( ( 1.7666666666666666, 0.2 ), ( 1.8333333333333333, 0.44999999999999996 ), ( 1.9, 0.7 ) )
                                 ]
-                            }
-                                |> convert
-                    in
-                        Curve.monotoneX points
-                            |> Expect.equal expected
-            , test "reverse monotoneX gives expected output" <|
-                \_ ->
-                    Curve.monotoneX (List.reverse points)
-                        |> SubPath.reverse
-                        |> SubPath.compress
-                        |> SubPath.toStringWith [ decimalPlaces 3 ]
-                        |> Expect.equal (SubPath.toStringWith [ decimalPlaces 3 ] <| SubPath.compress expected)
-            , test "doesn't stack overflow" <|
-                \_ ->
-                    let
-                        path : SubPath
-                        path =
-                            Curve.monotoneX (List.repeat stackSmasher ( 0, 0 ))
-                    in
-                        Expect.pass
-            ]
+                            ]
+                        }
+                            |> convert
+                in
+                Curve.monotoneX monotoneTestPoints
+                    |> Expect.equal expected
+        , test "reverse monotoneX gives expected output" <|
+            \_ ->
+                let
+                    expected =
+                        { moveto = MoveTo ( 50, 300 )
+                        , drawtos =
+                            [ CurveTo d3Output ]
+                        }
+                            |> convert
+                in
+                Curve.monotoneX (List.reverse points)
+                    |> SubPath.reverse
+                    |> SubPath.compress
+                    |> SubPath.toStringWith [ decimalPlaces 3 ]
+                    |> Expect.equal (SubPath.toStringWith [ decimalPlaces 3 ] <| SubPath.compress expected)
+        , test "doesn't stack overflow" <|
+            \_ ->
+                let
+                    path : SubPath
+                    path =
+                        Curve.monotoneX (List.repeat stackSmasher ( 0, 0 ))
+                in
+                Expect.pass
+        ]
 
 
 testBundle : Test
@@ -292,19 +298,19 @@ testBundle =
             }
                 |> convert
     in
-        describe "bundle"
-            [ test "bundle gives expected output" <|
-                \_ ->
-                    Curve.bundle 0.5 points
-                        |> Expect.equal expected
-            , test "reverse bundle gives expected output" <|
-                \_ ->
-                    Curve.bundle 0.5 (List.reverse points)
-                        |> SubPath.reverse
-                        |> SubPath.compress
-                        |> SubPath.toStringWith [ decimalPlaces 3 ]
-                        |> Expect.equal (SubPath.toStringWith [ decimalPlaces 3 ] <| SubPath.compress expected)
-            ]
+    describe "bundle"
+        [ test "bundle gives expected output" <|
+            \_ ->
+                Curve.bundle 0.5 points
+                    |> Expect.equal expected
+        , test "reverse bundle gives expected output" <|
+            \_ ->
+                Curve.bundle 0.5 (List.reverse points)
+                    |> SubPath.reverse
+                    |> SubPath.compress
+                    |> SubPath.toStringWith [ decimalPlaces 3 ]
+                    |> Expect.equal (SubPath.toStringWith [ decimalPlaces 3 ] <| SubPath.compress expected)
+        ]
 
 
 testBasis : Test
@@ -389,67 +395,68 @@ testBasis =
             }
                 |> convert
     in
-        describe "basis"
-            [ test "basis gives expected output" <|
-                \_ ->
-                    Curve.basis points
-                        |> Expect.equal expected
-            , test "reverse basis gives expected output" <|
-                \_ ->
-                    Curve.basis (List.reverse points)
-                        |> SubPath.reverse
-                        |> SubPath.compress
-                        |> SubPath.toStringWith [ decimalPlaces 3 ]
-                        |> Expect.equal (SubPath.toStringWith [ decimalPlaces 3 ] <| SubPath.compress expected)
-            , test "basis doesn't stack overflow" <|
-                \_ ->
-                    let
-                        path : SubPath
-                        path =
-                            Curve.basis (List.repeat stackSmasher ( 0, 0 ))
-                    in
-                        Expect.pass
-            , test "basis open gives expected output" <|
-                \_ ->
-                    Curve.basisOpen points
-                        |> Expect.equal expectedOpen
-            , test "basis open doesn't stack overflow" <|
-                \_ ->
-                    let
-                        path : SubPath
-                        path =
-                            Curve.basisOpen (List.repeat stackSmasher ( 0, 0 ))
-                    in
-                        Expect.pass
-            , test "reverse basis open gives expected output" <|
-                \_ ->
-                    Curve.basisOpen (List.reverse points)
-                        |> SubPath.reverse
-                        |> SubPath.compress
-                        |> SubPath.toStringWith [ decimalPlaces 3 ]
-                        |> Expect.equal (SubPath.toStringWith [ decimalPlaces 3 ] <| SubPath.compress expectedOpen)
-            , test "basis closed gives expected output" <|
-                \_ ->
-                    Curve.basisClosed points
-                        |> SubPath.toStringWith [ decimalPlaces 3 ]
-                        |> Expect.equal (expectedClosed |> SubPath.toStringWith [ decimalPlaces 3 ])
-            , test "basis closed doesn't stack overflow" <|
-                \_ ->
-                    let
-                        path : SubPath
-                        path =
-                            Curve.basisClosed (List.repeat stackSmasher ( 0, 0 ))
-                    in
-                        Expect.pass
-              {- doesn't work, but is correct. the closed variants go clockwise or counter-clockwise, and reversing does not
-                 give an equal, but an equivalent result
+    describe "basis"
+        [ test "basis gives expected output" <|
+            \_ ->
+                Curve.basis points
+                    |> Expect.equal expected
+        , test "reverse basis gives expected output" <|
+            \_ ->
+                Curve.basis (List.reverse points)
+                    |> SubPath.reverse
+                    |> SubPath.compress
+                    |> SubPath.toStringWith [ decimalPlaces 3 ]
+                    |> Expect.equal (SubPath.toStringWith [ decimalPlaces 3 ] <| SubPath.compress expected)
+        , test "basis doesn't stack overflow" <|
+            \_ ->
+                let
+                    path : SubPath
+                    path =
+                        Curve.basis (List.repeat stackSmasher ( 0, 0 ))
+                in
+                Expect.pass
+        , test "basis open gives expected output" <|
+            \_ ->
+                Curve.basisOpen points
+                    |> Expect.equal expectedOpen
+        , test "basis open doesn't stack overflow" <|
+            \_ ->
+                let
+                    path : SubPath
+                    path =
+                        Curve.basisOpen (List.repeat stackSmasher ( 0, 0 ))
+                in
+                Expect.pass
+        , test "reverse basis open gives expected output" <|
+            \_ ->
+                Curve.basisOpen (List.reverse points)
+                    |> SubPath.reverse
+                    |> SubPath.compress
+                    |> SubPath.toStringWith [ decimalPlaces 3 ]
+                    |> Expect.equal (SubPath.toStringWith [ decimalPlaces 3 ] <| SubPath.compress expectedOpen)
+        , test "basis closed gives expected output" <|
+            \_ ->
+                Curve.basisClosed points
+                    |> SubPath.toStringWith [ decimalPlaces 3 ]
+                    |> Expect.equal (expectedClosed |> SubPath.toStringWith [ decimalPlaces 3 ])
+        , test "basis closed doesn't stack overflow" <|
+            \_ ->
+                let
+                    path : SubPath
+                    path =
+                        Curve.basisClosed (List.repeat stackSmasher ( 0, 0 ))
+                in
+                Expect.pass
 
-                    , test "reverse basis closed gives expected output" <|
-                        \_ ->
-                            Curve.basisClosed (List.reverse points)
-                                |> SubPath.reverse
-                                |> SubPath.compress
-                                |> SubPath.toStringWith [ decimalPlaces 3 ]
-                                |> Expect.equal (SubPath.toStringWith [ decimalPlaces 3 ] <| newExpectClosed)
-              -}
-            ]
+        {- doesn't work, but is correct. the closed variants go clockwise or counter-clockwise, and reversing does not
+           give an equal, but an equivalent result
+
+              , test "reverse basis closed gives expected output" <|
+                  \_ ->
+                      Curve.basisClosed (List.reverse points)
+                          |> SubPath.reverse
+                          |> SubPath.compress
+                          |> SubPath.toStringWith [ decimalPlaces 3 ]
+                          |> Expect.equal (SubPath.toStringWith [ decimalPlaces 3 ] <| newExpectClosed)
+        -}
+        ]
