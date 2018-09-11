@@ -1,6 +1,6 @@
 module SubPath exposing
     ( SubPath
-    , empty
+    , with, empty
     , element, toString, toStringWith
     , Option, decimalPlaces, mergeAdjacent
     , reverse, compress
@@ -12,7 +12,6 @@ module SubPath exposing
     , pointAlong, tangentAlong, parameterValueToArcLength, arcLengthToParameterValue
     , toSegments, fromSegments
     , fromLowLevel, toLowLevel, unwrap
-    , with
     )
 
 {-| `SubPath` is the fundamental type in this package.
@@ -59,7 +58,7 @@ And can generate svg elements
 
 ## Construction
 
-@docs subpath, empty
+@docs with, empty
 
 
 ## Conversion

@@ -12,14 +12,19 @@
 
 * add `toStringWith` and `Option`: formatting options for the svg string output. 
 
+* rename `Segment.arc` to `Segment.ellipticalArc`
+* rename `SubPath.subpath` to `SubPath.with`
+
 Fixed bugs
 
 * Make curve functions tail-recursive (thanks @mitchellwrosen for the PR)
 * The end point for cardinal curves was calculated incorrectly
 
 
+Here is a diff of the api in 0.18 (diffing across versions doesn't work). 
+The rename `arc -> ellipticalArc` was added later and isn't in here yet.
 
-
+``` 
 Comparing folkertdev/one-true-path-experiment 3.0.2 to local changes...
 This is a MAJOR change.
 
@@ -89,3 +94,4 @@ This is a MAJOR change.
         pointAlong : SubPath.ArcLengthParameterized -> Float -> Maybe.Maybe (Float, Float)
         tangentAlong : SubPath.ArcLengthParameterized -> Float -> Maybe.Maybe (Float, Float)
         toStringWith : List SubPath.Option -> SubPath.SubPath -> String
+```

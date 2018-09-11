@@ -1,15 +1,13 @@
 module Segment exposing
     ( Segment(..)
-    , line, quadratic, cubic
+    , line, quadratic, cubic, ellipticalArc
     , at, angle
     , derivativeAt, derivativeAtFirst, derivativeAtFinal
     , firstPoint, finalPoint, reverse
     , ArcLengthParameterized
     , arcLengthParameterized, arcLength, pointAlong, tangentAlong, parameterValueToArcLength, arcLengthToParameterValue
     , toDrawTo, toSegment, toCursorState
-    ,  ellipticalArc
-       -- , length
-
+    -- , length
     )
 
 {-| An alternative view on paths that is convenient for mathematical operations.
@@ -38,7 +36,7 @@ in `SubPath`.
 [OpenSolid]: http://package.elm-lang.org/packages/opensolid/geometry/latest
 
 @docs Segment
-@docs line, quadratic, cubic, arc
+@docs line, quadratic, cubic, ellipticalArc
 
 
 # Operations
