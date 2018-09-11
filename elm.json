@@ -1,0 +1,28 @@
+{
+    "type": "package",
+    "name": "folkertdev/one-true-path-experiment",
+    "summary": "An experimental package for building paths and curves in elm",
+    "license": "BSD-3-Clause",
+    "version": "4.0.0",
+    "exposed-modules": [
+        "Path",
+        "SubPath",
+        "Curve",
+        "Segment",
+        "LowLevel.Command"
+    ],
+    "elm-version": "0.19.0 <= v < 0.20.0",
+    "dependencies": {
+        "elm/core": "1.0.0 <= v < 2.0.0",
+        "elm/parser": "1.1.0 <= v < 2.0.0",
+        "elm/svg": "1.0.0 <= v < 2.0.0",
+        "elm-community/list-extra": "8.0.0 <= v < 9.0.0",
+        "folkertdev/elm-deque": "3.0.0 <= v < 4.0.0",
+        "folkertdev/svg-path-lowlevel": "3.0.0 <= v < 4.0.0",
+        "ianmackenzie/elm-geometry": "1.1.0 <= v < 2.0.0"
+    },
+    "test-dependencies": {
+        "elm/random": "1.0.0 <= v < 2.0.0",
+        "elm-explorations/test": "1.1.0 <= v < 2.0.0"
+    }
+}

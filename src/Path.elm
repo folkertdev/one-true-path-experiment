@@ -1,18 +1,14 @@
-module Path
-    exposing
-        ( Path
-        , element
-        , parse
-        , toString
-        , fromLowLevel
-        , toLowLevel
-        )
+module Path exposing
+    ( Path
+    , parse
+    , element, toString
+    , fromLowLevel, toLowLevel
+    )
 
 {-| Module for layering SubPaths into Paths.
 
 Most of the interesting stuff happens in the `SubPath` and `Curve` modules.
 `Path` is simply for combining multiple subpaths into one string or element.
-
 
 
 ## Data Structures
@@ -29,17 +25,18 @@ Most of the interesting stuff happens in the `SubPath` and `Curve` modules.
 
 @docs element, toString
 
+
 ## Conversion
 
 @docs fromLowLevel, toLowLevel
 
 -}
 
-import Parser
-import Path.LowLevel.Parser as PathParser
-import Path.LowLevel as LowLevel
-import SubPath exposing (SubPath, subpath)
 import LowLevel.Command as Command
+import Parser
+import Path.LowLevel as LowLevel
+import Path.LowLevel.Parser as PathParser
+import SubPath exposing (SubPath)
 import Svg
 import Svg.Attributes
 
@@ -59,11 +56,12 @@ element path attributes =
 
 {-| Turn a `Path` into a `String`. The result is ready to be used with the `d` attribute.
 
+    import Curve
+    import SubPath exposing (SubPath)
 
     myPath : SubPath
     myPath =
-        subpath (moveTo (0,0)) [ lineTo [ (42, 73) ] ]
-
+        Curve.linear [ (0,0), (42, 73) ]
 
     Path.toString [ myPath ]
         --> "M0,0 L42,73"
@@ -85,16 +83,15 @@ toString =
 
 {-| Parse a path string into a `Path`
 
-    import SubPath exposing (SubPath, subpath)
-    import LowLevel.Command exposing (moveTo, lineTo)
+    import Curve
+    import SubPath exposing (SubPath)
 
     expected : SubPath
     expected =
-        subpath (moveTo (0,0)) [ lineTo [ (42, 73) ] ]
+        Curve.linear [ (0,0), (42, 73) ]
 
     parse "M0,0 l42,73"
         --> Ok [expected]
-
 
 Only accepts valid complete subpaths (a sequences of a move followed by zero or more draws). Relative instructions are converted to absolute ones. Short-hand curve extensions are converted to explicit curve instructions.
 
@@ -102,7 +99,7 @@ The parser uses [`elm-tools/parser`](http://package.elm-lang.org/packages/elm-to
 The error type is [`Parser.Error`](http://package.elm-lang.org/packages/elm-tools/parser/2.0.1/Parser#Error).
 
 -}
-parse : String -> Result Parser.Error Path
+parse : String -> Result (List Parser.DeadEnd) Path
 parse =
     Result.map fromLowLevel << PathParser.parse
 
@@ -131,11 +128,11 @@ fromLowLevel lowlevels =
                                 ( stateAfterDrawtos, newDrawTos ) =
                                     Command.fromLowLevelDrawTos drawtos stateAfterMoveTo
                             in
-                                ( stateAfterDrawtos, subpath newMoveTo newDrawTos :: accum )
+                            ( stateAfterDrawtos, SubPath.with newMoveTo newDrawTos :: accum )
                     in
-                        List.foldl folder ( initialCursorState, [] ) lowlevels
-                            |> Tuple.second
-                            |> List.reverse
+                    List.foldl folder ( initialCursorState, [] ) lowlevels
+                        |> Tuple.second
+                        |> List.reverse
 
 
 {-| Convert a path to a svg-path-lowlevel list of subpaths

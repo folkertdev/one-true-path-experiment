@@ -7,31 +7,32 @@ It's in a special module so that the internals can be tested separately.
 -}
 
 import List.Extra as List
-import Vector2 as Vec2 exposing (Vec2)
-import Vector3 exposing (Vec3)
+import Vector2d exposing (Vector2d)
 
 
 {-| calculate the control points for natural spline interpolation
 -}
-naturalControlPoints : List (Vec2 Float) -> List (Vec3 (Vec2 Float))
+naturalControlPoints : List Vector2d -> List ( Vector2d, Vector2d, Vector2d )
 naturalControlPoints points =
     let
         ( xs, ys ) =
-            List.unzip points
+            points
+                |> List.map Vector2d.components
+                |> List.unzip
     in
-        case Maybe.map2 (,) (controlPoints xs) (controlPoints ys) of
-            Just ( ( px0, px1 ), ( py0, py1 ) ) ->
-                let
-                    pa =
-                        List.map2 (,) px0 py0
+    case Maybe.map2 (\a b -> ( a, b )) (controlPoints xs) (controlPoints ys) of
+        Just ( ( px0, px1 ), ( py0, py1 ) ) ->
+            let
+                pa =
+                    List.map2 (\a b -> Vector2d.fromComponents ( a, b )) px0 py0
 
-                    pb =
-                        List.map2 (,) px1 py1
-                in
-                    List.map3 (,,) pa pb (List.drop 1 points)
+                pb =
+                    List.map2 (\a b -> Vector2d.fromComponents ( a, b )) px1 py1
+            in
+            List.map3 (\a b c -> ( a, b, c )) pa pb (List.drop 1 points)
 
-            Nothing ->
-                []
+        Nothing ->
+            []
 
 
 step1 : List Float -> Maybe ( List number, List number1, List Float )
@@ -55,22 +56,29 @@ step1 coordinates =
                     List.foldl (\elem ( _, previous ) -> ( previous, elem )) ( x0, x1 ) rest
 
                 r_ =
-                    updateAt (n - 1) (\_ -> 8 * butFinal + final) r
-
+                    r
+                        |> List.reverse
+                        |> List.drop 1
+                        |> (\list -> (8 * butFinal + final) :: list)
+                        |> List.reverse
             in
-                Just ( a, b, r_ )
+            Just ( a, b, r_ )
 
         _ ->
             Nothing
+
+
 {-| A copy from elm-list-extra
 
-The signature of this function changed in 7.0.0, but I want 
+The signature of this function changed in 7.0.0, but I want
 to support 6.0.0 to 8.0.0 for now.
+
 -}
 updateAt : Int -> (a -> a) -> List a -> List a
 updateAt index fn list =
     if index < 0 then
         list
+
     else
         let
             head =
@@ -79,29 +87,48 @@ updateAt index fn list =
             tail =
                 List.drop index list
         in
-            case tail of
-                x :: xs ->
-                    head ++ fn x :: xs
+        case tail of
+            x :: xs ->
+                head ++ fn x :: xs
 
-                _ ->
-                    list
+            _ ->
+                list
+
+
+step2Scanner ( a, b, r ) ( prevB, prevR ) =
+    ( b - (a / prevB)
+    , r - (a / prevB) * prevR
+    )
+
 
 step2 : ( List Float, List Float, List Float ) -> Maybe ( List Float, List Float, List Float )
 step2 ( a, b, r ) =
     case ( b, r ) of
         ( firstB :: _, firstR :: _ ) ->
             let
-                scanner ( a, b, r ) ( prevB, prevR ) =
-                    ( b - (a / prevB)
-                    , r - (a / prevB) * prevR
-                    )
-
                 ( b_, r_ ) =
-                    List.scanl scanner ( firstB, firstR ) (List.map3 (,,) a b r)
-                        |> List.drop 1
-                        |> List.unzip
+                    {- Scanl seems broken, very strange
+                       List.scanl step2Scanner ( firstB, firstR ) (List.map3 (\x y z -> ( x, y, z )) a b r)
+                           |> List.drop 1
+                           |> List.unzip
+                    -}
+                    List.foldl
+                        (\( currentA, currentB, currentR ) ( ( prevB, prevR ), ( accum1, accum2 ) ) ->
+                            let
+                                m_ =
+                                    currentB - (currentA / prevB)
+
+                                newR =
+                                    currentR - (currentA / prevB) * prevR
+                            in
+                            ( ( m_, newR ), ( m_ :: accum1, newR :: accum2 ) )
+                        )
+                        ( ( firstB, firstR ), ( [], [] ) )
+                        (List.map3 (\x y z -> ( x, y, z )) a b r)
+                        |> Tuple.second
+                        |> (\( x, y ) -> ( List.drop 1 x, List.drop 1 y ))
             in
-                Just ( a, b_, r_ )
+            Just ( a, b_, r_ )
 
         _ ->
             Nothing
@@ -115,18 +142,18 @@ step3 points ( a, b, r ) =
                 finalA =
                     finalR / finalB
 
-                scanner ( b, r ) prevA =
-                    (r - prevA) / b
+                scanner ( currentB, currentR ) prevA =
+                    (currentR - prevA) / currentB
 
                 a_ =
-                    List.scanr scanner finalA (List.map2 (,) (unsafeInit b) (unsafeInit r))
+                    List.scanr scanner finalA (List.map2 Tuple.pair (unsafeInit b) (unsafeInit r))
 
                 b_ =
                     List.map2 (\xx aa -> 2 * xx - aa) (unsafeTail points) (unsafeTail a_) ++ [ (finalX + finalA) / 2 ]
             in
-                ( a_, b_ )
+            ( a_, b_ )
     in
-        Maybe.map3 helper (List.last r) (List.last b) (List.last points)
+    Maybe.map3 helper (List.last r) (List.last b) (List.last points)
 
 
 controlPoints : List Float -> Maybe ( List Float, List Float )

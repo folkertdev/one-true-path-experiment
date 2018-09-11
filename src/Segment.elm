@@ -1,50 +1,43 @@
-module Segment
-    exposing
-        ( Segment(..)
-        , angle
-        , at
-        , derivativeAtFinal
-        , derivativeAtFirst
-        , derivativeAt
-        , finalPoint
-        , firstPoint
-          -- , length
-        , reverse
-        , toDrawTo
-        , toSegment
-        , line
-        , quadratic
-        , cubic
-        , arc
-        , toCursorState
-        )
+module Segment exposing
+    ( Segment(..)
+    , line, quadratic, cubic, ellipticalArc
+    , at, angle
+    , derivativeAt, derivativeAtFirst, derivativeAtFinal
+    , firstPoint, finalPoint, reverse
+    , ArcLengthParameterized
+    , arcLengthParameterized, arcLength, pointAlong, tangentAlong, parameterValueToArcLength, arcLengthToParameterValue
+    , toDrawTo, toSegment, toCursorState
+    -- , length
+    )
 
 {-| An alternative view on paths that is convenient for mathematical operations.
 
 When we look at a path as a list of elemental `Segment`s, it becomes easier to reason about it.
 The segment data type has four segment types:
 
-* `line` straigt line segment
-* `quadratic` a quadratic bezier curve segment
-* `cubic` a cubic bezier curve segment
-* `arc` an elliptical arc segment
+  - `line` straigt line segment
+  - `quadratic` a quadratic bezier curve segment
+  - `cubic` a cubic bezier curve segment
+  - `arc` an elliptical arc segment
 
-All four of these are mathematically well-defined, and there is a wide range of
-operations that we can perform on them:
+All four of these are mathematically well-defined primitives. We can uniformly apply functions like:
 
-* `length` the arc length of a segment
-* `angle` between two segments
-* `derivative` or curvature
-* `reverse` reverse a segment - this can be used to [let the browser fill your svg correctly][reverse]
+  - `angle` between two segments
+  - `derivative` or curvature
+  - `reverse` reverse a segment - this can be used to [let the browser fill your svg correctly][reverse]
 
-These operations are backed by the great [OpenSolid][] package, and in turn back many of the operations
+`Segment` can also be `ArcLengthParameterized`, which makes operations based on arc length possible.
+For instance, the total arc length or the location after walking some distance over the segment.
+
+These operations are backed by the great [OpenSolid] package, and in turn back many of the operations
 in `SubPath`.
 
 [reverse]: https://pomax.github.io/svg-path-reverse/
 [OpenSolid]: http://package.elm-lang.org/packages/opensolid/geometry/latest
 
 @docs Segment
-@docs line, quadratic, cubic, arc
+@docs line, quadratic, cubic, ellipticalArc
+
 
 # Operations
 
@@ -53,33 +46,39 @@ in `SubPath`.
 @docs firstPoint, finalPoint, reverse
 
 
+# Arc Length Parameterization
+
+@docs ArcLengthParameterized
+@docs arcLengthParameterized, arcLength, pointAlong, tangentAlong, parameterValueToArcLength, arcLengthToParameterValue
+
+
 # Conversion
 
 @docs toDrawTo, toSegment, toCursorState
 
 -}
 
+import CubicSpline2d exposing (CubicSpline2d)
+import Curve.ArcLengthParameterization as ArcLengthParameterization
+import Curve.ParameterValue as ParameterValue
+import Direction2d exposing (Direction2d)
+import EllipticalArc2d exposing (EllipticalArc2d)
+import Geometry.Ellipse exposing (CenterParameterization, EndpointParameterization)
+import LineSegment2d exposing (LineSegment2d)
 import LowLevel.Command exposing (..)
-import OpenSolid.CubicSpline2d as CubicSpline2d exposing (CubicSpline2d)
-import OpenSolid.LineSegment2d as LineSegment2d exposing (LineSegment2d)
-import OpenSolid.Point2d as Point2d exposing (Point2d)
-import OpenSolid.QuadraticSpline2d as QuadraticSpline2d exposing (QuadraticSpline2d)
-import OpenSolid.Vector2d as Vector2d exposing (Vector2d)
-import Vector2 as Vec2 exposing (Float2, Vec2)
-import Vector3 as Vec3 exposing (Float3, Vec3)
-import Geometry.Ellipse exposing (EndpointParameterization)
-import Path.LowLevel exposing (EllipticalArcArgument)
+import Path.LowLevel exposing (ArcFlag(..), Direction(..), EllipticalArcArgument)
+import Point2d exposing (Point2d)
+import QuadraticSpline2d exposing (QuadraticSpline2d)
+import Vector2d exposing (Vector2d)
 
 
 {-| The four types of segments.
-
-
 -}
 type Segment
     = LineSegment LineSegment2d
     | Quadratic QuadraticSpline2d
     | Cubic CubicSpline2d
-    | Arc EndpointParameterization
+    | Arc EllipticalArc2d
 
 
 {-| Make a line segment
@@ -94,11 +93,11 @@ line from to =
 -}
 quadratic : ( Float, Float ) -> ( Float, Float ) -> ( Float, Float ) -> Segment
 quadratic start c1 end =
-    QuadraticSpline2d.fromControlPoints
-        ( (Point2d.fromCoordinates start)
-        , (Point2d.fromCoordinates c1)
-        , (Point2d.fromCoordinates end)
-        )
+    QuadraticSpline2d.with
+        { startPoint = Point2d.fromCoordinates start
+        , controlPoint = Point2d.fromCoordinates c1
+        , endPoint = Point2d.fromCoordinates end
+        }
         |> Quadratic
 
 
@@ -106,27 +105,37 @@ quadratic start c1 end =
 -}
 cubic : ( Float, Float ) -> ( Float, Float ) -> ( Float, Float ) -> ( Float, Float ) -> Segment
 cubic start c1 c2 end =
-    CubicSpline2d.fromControlPoints
-        ( (Point2d.fromCoordinates start)
-        , (Point2d.fromCoordinates c1)
-        , (Point2d.fromCoordinates c2)
-        , (Point2d.fromCoordinates end)
-        )
+    CubicSpline2d.with
+        { startPoint = Point2d.fromCoordinates start
+        , startControlPoint = Point2d.fromCoordinates c1
+        , endControlPoint = Point2d.fromCoordinates c2
+        , endPoint = Point2d.fromCoordinates end
+        }
         |> Cubic
 
 
 {-| Make an elliptic arc segment
 -}
-arc : ( Float, Float ) -> Path.LowLevel.EllipticalArcArgument -> Segment
-arc start { radii, xAxisRotate, arcFlag, direction, target } =
-    Arc
-        { start = start
-        , radii = radii
-        , xAxisRotate = xAxisRotate
-        , direction = direction
-        , arcFlag = arcFlag
-        , end = target
-        }
+ellipticalArc : ( Float, Float ) -> Path.LowLevel.EllipticalArcArgument -> Segment
+ellipticalArc start { radii, xAxisRotate, arcFlag, direction, target } =
+    let
+        ( rx, ry ) =
+            radii
+
+        center : CenterParameterization
+        center =
+            { start = start, end = target, radii = radii, arcFlag = arcFlag, direction = direction, xAxisRotate = xAxisRotate }
+                |> Geometry.Ellipse.endpointToCenter
+    in
+    Arc <|
+        EllipticalArc2d.with <|
+            { centerPoint = Point2d.fromCoordinates center.center
+            , xDirection = Direction2d.fromAngle center.xAxisRotate
+            , xRadius = Tuple.first center.radii
+            , yRadius = Tuple.second center.radii
+            , startAngle = center.startAngle
+            , sweptAngle = center.deltaTheta
+            }
 
 
 {-| Convert a segment to a drawto instruction. forgets the starting point.
@@ -134,44 +143,57 @@ arc start { radii, xAxisRotate, arcFlag, direction, target } =
 toDrawTo : Segment -> DrawTo
 toDrawTo segment =
     case segment of
-        LineSegment segment ->
-            lineTo [ Point2d.coordinates <| LineSegment2d.endPoint segment ]
+        LineSegment lineSegment ->
+            lineTo [ Point2d.coordinates <| LineSegment2d.endPoint lineSegment ]
 
         Quadratic spline ->
-            let
-                ( start, c1, end ) =
-                    QuadraticSpline2d.controlPoints spline
-            in
-                quadraticCurveTo [ ( Point2d.coordinates c1, Point2d.coordinates end ) ]
+            quadraticCurveTo
+                [ ( Point2d.coordinates (QuadraticSpline2d.controlPoint spline)
+                  , Point2d.coordinates (QuadraticSpline2d.endPoint spline)
+                  )
+                ]
 
         Cubic spline ->
-            let
-                ( start, c1, c2, end ) =
-                    CubicSpline2d.controlPoints spline
-            in
-                cubicCurveTo [ ( Point2d.coordinates c1, Point2d.coordinates c2, Point2d.coordinates end ) ]
+            cubicCurveTo
+                [ ( Point2d.coordinates (CubicSpline2d.startControlPoint spline)
+                  , Point2d.coordinates (CubicSpline2d.endControlPoint spline)
+                  , Point2d.coordinates (CubicSpline2d.endPoint spline)
+                  )
+                ]
 
-        Arc { end, radii, xAxisRotate, arcFlag, direction } ->
+        Arc ellipse ->
+            let
+                endpointParameterization : EndpointParameterization
+                endpointParameterization =
+                    Geometry.Ellipse.centerToEndpoint <|
+                        { center = EllipticalArc2d.centerPoint ellipse |> Point2d.coordinates
+                        , radii = ( EllipticalArc2d.xRadius ellipse, EllipticalArc2d.yRadius ellipse )
+                        , startAngle = EllipticalArc2d.startAngle ellipse
+                        , deltaTheta = EllipticalArc2d.sweptAngle ellipse
+                        , xAxisRotate = Direction2d.toAngle (EllipticalArc2d.xDirection ellipse)
+                        }
+            in
             EllipticalArc
-                [ { target = end
+                [ { target = endpointParameterization.end
                   , radii =
-                        radii
-                        -- convert from radians to degrees
-                  , xAxisRotate = xAxisRotate * (180 / pi)
-                  , arcFlag = arcFlag
-                  , direction = direction
+                        endpointParameterization.radii
+
+                  -- convert from radians to degrees
+                  , xAxisRotate = endpointParameterization.xAxisRotate
+                  , arcFlag = endpointParameterization.arcFlag
+                  , direction = endpointParameterization.direction
                   }
                 ]
 
 
 {-| Extract the first point from a segment
 -}
-firstPoint : Segment -> Vec2 Float
+firstPoint : Segment -> ( Float, Float )
 firstPoint segment =
     Point2d.coordinates <|
         case segment of
-            LineSegment segment ->
-                LineSegment2d.startPoint segment
+            LineSegment lineSegment ->
+                LineSegment2d.startPoint lineSegment
 
             Quadratic spline ->
                 QuadraticSpline2d.startPoint spline
@@ -180,18 +202,17 @@ firstPoint segment =
                 CubicSpline2d.startPoint spline
 
             Arc arc ->
-                -- Arc2d.startPoint arc
-                Point2d.fromCoordinates arc.start
+                EllipticalArc2d.startPoint arc
 
 
 {-| Extract the final point from a segment
 -}
-finalPoint : Segment -> Vec2 Float
+finalPoint : Segment -> ( Float, Float )
 finalPoint segment =
     Point2d.coordinates <|
         case segment of
-            LineSegment segment ->
-                LineSegment2d.endPoint segment
+            LineSegment lineSegment ->
+                LineSegment2d.endPoint lineSegment
 
             Quadratic spline ->
                 QuadraticSpline2d.endPoint spline
@@ -200,8 +221,7 @@ finalPoint segment =
                 CubicSpline2d.endPoint spline
 
             Arc arc ->
-                -- Arc2d.endPoint arc
-                Point2d.fromCoordinates arc.end
+                EllipticalArc2d.endPoint arc
 
 
 {-| Reverse a line segment
@@ -209,8 +229,8 @@ finalPoint segment =
 reverse : Segment -> Segment
 reverse segment =
     case segment of
-        LineSegment segment ->
-            LineSegment <| LineSegment2d.reverse segment
+        LineSegment lineSegment ->
+            LineSegment <| LineSegment2d.reverse lineSegment
 
         Quadratic spline ->
             Quadratic <| QuadraticSpline2d.reverse spline
@@ -219,15 +239,14 @@ reverse segment =
             Cubic <| CubicSpline2d.reverse spline
 
         Arc arc ->
-            -- Arc <| Arc2d.reverse arc
-            Arc (Geometry.Ellipse.reverse arc)
+            Arc (EllipticalArc2d.reverse arc)
 
 
 {-| Convert a drawto into a segment
 
 This function needs the previous segment to the starting point and (for bezier curves) the control points
 
-    import LowLevel.Command exposing (DrawTo(EllipticalArc), CursorState)
+    import LowLevel.Command exposing (DrawTo(EllipticalArc), CursorState, clockwise, largestArc)
 
     start : CursorState
     start = { start = (0,0), cursor = (0,0), previousControlPoint = Nothing }
@@ -245,11 +264,10 @@ This function needs the previous segment to the starting point and (for bezier c
 
     expected : List Segment
     expected =
-         [ Arc
-            { start = (0,0)
-            , end = (10, 0)
+         [ arc (0,0)
+            { target = (10, 0)
             , radii = (5,5)
-            , xAxisRotate = pi / 2
+            , xAxisRotate = 90
             , arcFlag = largestArc
             , direction = clockwise
             }
@@ -268,69 +286,65 @@ toSegment state drawto =
         ( startX, startY ) =
             Point2d.coordinates start
     in
-        case drawto of
-            LineTo coordinates_ ->
-                let
-                    coordinates =
-                        List.map Point2d.fromCoordinates coordinates_
-                in
-                    List.map2 (\f t -> LineSegment <| LineSegment2d.from f t) (start :: coordinates) coordinates
+    case drawto of
+        LineTo coordinates_ ->
+            let
+                coordinates =
+                    List.map Point2d.fromCoordinates coordinates_
+            in
+            List.map2 (\f t -> LineSegment <| LineSegment2d.from f t) (start :: coordinates) coordinates
 
-            Horizontal xs ->
-                let
-                    coordinates =
-                        List.map (\x -> Point2d.fromCoordinates ( x, startY )) xs
-                in
-                    List.map2 (\f t -> LineSegment <| LineSegment2d.from f t) (start :: coordinates) coordinates
+        CurveTo coordinates ->
+            let
+                toPoint2ds ( startControlPoint, endControlPoint, endPoint ) =
+                    ( Point2d.fromCoordinates startControlPoint, Point2d.fromCoordinates endControlPoint, Point2d.fromCoordinates endPoint )
 
-            Vertical ys ->
-                let
-                    coordinates =
-                        List.map (\y -> Point2d.fromCoordinates ( startX, y )) ys
-                in
-                    List.map2 (\f t -> LineSegment <| LineSegment2d.from f t) (start :: coordinates) coordinates
+                folder ( c1, c2, p ) ( segmentStart, accum ) =
+                    ( p, Cubic (CubicSpline2d.with { startPoint = segmentStart, startControlPoint = c1, endControlPoint = c2, endPoint = p }) :: accum )
+            in
+            coordinates
+                |> List.map toPoint2ds
+                |> traverse folder start
 
-            CurveTo coordinates_ ->
-                let
-                    coordinates =
-                        List.map (Vec3.map Point2d.fromCoordinates) coordinates_
+        QuadraticBezierCurveTo coordinates ->
+            let
+                toPoint2ds ( controlPoint, endPoint ) =
+                    ( Point2d.fromCoordinates controlPoint, Point2d.fromCoordinates endPoint )
 
-                    folder ( c1, c2, p ) ( segmentStart, accum ) =
-                        ( p, Cubic (CubicSpline2d.fromControlPoints ( segmentStart, c1, c2, p )) :: accum )
-                in
-                    traverse folder start coordinates
+                folder ( c, p ) ( segmentStart, accum ) =
+                    ( p
+                    , Quadratic (QuadraticSpline2d.with { startPoint = segmentStart, controlPoint = c, endPoint = p }) :: accum
+                    )
+            in
+            coordinates
+                |> List.map toPoint2ds
+                |> traverse folder start
 
-            QuadraticBezierCurveTo coordinates_ ->
-                let
-                    coordinates =
-                        List.map (Vec2.map Point2d.fromCoordinates) coordinates_
+        EllipticalArc arguments ->
+            let
+                folder args ( segmentStart, accum ) =
+                    ( args.target
+                    , ellipticalArc segmentStart args
+                        {-
+                           Arc
+                               { start = segmentStart
+                               , end = args.target
+                               , radii =
+                                   args.radii
 
-                    folder ( c, p ) ( segmentStart, accum ) =
-                        ( p, Quadratic (QuadraticSpline2d.fromControlPoints ( segmentStart, c, p )) :: accum )
-                in
-                    traverse folder start coordinates
+                               -- convert degrees to radians
+                               , xAxisRotate = degrees args.xAxisRotate
+                               , arcFlag = args.arcFlag
+                               , direction = args.direction
+                               }
+                        -}
+                        :: accum
+                    )
+            in
+            traverse folder (Point2d.coordinates start) arguments
 
-            EllipticalArc arguments ->
-                let
-                    folder args ( segmentStart, accum ) =
-                        ( args.target
-                        , Arc
-                            { start = segmentStart
-                            , end = args.target
-                            , radii =
-                                args.radii
-                                -- convert degrees to radians
-                            , xAxisRotate = degrees args.xAxisRotate
-                            , arcFlag = args.arcFlag
-                            , direction = args.direction
-                            }
-                            :: accum
-                        )
-                in
-                    traverse folder (Point2d.coordinates start) arguments
-
-            ClosePath ->
-                []
+        ClosePath ->
+            []
 
 
 {-| Convert a `Segment` to a `CursorState`
@@ -341,35 +355,53 @@ toSegment state drawto =
 -}
 toCursorState : Segment -> CursorState
 toCursorState segment =
-    let
-        vec4map f ( a, b, c, d ) =
-            ( f a, f b, f c, f d )
-    in
-        case segment of
-            Cubic curve ->
-                let
-                    ( start, _, control, end ) =
-                        CubicSpline2d.controlPoints curve
-                            |> vec4map Point2d.coordinates
-                in
-                    { start = start
-                    , previousControlPoint = Just control
-                    , cursor = end
-                    }
+    case segment of
+        Cubic curve ->
+            let
+                start =
+                    curve
+                        |> CubicSpline2d.startPoint
+                        |> Point2d.coordinates
 
-            Quadratic curve ->
-                let
-                    ( start, control, end ) =
-                        QuadraticSpline2d.controlPoints curve
-                            |> Vec3.map Point2d.coordinates
-                in
-                    { start = start
-                    , previousControlPoint = Just control
-                    , cursor = end
-                    }
+                control =
+                    curve
+                        |> CubicSpline2d.endControlPoint
+                        |> Point2d.coordinates
 
-            _ ->
-                { start = firstPoint segment, cursor = finalPoint segment, previousControlPoint = Nothing }
+                end =
+                    curve
+                        |> CubicSpline2d.endPoint
+                        |> Point2d.coordinates
+            in
+            { start = start
+            , previousControlPoint = Just control
+            , cursor = end
+            }
+
+        Quadratic curve ->
+            let
+                start =
+                    curve
+                        |> QuadraticSpline2d.startPoint
+                        |> Point2d.coordinates
+
+                control =
+                    curve
+                        |> QuadraticSpline2d.controlPoint
+                        |> Point2d.coordinates
+
+                end =
+                    curve
+                        |> QuadraticSpline2d.endPoint
+                        |> Point2d.coordinates
+            in
+            { start = start
+            , previousControlPoint = Just control
+            , cursor = end
+            }
+
+        _ ->
+            { start = firstPoint segment, cursor = finalPoint segment, previousControlPoint = Nothing }
 
 
 traverse : (a -> ( b, List c ) -> ( b, List c )) -> b -> List a -> List c
@@ -381,126 +413,120 @@ traverse folder initial elements =
 
 {-| Get the location at a point on the curve, only defined in the range [0, 1].
 
+    at 0.5 (line ( 0, 0 ) ( 10, 0 )) --> ( 5, 0 )
 
-    at 0.5 (line (0,0) (10, 0)) --> ( 5, 0 )
-
-    at 0.5 (quadratic (0,0) (5, 10) (10, 0)) --> ( 5, 5 )
+    at 0.5 (quadratic ( 0, 0 ) ( 5, 10 ) ( 10, 0 )) --> ( 5, 5 )
 
 -}
 at : Float -> Segment -> ( Float, Float )
 at t segment =
+    let
+        parameterValue =
+            ParameterValue.clamped t
+    in
     case segment of
-        LineSegment segment ->
-            LineSegment2d.interpolate segment t
+        LineSegment lineSegment ->
+            LineSegment2d.interpolate lineSegment t
                 |> Point2d.coordinates
 
         Quadratic spline ->
-            QuadraticSpline2d.pointOn spline t
+            QuadraticSpline2d.pointOn spline parameterValue
                 |> Point2d.coordinates
 
         Cubic spline ->
-            CubicSpline2d.pointOn spline t
+            CubicSpline2d.pointOn spline parameterValue
                 |> Point2d.coordinates
 
         Arc arc ->
-            -- Arc2d.pointOn arc t
-            Geometry.Ellipse.at t (Geometry.Ellipse.endpointToCenter arc)
+            EllipticalArc2d.pointOn arc parameterValue
+                |> Point2d.coordinates
 
 
 {-| Get the derivative at a point on the curve, only defined in the range [0, 1].
 
+    import Vector2
     import LowLevel.Command exposing
         ( EllipticalArcArgument
+        , smallestArc
         , largestArc
         , clockwise
         )
 
     derivativeAt 0.5 (line (0,0) (1,1))
-        --> (0.7071067811865475,0.7071067811865475)
+        |> Vector2.normalize
+        --> Vector2.normalize (1,1)
 
     argument : EllipticalArcArgument
     argument =
-        { target = ( 10, 0 )
+        { target = ( 5, 5 )
         , radii = ( 5, 5 )
         , xAxisRotate = 0
-        , arcFlag = largestArc
+        , arcFlag = smallestArc
         , direction = clockwise
         }
 
-    derivativeAt 0.5 (arc (0,0)  argument) --> ( 1, 0)
+    derivativeAt 0.5 (arc (0,0)  argument)
+        |> Vector2.normalize
+        --> Vector2.normalize (1,1)
 
 -}
 derivativeAt : Float -> Segment -> ( Float, Float )
 derivativeAt t segment =
-    case segment of
-        LineSegment segment ->
-            LineSegment2d.vector segment
-                |> Vector2d.normalize
-                |> Vector2d.components
+    let
+        parameterValue =
+            ParameterValue.clamped t
+    in
+    Vector2d.components <|
+        case segment of
+            LineSegment lineSegment ->
+                LineSegment2d.vector lineSegment
 
-        Quadratic spline ->
-            QuadraticSpline2d.derivative spline t
-                |> Vector2d.components
+            Quadratic spline ->
+                QuadraticSpline2d.firstDerivative spline parameterValue
 
-        Cubic spline ->
-            CubicSpline2d.derivative spline t
-                |> Vector2d.components
+            Cubic spline ->
+                CubicSpline2d.firstDerivative spline parameterValue
 
-        Arc arc ->
-            -- Arc2d.pointOn arc t
-            ( 1
-            , Geometry.Ellipse.derivativeAt t (Geometry.Ellipse.endpointToCenter arc)
-            )
+            Arc arc ->
+                EllipticalArc2d.firstDerivative arc parameterValue
 
 
 {-| The derivative at the starting point of the segment
 -}
-derivativeAtFirst : Segment -> Float2
+derivativeAtFirst : Segment -> ( Float, Float )
 derivativeAtFirst segment =
-    case segment of
-        LineSegment segment ->
-            LineSegment2d.vector segment
-                |> Vector2d.normalize
-                |> Vector2d.components
+    Vector2d.components <|
+        case segment of
+            LineSegment lineSegment ->
+                LineSegment2d.vector lineSegment
 
-        Quadratic spline ->
-            Vector2d.components <|
+            Quadratic spline ->
                 QuadraticSpline2d.startDerivative spline
 
-        Cubic spline ->
-            Vector2d.components <|
+            Cubic spline ->
                 CubicSpline2d.startDerivative spline
 
-        Arc arc ->
-            -- Arc2d.derivative arc 0
-            ( 1
-            , Geometry.Ellipse.derivativeAt 0 (Geometry.Ellipse.endpointToCenter arc)
-            )
+            Arc arc ->
+                EllipticalArc2d.firstDerivative arc ParameterValue.zero
 
 
 {-| The derivative at the ending point of the segment
 -}
-derivativeAtFinal : Segment -> Float2
+derivativeAtFinal : Segment -> ( Float, Float )
 derivativeAtFinal segment =
-    case segment of
-        LineSegment segment ->
-            LineSegment2d.vector segment
-                |> Vector2d.normalize
-                |> Vector2d.components
+    Vector2d.components <|
+        case segment of
+            LineSegment lineSegment ->
+                LineSegment2d.vector lineSegment
 
-        Quadratic spline ->
-            QuadraticSpline2d.endDerivative spline
-                |> Vector2d.components
+            Quadratic spline ->
+                QuadraticSpline2d.endDerivative spline
 
-        Cubic spline ->
-            CubicSpline2d.endDerivative spline
-                |> Vector2d.components
+            Cubic spline ->
+                CubicSpline2d.endDerivative spline
 
-        Arc arc ->
-            -- Arc2d.derivative arc 1
-            ( 1
-            , Geometry.Ellipse.derivativeAt 1 (Geometry.Ellipse.endpointToCenter arc)
-            )
+            Arc arc ->
+                EllipticalArc2d.firstDerivative arc ParameterValue.one
 
 
 {-| The signed angle (in radians) between the end of segment1 and the start of segment2
@@ -514,33 +540,37 @@ derivativeAtFinal segment =
     angle a b --> degrees 90
 
     angle b a --> degrees -90
+
 -}
 angle : Segment -> Segment -> Float
 angle seg1 seg2 =
-    signedAngle (Vec2.negate <| derivativeAtFinal seg1) (Vec2.negate <| derivativeAtFirst seg2)
-
-
-{-| A signed angle between two vectors (the standard implementation is unsigned)
--}
-signedAngle : Vec2 Float -> Vec2 Float -> Float
-signedAngle u v =
     let
-        ( ux, uy ) =
-            u
+        direction1 =
+            seg1
+                |> derivativeAtFinal
+                |> Vector2d.fromComponents
+                |> Vector2d.scaleBy -1
 
-        ( vx, vy ) =
-            v
+        direction2 =
+            seg2
+                |> derivativeAtFirst
+                |> Vector2d.fromComponents
+                |> Vector2d.scaleBy -1
+    in
+    signedAngle_ direction1 direction2
 
+
+signedAngle_ : Vector2d -> Vector2d -> Float
+signedAngle_ u v =
+    let
         sign =
-            if ux * vy - uy * vx < 0 then
+            if Vector2d.crossProduct u v < 0 then
                 -1
+
             else
                 1
-
-        q =
-            acos (Vec2.dot u v / (Vec2.length u * Vec2.length v))
     in
-        sign * abs q
+    sign * abs (acos (Vector2d.dotProduct u v / (Vector2d.length u * Vector2d.length v)))
 
 
 {-| The approximate length of a segment
@@ -555,3 +585,173 @@ length segment =
 intersections : Segment -> Segment -> List ( Float, Float )
 intersections segment1 segment2 =
     []
+
+
+
+-- Arc Length Parameterization
+
+
+{-| Opaque type for the arc length parameterization of a segment
+-}
+type ArcLengthParameterized
+    = ParameterizedLineSegment LineSegment2d.LineSegment2d
+    | ParameterizedQuadratic QuadraticSpline2d.ArcLengthParameterized
+    | ParameterizedCubic CubicSpline2d.ArcLengthParameterized
+    | ParameterizedArc EllipticalArc2d.ArcLengthParameterized
+
+
+{-| -}
+arcLengthParameterized :
+    Float
+    -> Segment
+    -> ArcLengthParameterized
+arcLengthParameterized tolerance segment =
+    let
+        config =
+            { maxError = tolerance }
+    in
+    case segment of
+        LineSegment lineSegment ->
+            ParameterizedLineSegment lineSegment
+
+        Quadratic spline ->
+            QuadraticSpline2d.arcLengthParameterized config spline
+                |> ParameterizedQuadratic
+
+        Cubic spline ->
+            CubicSpline2d.arcLengthParameterized config spline
+                |> ParameterizedCubic
+
+        Arc arc ->
+            EllipticalArc2d.arcLengthParameterized config arc
+                |> ParameterizedArc
+
+
+{-| -}
+arcLength : ArcLengthParameterized -> Float
+arcLength parameterized =
+    case parameterized of
+        ParameterizedLineSegment lineSegment ->
+            LineSegment2d.length lineSegment
+
+        ParameterizedQuadratic spline ->
+            QuadraticSpline2d.arcLength spline
+
+        ParameterizedCubic spline ->
+            CubicSpline2d.arcLength spline
+
+        ParameterizedArc arc ->
+            EllipticalArc2d.arcLength arc
+
+
+{-| -}
+pointAlong : ArcLengthParameterized -> Float -> Maybe ( Float, Float )
+pointAlong parameterized t =
+    let
+        parameterValue =
+            ParameterValue.clamped t
+    in
+    Maybe.map Point2d.coordinates <|
+        case parameterized of
+            ParameterizedLineSegment lineSegment ->
+                LineSegment2d.interpolate lineSegment (t / LineSegment2d.length lineSegment)
+                    |> Just
+
+            ParameterizedQuadratic spline ->
+                QuadraticSpline2d.pointAlong spline t
+
+            ParameterizedCubic spline ->
+                CubicSpline2d.pointAlong spline t
+
+            ParameterizedArc arc ->
+                EllipticalArc2d.pointAlong arc t
+
+
+{-| -}
+tangentAlong : ArcLengthParameterized -> Float -> Maybe ( Float, Float )
+tangentAlong parameterized t =
+    let
+        parameterValue =
+            ParameterValue.clamped t
+    in
+    Maybe.map Direction2d.components <|
+        case parameterized of
+            ParameterizedLineSegment lineSegment ->
+                LineSegment2d.direction lineSegment
+
+            ParameterizedQuadratic spline ->
+                spline
+                    |> (\validSpline -> QuadraticSpline2d.tangentDirectionAlong validSpline t)
+
+            ParameterizedCubic spline ->
+                spline
+                    |> (\validSpline -> CubicSpline2d.tangentDirectionAlong validSpline t)
+
+            ParameterizedArc arc ->
+                arc
+                    |> (\validSpline -> EllipticalArc2d.tangentDirectionAlong validSpline t)
+
+
+{-| -}
+arcLengthToParameterValue :
+    ArcLengthParameterized
+    -> Float
+    -> Maybe Float
+arcLengthToParameterValue parameterized t =
+    let
+        parameterValue =
+            ParameterValue.clamped t
+
+        mapper object =
+            ArcLengthParameterization.arcLengthToParameterValue t object
+                |> Maybe.map ParameterValue.value
+    in
+    case parameterized of
+        ParameterizedLineSegment lineSegment ->
+            LineSegment2d.length lineSegment
+                / t
+                |> Just
+
+        ParameterizedQuadratic spline ->
+            QuadraticSpline2d.arcLengthParameterization spline
+                |> mapper
+
+        ParameterizedCubic spline ->
+            spline
+                |> CubicSpline2d.arcLengthParameterization
+                |> mapper
+
+        ParameterizedArc arc ->
+            EllipticalArc2d.arcLengthParameterization arc
+                |> mapper
+
+
+{-| -}
+parameterValueToArcLength :
+    ArcLengthParameterized
+    -> Float
+    -> Float
+parameterValueToArcLength parameterized t =
+    let
+        parameterValue =
+            ParameterValue.clamped t
+
+        mapper object =
+            ArcLengthParameterization.parameterValueToArcLength parameterValue object
+    in
+    case parameterized of
+        ParameterizedLineSegment lineSegment ->
+            LineSegment2d.length lineSegment
+                * t
+
+        ParameterizedQuadratic spline ->
+            QuadraticSpline2d.arcLengthParameterization spline
+                |> mapper
+
+        ParameterizedCubic spline ->
+            CubicSpline2d.arcLengthParameterization spline
+                |> mapper
+
+        ParameterizedArc arc ->
+            EllipticalArc2d.arcLengthParameterization arc
+                |> mapper

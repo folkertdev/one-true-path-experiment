@@ -1,4 +1,4 @@
-module Geometry.Line exposing (..)
+module Geometry.Line exposing (length, lengthParameterization)
 
 import Vector2 as Vec2 exposing (..)
 
@@ -14,7 +14,8 @@ lengthParameterization start end s =
         size =
             length start end
     in
-        if s > size then
-            Nothing
-        else
-            Just (Vec2.add start (Vec2.scale (s / size) (Vec2.sub end start)))
+    if s > size then
+        Nothing
+
+    else
+        Just (Vec2.add start (Vec2.scale (s / size) (Vec2.sub end start)))

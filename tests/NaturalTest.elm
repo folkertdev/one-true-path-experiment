@@ -1,19 +1,22 @@
-module NaturalTest exposing (..)
+module NaturalTest exposing (Triplet, controlPoints, natural, naturalControlPoints, step1, step2, tests)
 
-import Test exposing (..)
 import Expect
 import Fuzz exposing (..)
 import Internal.NaturalInterpolation exposing (naturalControlPoints)
-import Path exposing (Path)
-import SubPath exposing (subpath)
-import LowLevel.Command exposing (lineTo, moveTo, cubicCurveTo)
-import Vector2 exposing (Vec2)
-import Vector3 exposing (Vec3)
 import List.Extra as List
+import LowLevel.Command exposing (cubicCurveTo, lineTo, moveTo)
+import Path exposing (Path)
+import SubPath
+import Test exposing (..)
+import Vector2d
 
 
 type alias Triplet a =
     ( a, a, a )
+
+
+mapTriplet f ( a, b, c ) =
+    ( f a, f b, f c )
 
 
 step1 coordinates =
@@ -40,39 +43,43 @@ step1 coordinates =
                         (\i elem ->
                             if i == n - 1 then
                                 8 * butFinal + final
+
                             else
                                 elem
                         )
                         r
             in
-                ( a, b, r_ )
+            ( a, b, r_ )
 
         _ ->
-            Debug.crash "invalid input"
+            Debug.todo "invalid input"
 
 
 step2 coordinates =
     let
-        ( a, b, r ) =
+        ( x, y, z ) =
+            firstStep
+
+        firstStep =
             step1 coordinates
 
         firstB =
-            case b of
-                x :: xs ->
-                    x
+            case firstStep of
+                ( _, v :: vs, _ ) ->
+                    v
 
                 _ ->
-                    Debug.crash "invalid input"
+                    Debug.todo "invalid input"
 
         firstR =
-            case r of
-                x :: xs ->
-                    x
+            case firstStep of
+                ( _, _, v :: vs ) ->
+                    v
 
                 _ ->
-                    Debug.crash "invalid input"
+                    Debug.todo "invalid input"
 
-        ( b_, r_ ) =
+        ( newB, newR ) =
             List.foldl
                 (\( a, b, r ) ( ( prevB, prevR ), ( accum1, accum2 ) ) ->
                     let
@@ -82,19 +89,35 @@ step2 coordinates =
                         r_ =
                             r - (a / prevB) * prevR
                     in
-                        ( ( m_, r_ ), ( m_ :: accum1, r_ :: accum2 ) )
+                    ( ( m_, r_ ), ( m_ :: accum1, r_ :: accum2 ) )
                 )
                 ( ( firstB, firstR ), ( [], [] ) )
-                (List.map3 (,,) a b r)
+                (List.map3 triplet x y z)
                 |> Tuple.second
                 |> (\( a, b ) -> ( List.reverse a, List.reverse b ))
     in
-        ( a, b_, r_ )
+    let
+        ( a, _, _ ) =
+            firstStep
+    in
+    ( a, newB, newR )
+
+
+triplet =
+    \x y z -> ( x, y, z )
 
 
 controlPoints : List Float -> ( List Float, List Float )
 controlPoints points =
     let
+        folder =
+            \( _, currentB, currentR ) ( prevA, accum ) ->
+                let
+                    value =
+                        (currentR - prevA) / currentB
+                in
+                ( value, value :: accum )
+
         ( a, b, r ) =
             step2 points
 
@@ -104,28 +127,21 @@ controlPoints points =
                     rr / bb
 
                 _ ->
-                    Debug.crash "invalid input"
+                    Debug.todo "invalid input"
 
         n =
             List.length points - 1
 
         a_ =
-            List.foldr
-                (\( a, b, r ) ( prevA, accum ) ->
-                    let
-                        value =
-                            (r - prevA) / b
-                    in
-                        ( value, value :: accum )
-                )
+            List.foldr folder
                 ( finalA, [ finalA ] )
-                (List.map3 (,,) a (List.take (n - 1) b) (List.take (n - 1) r))
+                (List.map3 (\x y z -> ( x, y, z )) a (List.take (n - 1) b) (List.take (n - 1) r))
                 |> Tuple.second
 
         lastX =
             case List.last points of
                 Nothing ->
-                    Debug.crash "invalid input"
+                    Debug.todo "invalid input"
 
                 Just v ->
                     v
@@ -133,18 +149,18 @@ controlPoints points =
         lastA =
             case List.last a_ of
                 Nothing ->
-                    Debug.crash "invalid input"
+                    Debug.todo "invalid input"
 
                 Just v ->
                     v
 
         b_ =
-            (List.map2 (\xx aa -> 2 * xx - aa) (List.drop 1 points) (List.drop 1 a_)) ++ [ (lastX + lastA) / 2 ]
+            List.map2 (\xx aa -> 2 * xx - aa) (List.drop 1 points) (List.drop 1 a_) ++ [ (lastX + lastA) / 2 ]
     in
-        ( a_, b_ )
+    ( a_, b_ )
 
 
-natural : List (Vec2 Float) -> Path
+natural : List ( Float, Float ) -> Path
 natural points =
     case points of
         [] ->
@@ -154,13 +170,13 @@ natural points =
             []
 
         [ p1, p2 ] ->
-            [ subpath (moveTo p1) [ lineTo [ p2 ] ] ]
+            [ SubPath.with (moveTo p1) [ lineTo [ p2 ] ] ]
 
         p :: ps ->
-            [ subpath (moveTo p) [ cubicCurveTo (naturalControlPoints points) ] ]
+            [ SubPath.with (moveTo p) [ cubicCurveTo (naturalControlPoints points) ] ]
 
 
-naturalControlPoints : List (Vec2 Float) -> List (Vec3 (Vec2 Float))
+naturalControlPoints : List ( Float, Float ) -> List ( ( Float, Float ), ( Float, Float ), ( Float, Float ) )
 naturalControlPoints points =
     let
         ( xs, ys ) =
@@ -173,12 +189,12 @@ naturalControlPoints points =
             controlPoints ys
 
         pa =
-            List.map2 (,) px0 py0
+            List.map2 Tuple.pair px0 py0
 
         pb =
-            List.map2 (,) px1 py1
+            List.map2 Tuple.pair px1 py1
     in
-        List.map3 (,,) pa pb (List.drop 1 points)
+    List.map3 (\x y z -> ( x, y, z )) pa pb (List.drop 1 points)
 
 
 tests =
@@ -187,7 +203,8 @@ tests =
             \points ->
                 case points of
                     _ :: _ :: _ ->
-                        Internal.NaturalInterpolation.naturalControlPoints points
+                        Internal.NaturalInterpolation.naturalControlPoints (List.map Vector2d.fromComponents points)
+                            |> List.map (mapTriplet Vector2d.components)
                             |> Expect.equal (naturalControlPoints points)
 
                     _ ->
@@ -195,9 +212,9 @@ tests =
         , fuzz (tuple3 ( list float, list float, list float )) "scanr " <|
             \( a, b, r ) ->
                 let
-                    scanner ( a, b, r ) ( prevB, prevR ) =
-                        ( b - (a / prevB)
-                        , r - (a / prevB) * prevR
+                    scanner ( currentA, currentB, currentR ) ( prevB, prevR ) =
+                        ( currentB - (currentA / prevB)
+                        , currentR - (currentA / prevB) * prevR
                         )
 
                     firstB =
@@ -206,27 +223,31 @@ tests =
                     firstR =
                         1
 
+                    input =
+                        List.map3 triplet a b r
+
                     p =
-                        List.scanl scanner ( firstB, firstR ) (List.map3 (,,) a b r)
+                        List.scanl scanner ( firstB, firstR ) input
+                            |> List.drop 2
                             |> List.unzip
-                            |> (\( a, b ) -> ( List.drop 1 a, List.drop 1 b ))
 
                     q =
                         List.foldl
-                            (\( a, b, r ) ( ( prevB, prevR ), ( accum1, accum2 ) ) ->
+                            (\( currentA, currentB, currentR ) ( ( prevB, prevR ), ( accum1, accum2 ) ) ->
                                 let
                                     m_ =
-                                        b - (a / prevB)
+                                        currentB - (currentA / prevB)
 
                                     r_ =
-                                        r - (a / prevB) * prevR
+                                        currentR - (currentA / prevB) * prevR
                                 in
-                                    ( ( m_, r_ ), ( m_ :: accum1, r_ :: accum2 ) )
+                                ( ( m_, r_ ), ( m_ :: accum1, r_ :: accum2 ) )
                             )
                             ( ( firstB, firstR ), ( [], [] ) )
-                            (List.map3 (,,) a b r)
+                            input
                             |> Tuple.second
-                            |> (\( a, b ) -> ( List.reverse a, List.reverse b ))
+                            |> (\( x, y ) -> ( List.drop 1 x, List.drop 1 y ))
                 in
-                    Expect.equal (toString p) (toString q)
+                p
+                    |> Expect.equal q
         ]
