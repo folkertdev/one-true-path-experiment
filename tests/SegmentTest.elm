@@ -15,6 +15,18 @@ import Test exposing (..)
 import Vector2d exposing (Vector2d)
 
 
+epsilon : Expect.FloatingPointTolerance
+epsilon =
+    Expect.Absolute 1.0e-6
+
+
+expectEqualPoints ( a, b ) =
+    Expect.all
+        [ \( c, d ) -> Expect.within epsilon a c
+        , \( c, d ) -> Expect.within epsilon b d
+        ]
+
+
 vec2 =
     Fuzz.map2 Tuple.pair (Fuzz.map toFloat Fuzz.int) (Fuzz.map toFloat Fuzz.int)
 
@@ -159,11 +171,11 @@ startAndEnd =
             [ test (name ++ "- first point is (0, 42)") <|
                 \_ ->
                     Segment.firstPoint value
-                        |> Expect.equal ( 0, 42 )
+                        |> expectEqualPoints ( 0, 42 )
             , test (name ++ "- final point is (42, 0)") <|
                 \_ ->
                     Segment.finalPoint value
-                        |> Expect.equal ( 42, 0 )
+                        |> expectEqualPoints ( 42, 0 )
             ]
     in
     describe "start and end points" <|
@@ -175,19 +187,19 @@ angle =
         [ test "angle is pi / 2" <|
             \_ ->
                 Segment.angle (Segment.line ( 0, 0 ) ( 100, 0 )) (Segment.line ( 0, 0 ) ( 0, 100 ))
-                    |> Expect.equal (pi / 2)
+                    |> Expect.within epsilon (pi / 2)
         , test "angle is -pi / 2" <|
             \_ ->
                 Segment.angle (Segment.line ( 0, 0 ) ( 0, 100 )) (Segment.line ( 0, 0 ) ( 100, 0 ))
-                    |> Expect.equal (pi / -2)
+                    |> Expect.within epsilon (pi / -2)
         , test "angle is pi" <|
             \_ ->
                 Segment.angle (Segment.line ( 0, 0 ) ( 100, 0 )) (Segment.line ( 100, 0 ) ( 0, 0 ))
-                    |> Expect.equal pi
+                    |> Expect.within epsilon pi
         , test "angle is 0" <|
             \_ ->
                 Segment.angle (Segment.line ( 0, 0 ) ( 100, 0 )) (Segment.line ( 0, 0 ) ( 100, 0 ))
-                    |> Expect.equal 0
+                    |> Expect.within epsilon 0
         ]
 
 
@@ -202,7 +214,7 @@ derivative =
                 EllipticalArc2d.firstDerivative myArc ParameterValue.zero
                     |> Vector2d.normalize
                     |> Vector2d.components
-                    |> Expect.equal ( 0, 1 )
+                    |> expectEqualPoints ( 0, 1 )
         ]
 
 
