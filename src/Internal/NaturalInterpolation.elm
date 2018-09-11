@@ -80,9 +80,26 @@ step2 ( a, b, r ) =
         ( firstB :: _, firstR :: _ ) ->
             let
                 ( b_, r_ ) =
-                    List.scanl step2Scanner ( firstB, firstR ) (List.map3 (\x y z -> ( x, y, z )) a b r)
-                        |> List.drop 1
-                        |> List.unzip
+                    {- Scanl seems broken, very strange
+                       List.scanl step2Scanner ( firstB, firstR ) (List.map3 (\x y z -> ( x, y, z )) a b r)
+                           |> List.drop 1
+                           |> List.unzip
+                    -}
+                    List.foldl
+                        (\( currentA, currentB, currentR ) ( ( prevB, prevR ), ( accum1, accum2 ) ) ->
+                            let
+                                m_ =
+                                    currentB - (currentA / prevB)
+
+                                newR =
+                                    currentR - (currentA / prevB) * prevR
+                            in
+                            ( ( m_, newR ), ( m_ :: accum1, newR :: accum2 ) )
+                        )
+                        ( ( firstB, firstR ), ( [], [] ) )
+                        (List.map3 (\x y z -> ( x, y, z )) a b r)
+                        |> Tuple.second
+                        |> (\( x, y ) -> ( List.drop 1 x, List.drop 1 y ))
             in
             Just ( a, b_, r_ )
 

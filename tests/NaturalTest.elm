@@ -223,10 +223,13 @@ tests =
                     firstR =
                         1
 
+                    input =
+                        List.map3 triplet a b r
+
                     p =
-                        List.scanl scanner ( firstB, firstR ) (List.map3 triplet a b r)
+                        List.scanl scanner ( firstB, firstR ) input
+                            |> List.drop 2
                             |> List.unzip
-                            |> (\( x, y ) -> ( List.drop 1 x, List.drop 1 y ))
 
                     q =
                         List.foldl
@@ -241,9 +244,10 @@ tests =
                                 ( ( m_, r_ ), ( m_ :: accum1, r_ :: accum2 ) )
                             )
                             ( ( firstB, firstR ), ( [], [] ) )
-                            (List.map3 triplet a b r)
+                            input
                             |> Tuple.second
                             |> (\( x, y ) -> ( List.drop 1 x, List.drop 1 y ))
                 in
-                Expect.equal p q
+                p
+                    |> Expect.equal q
         ]
