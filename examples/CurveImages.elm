@@ -1,30 +1,35 @@
-module CurveImages exposing (..)
+module CurveImages exposing (basis, basisClosed, basisClosedReversed, basisOpen, bundle, cardinal, cardinalClosed, cardinalOpen, catmullRom, catmullRomClosed, catmullRomOpen, colorAt, composition, diagram, grid, gridRect, largeGrid, linear, linearClosed, main, monotoneX, monotoneY, monotoneYPoints, natural, nodes, points2, radial, radialPoints, smallGrid, stacked, step, stepAfter, stepBefore, svgGrid, tau)
 
 {-| Defines small views for the different curves. These views are rendered to svg files with elm-static-html
 and then used in the documentations
 -}
 
-import Svg exposing (Svg, Attribute)
-import Svg.Attributes exposing (..)
-import Html.Attributes
-import Html
-import Path
-import SubPath exposing (subpath)
-import Curve
+{-
+   import Color.Convert as Color
+   import Color.Interpolate as Color exposing (Space(..))
+   import Color.Manipulate as Color
+-}
+
 import Color
-import Color.Interpolate as Color exposing (Space(LAB))
-import Color.Convert as Color
-import Color.Manipulate as Color
-import Vector2 as Vec2 exposing (Vec2)
-import SubPath exposing (SubPath)
-import Simplify
+import Curve
+import Html
+import Html.Attributes
+import Path
+import SubPath exposing (SubPath, with)
+import Svg exposing (Attribute, Svg)
+import Svg.Attributes exposing (..)
+
+
+subpath =
+    with
 
 
 main =
     Html.div []
         [ linear
         , linearClosed
-        , simplified
+
+        -- , simplified
         , step
         , stepBefore
         , stepAfter
@@ -42,6 +47,7 @@ main =
         , monotoneY
         , radial
         , natural
+        , natural2
         ]
 
 
@@ -65,7 +71,7 @@ composition =
                     , down
                     ]
             in
-                render "" subpaths
+            render "" subpaths
 
         connect =
             let
@@ -74,7 +80,7 @@ composition =
                         |> SubPath.connect down
                     ]
             in
-                render "Connect" subpaths
+            render "Connect" subpaths
 
         continue =
             let
@@ -83,7 +89,7 @@ composition =
                         |> SubPath.continue down
                     ]
             in
-                render "Continue" subpaths
+            render "Continue" subpaths
 
         continueSmooth =
             let
@@ -92,7 +98,7 @@ composition =
                         |> SubPath.continueSmooth down
                     ]
             in
-                render "Continue Smooth" subpaths
+            render "Continue Smooth" subpaths
 
         render name subpaths =
             let
@@ -106,49 +112,45 @@ composition =
                 label =
                     Svg.text_ [ x "25", y "30", fontSize "20px", fontWeight "bolder", fontFamily "Verdana, sans-serif" ] [ Svg.text name ]
             in
-                Svg.g
-                    [ width "300"
-                    , height "300"
-                    ]
-                    (label :: path :: [])
+            Svg.g
+                [ width "300"
+                , height "300"
+                ]
+                (label :: path :: [])
     in
-        grid { width = 1200, height = 300 }
-            []
-            [ start
-            , Svg.g [ transform "translate(300, 0)" ] [ connect ]
-            , Svg.g [ transform "translate(600, 0)" ] [ continue ]
-            , Svg.g [ transform "translate(900, 0)" ] [ continueSmooth ]
-            ]
+    grid { width = 1200, height = 300 }
+        []
+        [ start
+        , Svg.g [ transform "translate(300, 0)" ] [ connect ]
+        , Svg.g [ transform "translate(600, 0)" ] [ continue ]
+        , Svg.g [ transform "translate(900, 0)" ] [ continueSmooth ]
+        ]
 
 
-(=>) =
-    (,)
-
-
-points =
-    [ 50 => 0
-    , 150 => 150
-    , 225 => 200
-    , 275 => 200
-    , 350 => 50
-    , 500 => 50
-    , 600 => 150
-    , 725 => 100
-    , 825 => 50
-    , 900 => 75
-    , 975 => 0
+testPoints =
+    [ ( 50, 0 )
+    , ( 150, 150 )
+    , ( 225, 200 )
+    , ( 275, 200 )
+    , ( 350, 50 )
+    , ( 500, 50 )
+    , ( 600, 150 )
+    , ( 725, 100 )
+    , ( 825, 50 )
+    , ( 900, 75 )
+    , ( 975, 0 )
     ]
         |> List.map (\( x, y ) -> ( x, 300 - y ))
 
 
 monotoneYPoints =
-    [ 50 => 0
-    , 350 => 0
-    , 425 => 50
-    , 425 => 100
-    , 375 => 150
-    , 575 => 200
-    , 975 => 200
+    [ ( 50, 0 )
+    , ( 350, 0 )
+    , ( 425, 50 )
+    , ( 425, 100 )
+    , ( 375, 150 )
+    , ( 575, 200 )
+    , ( 975, 200 )
     ]
         |> List.map (\( x, y ) -> ( x, 300 - y ))
 
@@ -163,8 +165,8 @@ smallGrid dim =
         p =
             Curve.linear [ ( dim, 0 ), ( 0, 0 ), ( 0, dim ) ]
     in
-        Svg.pattern [ id "smallGrid", width (Basics.toString dim), height (Basics.toString dim), patternUnits "userSpaceOnUse" ]
-            [ SubPath.element p [ fill "none", stroke "white", strokeWidth "1" ] ]
+    Svg.pattern [ id "smallGrid", width (String.fromFloat dim), height (String.fromFloat dim), patternUnits "userSpaceOnUse" ]
+        [ SubPath.element p [ fill "none", stroke "white", strokeWidth "1" ] ]
 
 
 largeGrid dim =
@@ -172,10 +174,10 @@ largeGrid dim =
         p =
             Curve.linear [ ( dim, 0 ), ( 0, 0 ), ( 0, dim ) ]
     in
-        Svg.pattern [ id "grid", width (Basics.toString dim), height (Basics.toString dim), patternUnits "userSpaceOnUse" ]
-            [ Svg.rect [ width (Basics.toString dim), height (Basics.toString dim), fill "url(#smallGrid)" ] []
-            , SubPath.element p [ fill "none", stroke "white", strokeWidth "1.5" ]
-            ]
+    Svg.pattern [ id "grid", width (String.fromFloat dim), height (String.fromFloat dim), patternUnits "userSpaceOnUse" ]
+        [ Svg.rect [ width (String.fromFloat dim), height (String.fromFloat dim), fill "url(#smallGrid)" ] []
+        , SubPath.element p [ fill "none", stroke "white", strokeWidth "1.5" ]
+        ]
 
 
 gridRect =
@@ -200,21 +202,25 @@ radialPoints =
 
 
 colorAt value =
-    Color.interpolate LAB (Color.rgb 255 192 203) Color.purple value |> Color.saturate 0.5
+    -- Color.interpolate LAB (Color.rgb 255 192 203) Color.purple value |> Color.saturate 0.5
+    Color.rgb 255 102 203
 
 
-simplified =
-    stacked "simplified"
-        (\factor points ->
-            points
-                |> Simplify.simplify factor
-                |> Debug.log "in simplified"
-                |> Curve.linear
-        )
-        points
+
+{-
+   simplified =
+       stacked "simplified"
+           (\factor points ->
+               testPoints
+                   |> Simplify.simplify factor
+                   |> Debug.log "in simplified"
+                   |> Curve.linear
+           )
+           points
+-}
 
 
-stacked : String -> (Float -> List (Vec2 Float) -> SubPath) -> List (Vec2 Float) -> Svg msg
+stacked : String -> (Float -> List ( Float, Float ) -> SubPath) -> List ( Float, Float ) -> Svg msg
 stacked name toPath points =
     let
         values =
@@ -222,7 +228,7 @@ stacked name toPath points =
 
         path value =
             SubPath.element (toPath value points)
-                [ stroke (colorAt value |> Color.colorToHex)
+                [ stroke (colorAt value |> Color.toCssString)
                 , strokeWidth "2"
                 , fill "none"
                 ]
@@ -233,26 +239,26 @@ stacked name toPath points =
         label i value =
             Svg.text_
                 [ x "25"
-                , y (Basics.toString <| 30 + 22 * i)
+                , y (String.fromInt <| 30 + 22 * i)
                 , fontSize "20px"
                 , fontWeight "bolder"
                 , fontFamily "Verdana, sans-serif"
-                , fill (colorAt value |> Color.colorToHex)
+                , fill (colorAt value |> Color.toCssString)
                 ]
-                [ Svg.text (name ++ " " ++ Basics.toString value) ]
+                [ Svg.text (name ++ " " ++ String.fromFloat value) ]
 
         labels =
             List.indexedMap label values
     in
-        grid { width = 1000, height = 400 }
-            []
-            (labels ++ paths ++ nodes "black" points)
+    grid { width = 1000, height = 400 }
+        []
+        (labels ++ paths ++ nodes "black" points)
 
 
 nodes strokeColor points =
     List.map
         (\( xx, yy ) ->
-            Svg.circle [ fill "white", stroke strokeColor, strokeWidth "2", cx (Basics.toString xx), cy (Basics.toString (yy)), r "4" ] []
+            Svg.circle [ fill "white", stroke strokeColor, strokeWidth "2", cx (String.fromFloat xx), cy (String.fromFloat yy), r "4" ] []
         )
         points
 
@@ -276,42 +282,42 @@ diagram name toPath points =
         label =
             Svg.text_ [ x "25", y "30", fontSize "20px", fontWeight "bolder", fontFamily "Verdana, sans-serif" ] [ Svg.text name ]
     in
-        grid { width = 1000, height = 400 } [] (label :: path :: nodes "black" points)
+    grid { width = 1000, height = 400 } [] (label :: path :: nodes "black" points)
 
 
 grid : { width : Float, height : Float } -> List (Attribute msg) -> List (Svg msg) -> Svg msg
 grid canvas attributes children =
     Svg.svg
-        [ width (toString canvas.width)
-        , height (toString canvas.height)
+        [ width (String.fromFloat canvas.width)
+        , height (String.fromFloat canvas.height)
         , Html.Attributes.attribute "xmlns" "http://www.w3.org/2000/svg"
-        , Html.Attributes.style [ ( "background-color", "#efefef" ) ]
+        , Html.Attributes.style "background-color" "#efefef"
         ]
         [ svgGrid, gridRect, Svg.g attributes children ]
 
 
 linear =
-    diagram "linear" Curve.linear points
+    diagram "linear" Curve.linear testPoints
 
 
 linearClosed =
-    diagram "linear closed" Curve.linearClosed points
+    diagram "linear closed" Curve.linearClosed testPoints
 
 
 step =
-    diagram "step 0.5" (Curve.step 0.5) points
+    diagram "step 0.5" (Curve.step 0.5) testPoints
 
 
 stepBefore =
-    diagram "step before" Curve.stepBefore points
+    diagram "step before" Curve.stepBefore testPoints
 
 
 stepAfter =
-    diagram "step after" Curve.stepAfter points
+    diagram "step after" Curve.stepAfter testPoints
 
 
 basis =
-    diagram "basis" Curve.basis points
+    diagram "basis" Curve.basis testPoints
 
 
 basisClosedReversed =
@@ -322,47 +328,47 @@ basisClosedReversed =
                 >> SubPath.reverse
                 >> SubPath.compress
     in
-        diagram "basis closed reversed" function points
+    diagram "basis closed reversed" function testPoints
 
 
 basisClosed =
-    diagram "basis closed" Curve.basisClosed points
+    diagram "basis closed" Curve.basisClosed testPoints
 
 
 basisOpen =
-    diagram "basis open" Curve.basisOpen points
+    diagram "basis open" Curve.basisOpen testPoints
 
 
 bundle =
-    stacked "bundle" Curve.bundle points
+    stacked "bundle" Curve.bundle testPoints
 
 
 cardinal =
-    stacked "cardinal" Curve.cardinal points
+    stacked "cardinal" Curve.cardinal testPoints
 
 
 cardinalClosed =
-    stacked "cardinal closed" Curve.cardinalClosed points
+    stacked "cardinal closed" Curve.cardinalClosed testPoints
 
 
 cardinalOpen =
-    stacked "cardinal open" Curve.cardinalOpen points
+    stacked "cardinal open" Curve.cardinalOpen testPoints
 
 
 catmullRom =
-    stacked "catmull rom" Curve.catmullRom points
+    stacked "catmull rom" Curve.catmullRom testPoints
 
 
 catmullRomClosed =
-    stacked "catmull rom closed" Curve.catmullRomClosed points
+    stacked "catmull rom closed" Curve.catmullRomClosed testPoints
 
 
 catmullRomOpen =
-    stacked "catmull rom open" Curve.catmullRomOpen points
+    stacked "catmull rom open" Curve.catmullRomOpen testPoints
 
 
 monotoneX =
-    diagram "monotoneX" Curve.monotoneX points
+    diagram "monotoneX" Curve.monotoneX testPoints
 
 
 monotoneY =
@@ -374,4 +380,12 @@ radial =
 
 
 natural =
-    diagram "natural" Curve.natural points
+    diagram "natural" Curve.natural testPoints
+
+
+natural2 =
+    let
+        points =
+            [ ( 94.5, 365 ), ( 139, 190 ), ( 205.75, 295 ), ( 250.25, 295 ), ( 317, 330 ), ( 450.5, 120 ), ( 584, 190 ), ( 717.5, 85 ), ( 806.5, 330 ), ( 895.5, 365 ) ]
+    in
+    diagram "natural 2" Curve.natural points
