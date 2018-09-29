@@ -68,33 +68,6 @@ step1 coordinates =
             Nothing
 
 
-{-| A copy from elm-list-extra
-
-The signature of this function changed in 7.0.0, but I want
-to support 6.0.0 to 8.0.0 for now.
-
--}
-updateAt : Int -> (a -> a) -> List a -> List a
-updateAt index fn list =
-    if index < 0 then
-        list
-
-    else
-        let
-            head =
-                List.take index list
-
-            tail =
-                List.drop index list
-        in
-        case tail of
-            x :: xs ->
-                head ++ fn x :: xs
-
-            _ ->
-                list
-
-
 step2Scanner ( a, b, r ) ( prevB, prevR ) =
     ( b - (a / prevB)
     , r - (a / prevB) * prevR
@@ -107,26 +80,9 @@ step2 ( a, b, r ) =
         ( firstB :: _, firstR :: _ ) ->
             let
                 ( b_, r_ ) =
-                    {- Scanl seems broken, very strange
-                       List.scanl step2Scanner ( firstB, firstR ) (List.map3 (\x y z -> ( x, y, z )) a b r)
-                           |> List.drop 1
-                           |> List.unzip
-                    -}
-                    List.foldl
-                        (\( currentA, currentB, currentR ) ( ( prevB, prevR ), ( accum1, accum2 ) ) ->
-                            let
-                                m_ =
-                                    currentB - (currentA / prevB)
-
-                                newR =
-                                    currentR - (currentA / prevB) * prevR
-                            in
-                            ( ( m_, newR ), ( m_ :: accum1, newR :: accum2 ) )
-                        )
-                        ( ( firstB, firstR ), ( [], [] ) )
-                        (List.map3 (\x y z -> ( x, y, z )) a b r)
-                        |> Tuple.second
-                        |> (\( x, y ) -> ( List.drop 1 x, List.drop 1 y ))
+                    List.scanl step2Scanner ( firstB, firstR ) (List.map3 (\x y z -> ( x, y, z )) a b r)
+                        |> List.drop 1
+                        |> List.unzip
             in
             Just ( a, b_, r_ )
 
