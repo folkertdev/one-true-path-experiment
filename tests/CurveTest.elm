@@ -1,9 +1,67 @@
-module CurveTest exposing (convert, jsPoints, points, stackSmasher, testBasis, testBundle, testCardinal, testCatmullRom, testMonotone, testNatural)
+module CurveTest exposing (testBasis, testBundle, testCardinal, testCatmullRom, testMonotone, testNatural)
+
+{-| Notes:
+
+====
+
+D3 has a weird way of handling input of length 1.
+
+Intuitively, there is no curve to draw, so the output should be `""`.
+But D3 doesn't look ahead, so when it finds the first point in the input, it generates
+a moveto. Then when there is no more output, there is a problem.
+
+The next curve will add another moveto to the context, so now there are two
+consecutive moveto's. SVG treats the second moveto as a lineto in this case, which is clearly wrong.
+
+So, to prevent `Mx,y Mz,w`, which is equivalent to `Mx,y Lz,w`, instead it writes `Mx,y Z Mz,w`.
+The moveto followed by a closePath does nothing, but because of how D3 does things, it is unavoidable.
+
+But in our case, we do look ahead and thus produce the empty string on input of length 1.
+
+===
+
+Code used to generate some of these tests
+
+```javascript
+// ---
+points = []
+result = d3.line().curve(d3.curveMonotoneY)(points);
+
+console.log("0 points", result)
+
+// ---
+
+points = [[1,2]]
+result = d3.line().curve(d3.curveMonotoneY)(points);
+
+console.log("1 points", result)
+
+// ---
+
+points = [[1,2], [3,4]]
+result = d3.line().curve(d3.curveMonotoneY)(points);
+
+console.log("2 points", result)
+
+// ---
+points = [[1,2], [3,4], [5,6]]
+result = d3.line().curve(d3.curveMonotoneY)(points);
+
+console.log("3 points", result)
+// ---
+points = [[1,2], [3,4], [5,6], [7,8]]
+result = d3.line().curve(d3.curveMonotoneY)(points);
+
+console.log("4 points", result)
+```
+
+-}
 
 import Curve exposing (..)
 import Expect
 import LowLevel.Command exposing (DrawTo(..), MoveTo(..))
-import SubPath exposing (SubPath, decimalPlaces)
+import Path
+import SubPath exposing (SubPath, decimalPlaces, mergeAdjacent)
 import Test exposing (..)
 
 
@@ -17,6 +75,11 @@ stackSmasher =
 convert : { drawtos : List DrawTo, moveto : MoveTo } -> SubPath
 convert { moveto, drawtos } =
     SubPath.with moveto drawtos
+
+
+trivialPoints : List ( Float, Float )
+trivialPoints =
+    [ ( 1, 2 ), ( 3, 4 ), ( 5, 6 ), ( 7, 8 ) ]
 
 
 points : List ( Float, Float )
@@ -43,6 +106,44 @@ jsPoints =
     [ [ 50, 300 ], [ 150, 150 ], [ 225, 100 ], [ 275, 100 ], [ 350, 250 ], [ 500, 250 ], [ 600, 150 ], [ 725, 200 ], [ 825, 250 ], [ 900, 225 ], [ 975, 300 ] ]
 
 
+edgeCaseTests : String -> (List ( Float, Float ) -> SubPath) -> List String -> Test
+edgeCaseTests name toSubPath answers =
+    let
+        helper i answer =
+            test (name ++ " gives expected output for " ++ String.fromInt i ++ " points") <|
+                \_ ->
+                    case Path.parse answer of
+                        Ok [ subpath ] ->
+                            toSubPath (List.take i trivialPoints)
+                                |> SubPath.toStringWith [ decimalPlaces 3, mergeAdjacent ]
+                                |> Expect.equal (SubPath.toStringWith [ decimalPlaces 3, mergeAdjacent ] subpath)
+
+                        Ok [] ->
+                            toSubPath (List.take i trivialPoints)
+                                |> SubPath.toString
+                                |> Expect.equal ""
+
+                        Ok l ->
+                            let
+                                _ =
+                                    Debug.log "invalid number of results" e
+                            in
+                            toSubPath (List.take i trivialPoints)
+                                |> SubPath.toString
+                                |> Expect.equal answer
+
+                        Err e ->
+                            let
+                                _ =
+                                    Debug.log "parse error" e
+                            in
+                            toSubPath (List.take i trivialPoints)
+                                |> SubPath.toString
+                                |> Expect.equal answer
+    in
+    describe (name ++ " edge cases") (List.indexedMap helper answers)
+
+
 testCatmullRom : Test
 testCatmullRom =
     let
@@ -51,15 +152,15 @@ testCatmullRom =
             , drawtos =
                 [ CurveTo
                     [ ( ( 50, 300 ), ( 115.48220313557538, 184.51779686442455 ), ( 150, 150 ) )
-                    , ( ( 174.4077682344544, 125.59223176554563 ), ( 201.50281615652946, 107.1143748231127 ), ( 225, 100 ) )
-                    , ( ( 242.50027908358396, 94.70134183997996 ), ( 259.3985449774631, 90.35777052211942 ), ( 275, 100 ) )
-                    , ( ( 303.5728284700477, 117.6589791492101 ), ( 310.67715104458006, 225.6971428110722 ), ( 350, 250 ) )
+                    , ( ( 174.4077682344544, 125.59223176554563 ), ( 201.5028161565295, 107.1143748231127 ), ( 225, 100 ) )
+                    , ( ( 242.50027908358396, 94.70134183997995 ), ( 259.3985449774631, 90.35777052211942 ), ( 275, 100 ) )
+                    , ( ( 303.5728284700476, 117.65897914921008 ), ( 310.67715104458006, 225.6971428110722 ), ( 350, 250 ) )
                     , ( ( 387.1892544416877, 272.984223261231 ), ( 457.95062325807123, 267.41742213584274 ), ( 500, 250 ) )
-                    , ( ( 540.8292528272556, 233.08796973739078 ), ( 561.9232752097317, 157.81554102840957 ), ( 600, 150 ) )
-                    , ( ( 637.1510925306279, 142.37445212205927 ), ( 685.9957196353515, 182.48450132539352 ), ( 725, 200 ) )
-                    , ( ( 760.5443248134045, 215.9617500525209 ), ( 793.6239497752703, 247.7701727655472 ), ( 825, 250 ) )
-                    , ( ( 851.3840081587954, 251.87505372808639 ), ( 876.5829642941892, 219.4719877418889 ), ( 900, 225 ) )
-                    , ( ( 927.1237694606573, 231.40305339874794 ), ( 975, 300 ), ( 975, 300 ) )
+                    , ( ( 540.8292528272556, 233.0879697373908 ), ( 561.9232752097317, 157.81554102840957 ), ( 600, 150 ) )
+                    , ( ( 637.1510925306279, 142.37445212205927 ), ( 685.9957196353516, 182.48450132539355 ), ( 725, 200 ) )
+                    , ( ( 760.5443248134044, 215.9617500525209 ), ( 793.6239497752703, 247.7701727655472 ), ( 825, 250 ) )
+                    , ( ( 851.3840081587954, 251.8750537280864 ), ( 876.5829642941893, 219.47198774188894 ), ( 900, 225 ) )
+                    , ( ( 927.1237694606573, 231.40305339874791 ), ( 975, 300 ), ( 975, 300 ) )
                     ]
                 ]
             }
@@ -77,6 +178,40 @@ testCatmullRom =
                     |> SubPath.compress
                     |> SubPath.toStringWith [ decimalPlaces 3 ]
                     |> Expect.equal (SubPath.toStringWith [ decimalPlaces 3 ] <| SubPath.compress expected)
+
+        -- edge cases for normal
+        , edgeCaseTests "catmull rom"
+            (Curve.catmullRom 0.5)
+            [ ""
+
+            -- D3 gives "M1,2 Z"
+            , ""
+            , "M1,2 L3,4"
+            , "M1,2 C1,2 2.3333333333333335,3.3333333333333335 3,4 3.6666666666666665,4.666666666666667 5,6 5,6"
+            , "M1,2 C1,2 2.3333333333333335,3.3333333333333335 3,4 3.6666666666666665,4.666666666666667 4.333333333333333,5.333333333333334 5,6 5.666666666666666,6.666666666666666 7,8 7,8"
+            ]
+
+        -- edge cases for closed
+        , edgeCaseTests "catmull rom closed"
+            (Curve.catmullRomClosed 0.5)
+            [ ""
+
+            -- D3 gives "M1,2 Z"
+            , ""
+            , "M3,4 L1,2 Z"
+            , "M3,4 C3.6666666666666665,4.666666666666667 5.0,6.0 5,6 5,5.999999999999999 1,1.9999999999999998 1,2 1,2 2.3333333333333335,3.3333333333333335 3,4"
+            , "M3,4 C3.6666666666666665,4.666666666666667 4.333333333333333,5.333333333333334 5,6 5.666666666666666,6.666666666666666 6.999999999999999,8.0  7,8 6.999999999999998,7.999999999999997 0.9999999999999997,1.9999999999999996 1,2 1,2 2.3333333333333335,3.3333333333333335 3,4"
+            ]
+
+        -- edge cases for open
+        , edgeCaseTests "catmull rom open"
+            (Curve.catmullRomOpen 0.5)
+            [ ""
+            , ""
+            , ""
+            , "M3,4 Z"
+            , "M3,4 C3.6666666666666665,4.666666666666667 4.333333333333333,5.333333333333334 5,6"
+            ]
         ]
 
 
@@ -114,6 +249,14 @@ testNatural =
                     |> SubPath.compress
                     |> SubPath.toStringWith [ decimalPlaces 3 ]
                     |> Expect.equal (SubPath.toStringWith [ decimalPlaces 3 ] <| SubPath.compress expected)
+        , edgeCaseTests "natural"
+            Curve.natural
+            [ ""
+            , ""
+            , "M1,2L3,4"
+            , "M1,2C1.6666666666666667,2.6666666666666665,2.3333333333333335,3.333333333333333,3,4C3.6666666666666665,4.666666666666667,4.333333333333333,5.333333333333334,5,6"
+            , "M1,2C1.6666666666666667,2.666666666666667,2.3333333333333335,3.333333333333334,3,4C3.6666666666666665,4.666666666666666,4.333333333333333,5.333333333333333,5,6C5.666666666666667,6.666666666666667,6.333333333333334,7.333333333333334,7,8"
+            ]
         ]
 
 
@@ -168,6 +311,44 @@ testCardinal =
                         Curve.cardinalClosed 0.5 (List.repeat stackSmasher ( 0, 0 ))
                 in
                 Expect.pass
+
+        -- edge cases for normal
+        , edgeCaseTests "cardinal"
+            (Curve.cardinal 0)
+            [ ""
+
+            -- D3 gives "M1,2 Z"
+            , ""
+            , "M1,2 L3,4"
+            , "M1,2 C1,2 2.3333333333333335,3.3333333333333335 3,4 3.6666666666666665,4.666666666666667 5,6 5,6"
+            , "M1,2 C1,2 2.3333333333333335,3.3333333333333335 3,4 3.6666666666666665,4.666666666666667 4.333333333333333,5.333333333333333 5,6 5.666666666666667,6.666666666666667 7,8 7,8"
+            ]
+
+        -- edge cases for closed
+        , edgeCaseTests "cardinal closed"
+            (Curve.cardinalClosed 0)
+            [ ""
+
+            -- D3 gives "M1,2 Z"
+            , ""
+            , "M3,4 L1,2 Z"
+            , "M3,4 C3.6666666666666665,4.666666666666667 5.333333333333333,6.333333333333333 5,6 4.666666666666667,5.666666666666667 1.3333333333333333,2.3333333333333335 1,2 0.6666666666666667,1.6666666666666667 2.3333333333333335,3.3333333333333335 3,4"
+            , "M3,4 C3.6666666666666665,4.666666666666667 4.333333333333333,5.333333333333333 5,6 5.666666666666667,6.666666666666667 7.666666666666667,8.666666666666666 7,8 6.333333333333333,7.333333333333333 1.6666666666666665,2.6666666666666665 1,2 0.33333333333333337,1.3333333333333335 2.3333333333333335,3.3333333333333335 3,4"
+            ]
+
+        -- edge cases for open
+        , edgeCaseTests "cardinal open"
+            (Curve.cardinalOpen 0)
+            [ ""
+
+            -- D3 gives "M1,2Z"
+            , ""
+            , ""
+
+            -- D3 gives "M3,4Z"
+            , ""
+            , "M3,4 C3.6666666666666665,4.666666666666667 4.333333333333333,5.333333333333333 5,6"
+            ]
         ]
 
 
@@ -273,6 +454,22 @@ testMonotone =
                         Curve.monotoneX (List.repeat stackSmasher ( 0, 0 ))
                 in
                 Expect.pass
+        , edgeCaseTests "monotone x"
+            Curve.monotoneX
+            [ ""
+            , ""
+            , "M1,2L3,4"
+            , "M1,2C1.6666666666666665,2.6666666666666665,2.3333333333333335,3.3333333333333335,3,4C3.6666666666666665,4.666666666666667,4.333333333333333,5.333333333333333,5,6"
+            , "M1,2C1.6666666666666665,2.6666666666666665,2.3333333333333335,3.3333333333333335,3,4C3.6666666666666665,4.666666666666667,4.333333333333333,5.333333333333333,5,6C5.666666666666667,6.666666666666667,6.333333333333333,7.333333333333333,7,8"
+            ]
+        , edgeCaseTests "monotone y"
+            Curve.monotoneY
+            [ ""
+            , ""
+            , "M1,2L3,4"
+            , "M1,2C1.6666666666666665,2.6666666666666665,2.3333333333333335,3.3333333333333335,3,4C3.6666666666666665,4.666666666666667,4.333333333333333,5.333333333333333,5,6"
+            , "M1,2C1.6666666666666665,2.6666666666666665,2.3333333333333335,3.3333333333333335,3,4C3.6666666666666665,4.666666666666667,4.333333333333333,5.333333333333333,5,6C5.666666666666667,6.666666666666667,6.333333333333333,7.333333333333333,7,8"
+            ]
         ]
 
 
@@ -299,18 +496,32 @@ testBundle =
                 |> convert
     in
     describe "bundle"
-        [ test "bundle gives expected output" <|
-            \_ ->
-                Curve.bundle 0.5 points
-                    |> Expect.equal expected
-        , test "reverse bundle gives expected output" <|
-            \_ ->
-                Curve.bundle 0.5 (List.reverse points)
-                    |> SubPath.reverse
-                    |> SubPath.compress
-                    |> SubPath.toStringWith [ decimalPlaces 3 ]
-                    |> Expect.equal (SubPath.toStringWith [ decimalPlaces 3 ] <| SubPath.compress expected)
+        [ edgeCaseTests "bundle"
+            (Curve.bundle 0.5)
+            [ ""
+            , ""
+            , ""
+            , "M1,2L1.3333333333333333,2.3333333333333335C1.6666666666666667,2.6666666666666665,2.3333333333333335,3.3333333333333335,3,4C3.6666666666666665,4.666666666666667,4.333333333333333,5.333333333333333,4.666666666666667,5.666666666666667L5,6"
+            , "M1,2L1.3333333333333333,2.3333333333333335C1.6666666666666667,2.6666666666666665,2.3333333333333335,3.3333333333333335,3,4C3.6666666666666665,4.666666666666667,4.333333333333333,5.333333333333333,5,6C5.666666666666667,6.666666666666667,6.333333333333333,7.333333333333333,6.666666666666667,7.666666666666667L7,8"
+            ]
         ]
+
+
+
+{-
+   [ test "bundle gives expected output" <|
+       \_ ->
+           Curve.bundle 0.5 points
+               |> Expect.equal expected
+   , test "reverse bundle gives expected output" <|
+       \_ ->
+           Curve.bundle 0.5 (List.reverse points)
+               |> SubPath.reverse
+               |> SubPath.compress
+               |> SubPath.toStringWith [ decimalPlaces 3 ]
+               |> Expect.equal (SubPath.toStringWith [ decimalPlaces 3 ] <| SubPath.compress expected)
+   ]
+-}
 
 
 testBasis : Test
@@ -399,7 +610,8 @@ testBasis =
         [ test "basis gives expected output" <|
             \_ ->
                 Curve.basis points
-                    |> Expect.equal expected
+                    |> SubPath.toStringWith [ decimalPlaces 3 ]
+                    |> Expect.equal (SubPath.toStringWith [ decimalPlaces 3 ] expected)
         , test "reverse basis gives expected output" <|
             \_ ->
                 Curve.basis (List.reverse points)
@@ -418,7 +630,8 @@ testBasis =
         , test "basis open gives expected output" <|
             \_ ->
                 Curve.basisOpen points
-                    |> Expect.equal expectedOpen
+                    |> SubPath.toStringWith [ decimalPlaces 3 ]
+                    |> Expect.equal (SubPath.toStringWith [ decimalPlaces 3 ] expectedOpen)
         , test "basis open doesn't stack overflow" <|
             \_ ->
                 let
@@ -459,4 +672,28 @@ testBasis =
                           |> SubPath.toStringWith [ decimalPlaces 3 ]
                           |> Expect.equal (SubPath.toStringWith [ decimalPlaces 3 ] <| newExpectClosed)
         -}
+        , edgeCaseTests "basis"
+            Curve.basis
+            [ ""
+            , ""
+            , "M1,2 L3,4"
+            , "M1,2 L1.3333333333333333,2.3333333333333335C1.6666666666666667,2.6666666666666665,2.3333333333333335,3.3333333333333335,3,4C3.6666666666666665,4.666666666666667,4.333333333333333,5.333333333333333,4.666666666666667,5.666666666666667L5,6"
+            , "M1,2 L1.3333333333333333,2.3333333333333335C1.6666666666666667,2.6666666666666665,2.3333333333333335,3.3333333333333335,3,4C3.6666666666666665,4.666666666666667,4.333333333333333,5.333333333333333,5,6C5.666666666666667,6.666666666666667,6.333333333333333,7.333333333333333,6.666666666666667,7.666666666666667L7,8"
+            ]
+        , edgeCaseTests "basis closed"
+            Curve.basisClosed
+            [ ""
+            , ""
+            , "M2.3333333333333335,3.3333333333333335 L1.6666666666666667,2.6666666666666665Z"
+            , "M3,4C3.6666666666666665,4.666666666666667,4.333333333333333,5.333333333333333,4,5C3.6666666666666665,4.666666666666667,2.3333333333333335,3.3333333333333335,2,3C1.6666666666666667,2.6666666666666665,2.3333333333333335,3.3333333333333335,3,4"
+            , "M3,4C3.6666666666666665,4.666666666666667,4.333333333333333,5.333333333333333,5,6C5.666666666666667,6.666666666666667,6.333333333333333,7.333333333333333,5.666666666666667,6.666666666666667C5,6,3,4,2.3333333333333335,3.3333333333333335C1.6666666666666667,2.6666666666666665,2.3333333333333335,3.3333333333333335,3,4"
+            ]
+        , edgeCaseTests "basis open"
+            Curve.basisOpen
+            [ ""
+            , ""
+            , ""
+            , ""
+            , "M3,4C3.6666666666666665,4.666666666666667,4.333333333333333,5.333333333333333,5,6"
+            ]
         ]

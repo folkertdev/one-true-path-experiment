@@ -356,8 +356,23 @@ basisClosed points =
             SubPath.with (moveTo start)
                 [ cubicCurveTo (commonCase [] closing (p3 :: p4 :: rest)) ]
 
-        [ p0, p1 ] ->
-            SubPath.with (moveTo p0) [ lineTo [ p1 ] ]
+        [ p0_, p1_ ] ->
+            let
+                p0 =
+                    Vector2d.fromComponents p0_
+
+                p1 =
+                    Vector2d.fromComponents p1_
+
+                start =
+                    Vector2d.scaleBy (1 / 3) (Vector2d.sum p0 (Vector2d.scaleBy 2 p1))
+                        |> Vector2d.components
+
+                end =
+                    Vector2d.scaleBy (1 / 3) (Vector2d.sum p1 (Vector2d.scaleBy 2 p0))
+                        |> Vector2d.components
+            in
+            SubPath.with (moveTo start) [ lineTo [ end ], closePath ]
 
         _ ->
             empty
@@ -378,7 +393,7 @@ basisOpen points =
                     List.reverse acc
     in
     case points of
-        p0 :: p1 :: p :: rest ->
+        p0 :: p1 :: p :: pp :: rest ->
             let
                 start =
                     Vector2d.fromComponents p0
@@ -387,7 +402,7 @@ basisOpen points =
                         |> Vector2d.scaleBy (1 / 6)
                         |> Vector2d.components
             in
-            SubPath.with (moveTo start) [ cubicCurveTo (helper [] (p1 :: p :: rest)) ]
+            SubPath.with (moveTo start) [ cubicCurveTo (helper [] (p1 :: p :: pp :: rest)) ]
 
         _ ->
             empty
@@ -399,6 +414,12 @@ bundle : Float -> List ( Float, Float ) -> SubPath
 bundle beta points =
     case List.map Vector2d.fromComponents points of
         [] ->
+            empty
+
+        [ _ ] ->
+            empty
+
+        [ _, _ ] ->
             empty
 
         p0 :: rest ->
@@ -523,7 +544,7 @@ cardinalClosed tension points =
             empty
 
         [ p ] ->
-            SubPath.with (moveTo p) [ closePath ]
+            empty
 
         [ p0, p1 ] ->
             SubPath.with (moveTo p1) [ lineTo [ p0 ], closePath ]
@@ -560,7 +581,7 @@ catmullRom alpha points =
             [ p1, p2 ] ->
                 SubPath.with (moveTo p1) [ lineTo [ p2 ] ]
 
-            p0 :: p1 :: p2 :: p :: rest ->
+            p0 :: p1 :: p2 :: rest ->
                 let
                     ending q0 q1 q2 =
                         [ catmullRomPoint alpha q0 q1 q2 q2 ]
@@ -599,7 +620,7 @@ catmullRomOpen alpha points =
     else
         case points of
             [ p0, p1, p2 ] ->
-                SubPath.with (moveTo p2) []
+                SubPath.with (moveTo p1) [ closePath ]
 
             p0 :: p1 :: p2 :: p :: rest ->
                 let
@@ -625,7 +646,7 @@ catmullRomClosed alpha points =
                 empty
 
             [ p ] ->
-                SubPath.with (moveTo p) []
+                empty
 
             [ p1, p2 ] ->
                 SubPath.with (moveTo p2) [ lineTo [ p1 ], closePath ]
