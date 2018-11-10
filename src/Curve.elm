@@ -62,7 +62,7 @@ Catmull-Rom is perfect for animation, because data points are hit exactly and th
 The monotone curves can only be increasing (staying flat or becoming higher) or decreasing (staying flat or becoming lower) between any two adjacent points.
 It cannot first go down and then go up.
 
-<img style="max-width: 100%;" src="https://upload.wikimedia.org/wikipedia/en/f/fe/MonotCubInt.png" />
+![monotone curve illustration](https://upload.wikimedia.org/wikipedia/en/f/fe/MonotCubInt.png)
 
 Around 0.45, the cubic interpolation dives below the y-coordinate of the next point, whereas the monotone interpolation does not.
 
@@ -138,7 +138,7 @@ area points =
 
 {-| Draw straigt lines between the data points
 
-<img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/linear.svg" />
+![linear](https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/linear.svg)
 
 -}
 linear : List ( Float, Float ) -> SubPath
@@ -153,7 +153,7 @@ linear points =
 
 {-| Draw a straigt line between the data points, connecting the ends.
 
-<img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/linearClosed.svg" />
+![linear-closed](https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/linearClosed.svg)
 
 -}
 linearClosed : List ( Float, Float ) -> SubPath
@@ -240,7 +240,7 @@ toPolarWithCenter ( x, y ) =
 
 {-| Interpret a 2D vector as a `(angle, radius)` pair. The angle is in radians. The first argument is the center.
 
-<img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/radial.svg" />
+![radial](https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/radial.svg)
 
 -}
 radial : ( Float, Float ) -> List ( Float, Float ) -> SubPath
@@ -274,7 +274,7 @@ basisPointHelper p0 p1 p =
 
 {-| Basis interpolation (also known as B-spline)
 
-<img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/basis.svg" />
+![basis](https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/basis.svg)
 
 -}
 basis : List ( Float, Float ) -> SubPath
@@ -315,7 +315,7 @@ basis points =
 
 {-| Closed Basis interpolation (also known as B-spline)
 
-<img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/basisClosed.svg" />
+![basis closed](https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/basisClosed.svg)
 
 -}
 basisClosed : List ( Float, Float ) -> SubPath
@@ -378,7 +378,7 @@ basisClosed points =
             empty
 
 
-{-| <img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/basisOpen.svg" />
+{-| ![basis open](https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/basisOpen.svg)
 -}
 basisOpen : List ( Float, Float ) -> SubPath
 basisOpen points =
@@ -408,7 +408,7 @@ basisOpen points =
             empty
 
 
-{-| <img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/bundle.svg" />
+{-| ![bundle](https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/bundle.svg)
 -}
 bundle : Float -> List ( Float, Float ) -> SubPath
 bundle beta points =
@@ -470,7 +470,7 @@ cardinalPointHelper k p0 p1 p2 p =
     )
 
 
-{-| <img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/cardinal.svg" />
+{-| ![cardinal](https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/cardinal.svg)
 -}
 cardinal : Float -> List ( Float, Float ) -> SubPath
 cardinal tension points =
@@ -501,7 +501,7 @@ cardinal tension points =
             empty
 
 
-{-| <img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/cardinalOpen.svg" />
+{-| ![cardinal open](https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/cardinalOpen.svg)
 -}
 cardinalOpen : Float -> List ( Float, Float ) -> SubPath
 cardinalOpen tension points =
@@ -520,7 +520,7 @@ cardinalOpen tension points =
             empty
 
 
-{-| <img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/cardinalClosed.svg" />
+{-| ![cardinal closed](https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/cardinalClosed.svg)
 -}
 cardinalClosed : Float -> List ( Float, Float ) -> SubPath
 cardinalClosed tension points =
@@ -569,7 +569,7 @@ catmullRomDistance alpha p1 p2 =
     ( sqrt l23_2a, l23_2a )
 
 
-{-| <img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/catmullRom.svg" />
+{-| ![catmull rom](https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/catmullRom.svg)
 -}
 catmullRom : Float -> List ( Float, Float ) -> SubPath
 catmullRom alpha points =
@@ -610,7 +610,7 @@ catmullRomHelper alpha ending points accumulator =
             []
 
 
-{-| <img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/catmullRomOpen.svg" />
+{-| ![catmull rom open](https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/catmullRomOpen.svg)
 -}
 catmullRomOpen : Float -> List ( Float, Float ) -> SubPath
 catmullRomOpen alpha points =
@@ -633,7 +633,7 @@ catmullRomOpen alpha points =
                 empty
 
 
-{-| <img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/catmullRomClosed.svg" />
+{-| ![catmull rom closed](https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/catmullRomClosed.svg)
 -}
 catmullRomClosed : Float -> List ( Float, Float ) -> SubPath
 catmullRomClosed alpha points =
@@ -780,7 +780,7 @@ monotonePoint ( x0, y0 ) ( x1, y1 ) t0 t1 =
     )
 
 
-{-| <img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/monotoneX.svg" />
+{-| ![monotone in x](https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/monotoneX.svg)
 -}
 monotoneX : List ( Float, Float ) -> SubPath
 monotoneX points =
@@ -846,7 +846,7 @@ monotoneXHelper acc t0 remaininPoints =
             []
 
 
-{-| <img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/monotoneY.svg" />
+{-| ![monotone in y](https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/monotoneY.svg)
 -}
 monotoneY : List ( Float, Float ) -> SubPath
 monotoneY points =
@@ -869,7 +869,7 @@ toH h0 h1 =
         h0
 
 
-{-| <img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/natural.svg" />
+{-| ![natural](https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/natural.svg)
 -}
 natural : List ( Float, Float ) -> SubPath
 natural points =
@@ -894,7 +894,7 @@ natural points =
             SubPath.with (moveTo p) [ cubicCurveTo cubicTriplets ]
 
 
-{-| <img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/step.svg" />
+{-| ![step](https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/step.svg)
 -}
 step : Float -> List ( Float, Float ) -> SubPath
 step factor points =
@@ -920,14 +920,14 @@ step factor points =
                 |> linear
 
 
-{-| <img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/stepBefore.svg" />
+{-| ![step before](https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/stepBefore.svg)
 -}
 stepBefore : List ( Float, Float ) -> SubPath
 stepBefore =
     step 0
 
 
-{-| <img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/stepAfter.svg" />
+{-| ![step after](https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/stepAfter.svg)
 -}
 stepAfter : List ( Float, Float ) -> SubPath
 stepAfter =

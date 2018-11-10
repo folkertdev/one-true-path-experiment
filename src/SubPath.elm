@@ -71,7 +71,7 @@ And can generate svg elements
 
 ## Composition
 
-<img style="max-width: 100%;" src="https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/subpath-composition.svg" />
+![composition of subpaths](https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/subpath-composition.svg)
 
     import Curve
 
