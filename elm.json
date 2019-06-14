@@ -3,7 +3,7 @@
     "name": "folkertdev/one-true-path-experiment",
     "summary": "An experimental package for building paths and curves in elm",
     "license": "BSD-3-Clause",
-    "version": "4.0.2",
+    "version": "4.1.0",
     "exposed-modules": [
         "Path",
         "SubPath",
