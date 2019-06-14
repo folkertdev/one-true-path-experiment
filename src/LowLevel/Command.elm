@@ -296,7 +296,7 @@ fromLowLevelDrawTo drawto ({ start, cursor } as state) =
                     , { state | cursor = final, previousControlPoint = Nothing }
                     )
             in
-            coordinatesToAbsolute mode (addVectors cursor) oldPoints
+            toAbsoluteFloat mode cursor oldPoints
                 |> Maybe.map updateState
 
         LowLevel.Horizontal mode xs ->
@@ -308,7 +308,7 @@ fromLowLevelDrawTo drawto ({ start, cursor } as state) =
             in
             xs
                 |> List.map (\x -> ( x, 0 ))
-                |> coordinatesToAbsolute mode (addVectors cursor)
+                |> toAbsoluteFloat mode cursor
                 |> Maybe.map updateState
 
         LowLevel.Vertical mode ys ->
@@ -320,7 +320,7 @@ fromLowLevelDrawTo drawto ({ start, cursor } as state) =
             in
             ys
                 |> List.map (\y -> ( 0, y ))
-                |> coordinatesToAbsolute mode (addVectors cursor)
+                |> toAbsoluteFloat mode cursor
                 |> Maybe.map updateState
 
         LowLevel.CurveTo mode coordinates ->
@@ -330,8 +330,7 @@ fromLowLevelDrawTo drawto ({ start, cursor } as state) =
                     , { state | cursor = final, previousControlPoint = Just c2 }
                     )
             in
-            coordinates
-                |> coordinatesToAbsolute mode (mapTuple3 (addVectors cursor))
+            toAbsoluteFloat3 mode cursor coordinates
                 |> Maybe.map updateState
 
         LowLevel.SmoothCurveTo mode coordinates ->
@@ -344,7 +343,7 @@ fromLowLevelDrawTo drawto ({ start, cursor } as state) =
                     )
             in
             coordinates
-                |> coordinatesToAbsolute mode (mapTuple2 (addVectors cursor))
+                |> toAbsoluteFloat2 mode cursor
                 |> Maybe.map (updateState << makeControlPointExplicitVec2 state << Tuple.second)
 
         LowLevel.QuadraticBezierCurveTo mode coordinates ->
@@ -355,7 +354,7 @@ fromLowLevelDrawTo drawto ({ start, cursor } as state) =
                     )
             in
             coordinates
-                |> coordinatesToAbsolute mode (mapTuple2 (addVectors cursor))
+                |> toAbsoluteFloat2 mode cursor
                 |> Maybe.map updateState
 
         LowLevel.SmoothQuadraticBezierCurveTo mode coordinates ->
@@ -366,7 +365,7 @@ fromLowLevelDrawTo drawto ({ start, cursor } as state) =
                     )
             in
             coordinates
-                |> coordinatesToAbsolute mode (addVectors cursor)
+                |> toAbsoluteFloat mode cursor
                 |> Maybe.map (updateState << makeControlPointExplicitVec1 state << Tuple.second)
 
         LowLevel.EllipticalArc mode arguments ->
@@ -384,7 +383,7 @@ fromLowLevelDrawTo drawto ({ start, cursor } as state) =
                     )
             in
             arguments
-                |> coordinatesToAbsolute mode argumentToAbsolute
+                |> toAbsoluteArgument mode cursor
                 |> Maybe.map updateState
 
         LowLevel.ClosePath ->
@@ -459,8 +458,36 @@ makeControlPointExplicitVec2 initial withoutContolPoint =
         |> Tuple.mapSecond List.reverse
 
 
-coordinatesToAbsolute : Mode -> (coords -> coords) -> List coords -> Maybe ( coords, List coords )
-coordinatesToAbsolute mode toAbsolute coordinates =
+
+{-
+   coordinatesToAbsolute : Mode -> (coords -> coords) -> List coords -> Maybe ( coords, List coords )
+   coordinatesToAbsolute mode toAbsolute coordinates =
+       case mode of
+           Absolute ->
+               coordinates
+                   |> last
+                   |> Maybe.map (\final -> ( final, coordinates ))
+
+           Relative ->
+               let
+                   folder f element ( elements, final ) =
+                       case final of
+                           Nothing ->
+                               ( f element :: elements, Just element )
+
+                           Just _ ->
+                               ( f element :: elements, final )
+               in
+               case List.foldr (folder toAbsolute) ( [], Nothing ) coordinates of
+                   ( _, Nothing ) ->
+                       Nothing
+
+                   ( newCoordinates, Just final ) ->
+                       Just ( toAbsolute final, newCoordinates )
+-}
+
+
+toAbsoluteArgument mode cursor coordinates =
     case mode of
         Absolute ->
             coordinates
@@ -468,21 +495,163 @@ coordinatesToAbsolute mode toAbsolute coordinates =
                 |> Maybe.map (\final -> ( final, coordinates ))
 
         Relative ->
+            loopArgument cursor coordinates []
+
+
+addArgument offset argument =
+    { argument
+        | target =
+            Vector2d.sum (Vector2d.fromComponents argument.target) (Vector2d.fromComponents offset)
+                |> Vector2d.components
+    }
+
+
+loopArgument : ( Float, Float ) -> List EllipticalArcArgument -> List EllipticalArcArgument -> Maybe ( EllipticalArcArgument, List EllipticalArcArgument )
+loopArgument offset remaining accum =
+    case remaining of
+        [] ->
+            Nothing
+
+        [ x ] ->
             let
-                folder f element ( elements, final ) =
-                    case final of
-                        Nothing ->
-                            ( f element :: elements, Just element )
-
-                        Just _ ->
-                            ( f element :: elements, final )
+                new =
+                    addArgument offset x
             in
-            case List.foldr (folder toAbsolute) ( [], Nothing ) coordinates of
-                ( _, Nothing ) ->
-                    Nothing
+            Just ( new, List.reverse (new :: accum) )
 
-                ( newCoordinates, Just final ) ->
-                    Just ( toAbsolute final, newCoordinates )
+        x :: xs ->
+            let
+                (p as new) =
+                    addArgument offset x
+            in
+            loopArgument p.target xs (new :: accum)
+
+
+toAbsoluteFloat : Mode -> ( Float, Float ) -> List ( Float, Float ) -> Maybe ( ( Float, Float ), List ( Float, Float ) )
+toAbsoluteFloat mode cursor coordinates =
+    case mode of
+        Absolute ->
+            coordinates
+                |> last
+                |> Maybe.map (\final -> ( final, coordinates ))
+
+        Relative ->
+            loopFloat cursor coordinates []
+
+
+addFloat : ( Float, Float ) -> ( Float, Float ) -> ( Float, Float )
+addFloat offset a =
+    addVectors offset a
+
+
+loopFloat : ( Float, Float ) -> List ( Float, Float ) -> List ( Float, Float ) -> Maybe ( ( Float, Float ), List ( Float, Float ) )
+loopFloat offset remaining accum =
+    case remaining of
+        [] ->
+            Nothing
+
+        [ x ] ->
+            let
+                new =
+                    addFloat offset x
+            in
+            Just ( new, List.reverse (new :: accum) )
+
+        x :: xs ->
+            let
+                (p as new) =
+                    addFloat offset x
+            in
+            loopFloat p xs (new :: accum)
+
+
+type alias Float2 =
+    ( ( Float, Float ), ( Float, Float ) )
+
+
+toAbsoluteFloat2 : Mode -> ( Float, Float ) -> List Float2 -> Maybe ( Float2, List Float2 )
+toAbsoluteFloat2 mode cursor coordinates =
+    case mode of
+        Absolute ->
+            coordinates
+                |> last
+                |> Maybe.map (\final -> ( final, coordinates ))
+
+        Relative ->
+            loopFloat2 cursor coordinates []
+
+
+addFloat2 : ( Float, Float ) -> Float2 -> Float2
+addFloat2 offset ( a, b ) =
+    ( addVectors offset a
+    , addVectors offset b
+    )
+
+
+loopFloat2 : ( Float, Float ) -> List Float2 -> List Float2 -> Maybe ( Float2, List Float2 )
+loopFloat2 offset remaining accum =
+    case remaining of
+        [] ->
+            Nothing
+
+        [ x ] ->
+            let
+                new =
+                    addFloat2 offset x
+            in
+            Just ( new, List.reverse (new :: accum) )
+
+        x :: xs ->
+            let
+                (( _, p ) as new) =
+                    addFloat2 offset x
+            in
+            loopFloat2 p xs (new :: accum)
+
+
+type alias Float3 =
+    ( ( Float, Float ), ( Float, Float ), ( Float, Float ) )
+
+
+toAbsoluteFloat3 : Mode -> ( Float, Float ) -> List Float3 -> Maybe ( Float3, List Float3 )
+toAbsoluteFloat3 mode cursor coordinates =
+    case mode of
+        Absolute ->
+            coordinates
+                |> last
+                |> Maybe.map (\final -> ( final, coordinates ))
+
+        Relative ->
+            loopFloat3 cursor coordinates []
+
+
+addFloat3 : ( Float, Float ) -> Float3 -> Float3
+addFloat3 offset ( a, b, c ) =
+    ( addVectors offset a
+    , addVectors offset b
+    , addVectors offset c
+    )
+
+
+loopFloat3 : ( Float, Float ) -> List Float3 -> List Float3 -> Maybe ( Float3, List Float3 )
+loopFloat3 offset remaining accum =
+    case remaining of
+        [] ->
+            Nothing
+
+        [ x ] ->
+            let
+                new =
+                    addFloat3 offset x
+            in
+            Just ( new, List.reverse (new :: accum) )
+
+        x :: xs ->
+            let
+                (( _, _, p ) as new) =
+                    addFloat3 offset x
+            in
+            loopFloat3 p xs (new :: accum)
 
 
 {-| Simulate the effect of a drawto command on the cursor position
