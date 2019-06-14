@@ -76,24 +76,28 @@ tests =
             \_ ->
                 right
                     |> SubPath.continueSmooth down
+                    |> tryToRound
                     |> SubPath.toSegments
                     |> Expect.equal [ Segment.line ( 0, 0 ) ( 100, 0 ), Segment.line ( 100, 0 ) ( 200, 0 ) ]
         , test "right smooth up produces a straight line" <|
             \_ ->
                 right
                     |> SubPath.continueSmooth up
+                    |> tryToRound
                     |> SubPath.toSegments
                     |> Expect.equal [ Segment.line ( 0, 0 ) ( 100, 0 ), Segment.line ( 100, 0 ) ( 200, 0 ) ]
         , test "right smooth left produces a straight line" <|
             \_ ->
                 right
                     |> SubPath.continueSmooth left
+                    |> tryToRound
                     |> SubPath.toSegments
                     |> Expect.equal [ Segment.line ( 0, 0 ) ( 100, 0 ), Segment.line ( 100, 0 ) ( 200, 0 ) ]
         , test "right smooth slope produces a straight line" <|
             \_ ->
                 right
                     |> SubPath.continueSmooth slope
+                    |> tryToRound
                     |> SubPath.toSegments
                     |> Expect.equal [ Segment.line ( 0, 0 ) ( 100, 0 ), Segment.line ( 100, 0 ) ( 200, 0 ) ]
         , test "toSegments returns segments in the correct order" <|
@@ -117,6 +121,14 @@ tests =
                         , Segment.line ( 200, 0 ) ( 300, 0 )
                         ]
         ]
+
+
+tryToRound =
+    let
+        f x =
+            ((x * 1.0e12) |> round |> toFloat) / 1.0e12
+    in
+    SubPath.mapCoordinate (\( x, y ) -> ( f x, f y ))
 
 
 arcLengthParameterization =
