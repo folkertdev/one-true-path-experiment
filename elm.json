@@ -19,7 +19,8 @@
         "elm-community/list-extra": "8.0.0 <= v < 9.0.0",
         "folkertdev/elm-deque": "3.0.0 <= v < 4.0.0",
         "folkertdev/svg-path-lowlevel": "3.0.0 <= v < 4.0.0",
-        "ianmackenzie/elm-geometry": "1.1.0 <= v < 2.0.0"
+        "ianmackenzie/elm-geometry": "3.3.0 <= v < 4.0.0",
+        "ianmackenzie/elm-units": "2.3.0 <= v < 3.0.0"
     },
     "test-dependencies": {
         "elm/random": "1.0.0 <= v < 2.0.0",

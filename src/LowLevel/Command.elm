@@ -11,7 +11,6 @@ module LowLevel.Command exposing
     , fromLowLevelMoveTo, fromLowLevelDrawTos, fromLowLevelDrawTo
     , toLowLevelDrawTo, toLowLevelMoveTo
     , mapCoordinateDrawTo, scaleMoveTo, scaleDrawTo
-    --
     )
 
 {-| Low-level access to drawing instructions.
@@ -72,7 +71,13 @@ These functions are only meant to build up primitives.
 
 import List.Extra as List
 import Path.LowLevel as LowLevel exposing (ArcFlag(..), Direction(..), Mode(..))
+import Quantity exposing (Quantity, Unitless)
 import Vector2d
+
+
+unitlessComponents : ( Quantity Float Unitless, Quantity Float Unitless ) -> ( Float, Float )
+unitlessComponents ( q1, q2 ) =
+    ( Quantity.toFloat q1, Quantity.toFloat q2 )
 
 
 {-| Constructors for MoveTo instructions
@@ -124,7 +129,7 @@ type alias EllipticalArcArgument =
     , xAxisRotate : Float
     , arcFlag : LowLevel.ArcFlag
     , direction : LowLevel.Direction
-    , target : ( Float, Float )
+    , target : LowLevel.Coordinate
     }
 
 
@@ -225,7 +230,10 @@ arcTo =
 
 -}
 type alias CursorState =
-    { start : ( Float, Float ), cursor : ( Float, Float ), previousControlPoint : Maybe ( Float, Float ) }
+    { start : ( Float, Float )
+    , cursor : ( Float, Float )
+    , previousControlPoint : Maybe ( Float, Float )
+    }
 
 
 last : List a -> Maybe a
@@ -253,8 +261,9 @@ fromLowLevelMoveTo (LowLevel.MoveTo mode target) ({ cursor } as state) =
         Relative ->
             let
                 absoluteTarget =
-                    Vector2d.sum (Vector2d.fromComponents target) (Vector2d.fromComponents cursor)
+                    Vector2d.plus (Vector2d.fromTuple Quantity.float target) (Vector2d.fromTuple Quantity.float cursor)
                         |> Vector2d.components
+                        |> unitlessComponents
             in
             ( { state | start = absoluteTarget, cursor = absoluteTarget, previousControlPoint = Nothing }
             , MoveTo absoluteTarget
@@ -370,13 +379,6 @@ fromLowLevelDrawTo drawto ({ start, cursor } as state) =
 
         LowLevel.EllipticalArc mode arguments ->
             let
-                argumentToAbsolute argument =
-                    { argument
-                        | target =
-                            Vector2d.sum (Vector2d.fromComponents argument.target) (Vector2d.fromComponents cursor)
-                                |> Vector2d.components
-                    }
-
                 updateState ( { target }, points ) =
                     ( EllipticalArc points
                     , { state | cursor = target, previousControlPoint = Nothing }
@@ -425,9 +427,10 @@ makeControlPointExplicitVec1 initial withoutContolPoint =
                            |> Vec2.negate
                            |> Vec2.add state.cursor
                     -}
-                    Vector2d.difference (Vector2d.fromComponents state.cursor) (Vector2d.fromComponents previousControlPoint)
-                        |> Vector2d.sum (Vector2d.fromComponents state.cursor)
+                    Vector2d.minus (Vector2d.fromTuple Quantity.float state.cursor) (Vector2d.fromTuple Quantity.float previousControlPoint)
+                        |> Vector2d.plus (Vector2d.fromTuple Quantity.float state.cursor)
                         |> Vector2d.components
+                        |> unitlessComponents
             in
             ( { state | cursor = target, previousControlPoint = Just newControlPoint }
             , ( newControlPoint, target ) :: accum
@@ -446,9 +449,10 @@ makeControlPointExplicitVec2 initial withoutContolPoint =
                     Maybe.withDefault state.cursor state.previousControlPoint
 
                 newControlPoint =
-                    Vector2d.difference (Vector2d.fromComponents state.cursor) (Vector2d.fromComponents previousControlPoint)
-                        |> Vector2d.sum (Vector2d.fromComponents state.cursor)
+                    Vector2d.minus (Vector2d.fromTuple Quantity.float state.cursor) (Vector2d.fromTuple Quantity.float previousControlPoint)
+                        |> Vector2d.plus (Vector2d.fromTuple Quantity.float state.cursor)
                         |> Vector2d.components
+                        |> unitlessComponents
             in
             ( { state | cursor = target, previousControlPoint = Just c2 }
             , ( newControlPoint, c2, target ) :: accum
@@ -487,6 +491,7 @@ makeControlPointExplicitVec2 initial withoutContolPoint =
 -}
 
 
+toAbsoluteArgument : Mode -> ( Float, Float ) -> List EllipticalArcArgument -> Maybe ( EllipticalArcArgument, List EllipticalArcArgument )
 toAbsoluteArgument mode cursor coordinates =
     case mode of
         Absolute ->
@@ -498,11 +503,13 @@ toAbsoluteArgument mode cursor coordinates =
             loopArgument cursor coordinates []
 
 
+addArgument : ( Float, Float ) -> { a | target : ( Float, Float ) } -> { a | target : ( Float, Float ) }
 addArgument offset argument =
     { argument
         | target =
-            Vector2d.sum (Vector2d.fromComponents argument.target) (Vector2d.fromComponents offset)
+            Vector2d.plus (Vector2d.fromTuple Quantity.float argument.target) (Vector2d.fromTuple Quantity.float offset)
                 |> Vector2d.components
+                |> unitlessComponents
     }
 
 
@@ -777,12 +784,14 @@ scaleDrawTo : { origin : ( Float, Float ), scaleX : Float, scaleY : Float } -> D
 scaleDrawTo { origin, scaleX, scaleY } drawto =
     let
         scaling point =
-            Vector2d.difference (Vector2d.fromComponents origin) (Vector2d.fromComponents point)
+            Vector2d.minus (Vector2d.fromTuple Quantity.float origin) (Vector2d.fromTuple Quantity.float point)
                 |> Vector2d.components
+                |> unitlessComponents
                 |> (\( x, y ) -> ( scaleX * x, scaleY * y ))
-                |> Vector2d.fromComponents
-                |> Vector2d.sum (Vector2d.fromComponents origin)
+                |> Vector2d.fromTuple Quantity.float
+                |> Vector2d.plus (Vector2d.fromTuple Quantity.float origin)
                 |> Vector2d.components
+                |> unitlessComponents
     in
     case drawto of
         LineTo points ->
@@ -811,8 +820,9 @@ scaleDrawTo { origin, scaleX, scaleY } drawto =
 
 addVectors : ( Float, Float ) -> ( Float, Float ) -> ( Float, Float )
 addVectors x y =
-    Vector2d.sum (Vector2d.fromComponents x) (Vector2d.fromComponents y)
+    Vector2d.plus (Vector2d.fromTuple Quantity.float x) (Vector2d.fromTuple Quantity.float y)
         |> Vector2d.components
+        |> unitlessComponents
 
 
 mapTuple2 : (a -> b) -> ( a, a ) -> ( b, b )
