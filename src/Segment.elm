@@ -58,9 +58,10 @@ in `SubPath`.
 
 -}
 
+--import ParameterValue
+
+import ArcLengthParameterization
 import CubicSpline2d exposing (CubicSpline2d)
-import Curve.ArcLengthParameterization as ArcLengthParameterization
-import Curve.ParameterValue as ParameterValue
 import Direction2d exposing (Direction2d)
 import EllipticalArc2d exposing (EllipticalArc2d)
 import Geometry.Ellipse exposing (CenterParameterization, EndpointParameterization)
@@ -69,21 +70,22 @@ import LowLevel.Command exposing (..)
 import Path.LowLevel exposing (ArcFlag(..), Direction(..), EllipticalArcArgument)
 import Point2d exposing (Point2d)
 import QuadraticSpline2d exposing (QuadraticSpline2d)
+import Quantity exposing (Unitless)
 import Vector2d exposing (Vector2d)
 
 
 {-| The four types of segments.
 -}
-type Segment
-    = LineSegment LineSegment2d
-    | Quadratic QuadraticSpline2d
-    | Cubic CubicSpline2d
-    | Arc EllipticalArc2d
+type Segment coordinates
+    = LineSegment (LineSegment2d Unitless coordinates)
+    | Quadratic (QuadraticSpline2d Unitless coordinates)
+    | Cubic (CubicSpline2d Unitless coordinates)
+    | Arc (EllipticalArc2d Unitless coordinates)
 
 
 {-| Make a line segment
 -}
-line : ( Float, Float ) -> ( Float, Float ) -> Segment
+line : ( Float, Float ) -> ( Float, Float ) -> Segment coordinates
 line from to =
     LineSegment2d.from (Point2d.fromCoordinates from) (Point2d.fromCoordinates to)
         |> LineSegment
@@ -91,7 +93,7 @@ line from to =
 
 {-| Make a quadratic bezier segment
 -}
-quadratic : ( Float, Float ) -> ( Float, Float ) -> ( Float, Float ) -> Segment
+quadratic : ( Float, Float ) -> ( Float, Float ) -> ( Float, Float ) -> Segment coordinates
 quadratic start c1 end =
     QuadraticSpline2d.with
         { startPoint = Point2d.fromCoordinates start
@@ -103,7 +105,7 @@ quadratic start c1 end =
 
 {-| Make a cubic bezier segment
 -}
-cubic : ( Float, Float ) -> ( Float, Float ) -> ( Float, Float ) -> ( Float, Float ) -> Segment
+cubic : ( Float, Float ) -> ( Float, Float ) -> ( Float, Float ) -> ( Float, Float ) -> Segment coordinates
 cubic start c1 c2 end =
     CubicSpline2d.with
         { startPoint = Point2d.fromCoordinates start
@@ -116,7 +118,7 @@ cubic start c1 c2 end =
 
 {-| Make an elliptic arc segment
 -}
-ellipticalArc : ( Float, Float ) -> Path.LowLevel.EllipticalArcArgument -> Segment
+ellipticalArc : ( Float, Float ) -> Path.LowLevel.EllipticalArcArgument -> Segment coordinates
 ellipticalArc start { radii, xAxisRotate, arcFlag, direction, target } =
     let
         ( rx, ry ) =
@@ -140,7 +142,7 @@ ellipticalArc start { radii, xAxisRotate, arcFlag, direction, target } =
 
 {-| Convert a segment to a drawto instruction. forgets the starting point.
 -}
-toDrawTo : Segment -> DrawTo
+toDrawTo : Segment coordinates -> DrawTo
 toDrawTo segment =
     case segment of
         LineSegment lineSegment ->
@@ -188,7 +190,7 @@ toDrawTo segment =
 
 {-| Extract the first point from a segment
 -}
-firstPoint : Segment -> ( Float, Float )
+firstPoint : Segment coordinates -> ( Float, Float )
 firstPoint segment =
     Point2d.coordinates <|
         case segment of
@@ -207,7 +209,7 @@ firstPoint segment =
 
 {-| Extract the final point from a segment
 -}
-finalPoint : Segment -> ( Float, Float )
+finalPoint : Segment coordinates -> ( Float, Float )
 finalPoint segment =
     Point2d.coordinates <|
         case segment of
@@ -226,7 +228,7 @@ finalPoint segment =
 
 {-| Reverse a line segment
 -}
-reverse : Segment -> Segment
+reverse : Segment coordinates -> Segment coordinates
 reverse segment =
     case segment of
         LineSegment lineSegment ->
@@ -276,7 +278,7 @@ This function needs the previous segment to the starting point and (for bezier c
     toSegment start drawto --> expected
 
 -}
-toSegment : CursorState -> DrawTo -> List Segment
+toSegment : CursorState -> DrawTo -> List (Segment coordinates)
 toSegment state drawto =
     let
         start =
@@ -353,7 +355,7 @@ toSegment state drawto =
         --> { start = (0,0) , cursor = (10, 10) , previousControlPoint = Nothing }
 
 -}
-toCursorState : Segment -> CursorState
+toCursorState : Segment coordinates -> CursorState
 toCursorState segment =
     case segment of
         Cubic curve ->
@@ -418,7 +420,7 @@ traverse folder initial elements =
     at 0.5 (quadratic ( 0, 0 ) ( 5, 10 ) ( 10, 0 )) --> ( 5, 5 )
 
 -}
-at : Float -> Segment -> ( Float, Float )
+at : Float -> Segment coordinates -> ( Float, Float )
 at t segment =
     let
         parameterValue =
@@ -470,7 +472,7 @@ at t segment =
         --> Vector2.normalize (1,1)
 
 -}
-derivativeAt : Float -> Segment -> ( Float, Float )
+derivativeAt : Float -> Segment coordinates -> ( Float, Float )
 derivativeAt t segment =
     let
         parameterValue =
@@ -493,7 +495,7 @@ derivativeAt t segment =
 
 {-| The derivative at the starting point of the segment
 -}
-derivativeAtFirst : Segment -> ( Float, Float )
+derivativeAtFirst : Segment coordinates -> ( Float, Float )
 derivativeAtFirst segment =
     Vector2d.components <|
         case segment of
@@ -512,7 +514,7 @@ derivativeAtFirst segment =
 
 {-| The derivative at the ending point of the segment
 -}
-derivativeAtFinal : Segment -> ( Float, Float )
+derivativeAtFinal : Segment coordinates -> ( Float, Float )
 derivativeAtFinal segment =
     Vector2d.components <|
         case segment of
@@ -542,7 +544,7 @@ derivativeAtFinal segment =
     angle b a --> degrees -90
 
 -}
-angle : Segment -> Segment -> Float
+angle : Segment coordinates -> Segment coordinates -> Float
 angle seg1 seg2 =
     let
         direction1 =
@@ -575,7 +577,7 @@ signedAngle_ u v =
 
 {-| The approximate length of a segment
 -}
-length : Segment -> Float
+length : Segment coordinates -> Float
 length segment =
     0
 
@@ -593,18 +595,18 @@ intersections segment1 segment2 =
 
 {-| Opaque type for the arc length parameterization of a segment
 -}
-type ArcLengthParameterized
-    = ParameterizedLineSegment LineSegment2d.LineSegment2d
-    | ParameterizedQuadratic QuadraticSpline2d.ArcLengthParameterized
-    | ParameterizedCubic CubicSpline2d.ArcLengthParameterized
-    | ParameterizedArc EllipticalArc2d.ArcLengthParameterized
+type ArcLengthParameterized coordinates
+    = ParameterizedLineSegment (LineSegment2d.LineSegment2d Unitless coordinates)
+    | ParameterizedQuadratic (QuadraticSpline2d.ArcLengthParameterized Unitless coordinates)
+    | ParameterizedCubic (CubicSpline2d.ArcLengthParameterized Unitless coordinates)
+    | ParameterizedArc (EllipticalArc2d.ArcLengthParameterized Unitless coordinates)
 
 
 {-| -}
 arcLengthParameterized :
     Float
     -> Segment
-    -> ArcLengthParameterized
+    -> ArcLengthParameterized coordinates
 arcLengthParameterized tolerance segment =
     let
         config =
@@ -628,7 +630,7 @@ arcLengthParameterized tolerance segment =
 
 
 {-| -}
-arcLength : ArcLengthParameterized -> Float
+arcLength : ArcLengthParameterized coordinates -> Float
 arcLength parameterized =
     case parameterized of
         ParameterizedLineSegment lineSegment ->
@@ -645,7 +647,7 @@ arcLength parameterized =
 
 
 {-| -}
-pointAlong : ArcLengthParameterized -> Float -> Maybe ( Float, Float )
+pointAlong : ArcLengthParameterized coordinates -> Float -> Maybe ( Float, Float )
 pointAlong parameterized t =
     let
         parameterValue =
@@ -668,7 +670,7 @@ pointAlong parameterized t =
 
 
 {-| -}
-tangentAlong : ArcLengthParameterized -> Float -> Maybe ( Float, Float )
+tangentAlong : ArcLengthParameterized coordinates -> Float -> Maybe ( Float, Float )
 tangentAlong parameterized t =
     let
         parameterValue =
@@ -694,7 +696,7 @@ tangentAlong parameterized t =
 
 {-| -}
 arcLengthToParameterValue :
-    ArcLengthParameterized
+    ArcLengthParameterized coordinates
     -> Float
     -> Maybe Float
 arcLengthToParameterValue parameterized t =
@@ -728,7 +730,7 @@ arcLengthToParameterValue parameterized t =
 
 {-| -}
 parameterValueToArcLength :
-    ArcLengthParameterized
+    ArcLengthParameterized coordinates
     -> Float
     -> Float
 parameterValueToArcLength parameterized t =
