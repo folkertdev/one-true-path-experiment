@@ -434,7 +434,7 @@ bundle beta points =
                         |> toFloat
 
                 deltas =
-                    Vector2d.minus (List.last rest |> Maybe.withDefault p0) p0
+                    (List.last rest |> Maybe.withDefault p0) |> Vector2d.minus p0
 
                 helper i p =
                     let
@@ -471,10 +471,12 @@ cardinalPointHelper :
     -> Vector2d Unitless coordinates
     -> Triplet (Vector2d Unitless coordinates)
 cardinalPointHelper k p0 p1 p2 p =
-    ( Vector2d.minus p2 p0
+    ( p2
+        |> Vector2d.minus p0
         |> Vector2d.scaleBy k
         |> Vector2d.plus p1
-    , Vector2d.minus p1 p
+    , p1
+        |> Vector2d.minus p
         |> Vector2d.scaleBy k
         |> Vector2d.plus p2
     , p2
@@ -575,7 +577,7 @@ catmullRomDistance : Float -> Vector2d Unitless coordinates -> Vector2d Unitless
 catmullRomDistance alpha p1 p2 =
     let
         (Quantity.Quantity length) =
-            Vector2d.length (Vector2d.minus p1 p2)
+            Vector2d.length (p1 |> Vector2d.minus p2)
 
         l23_2a =
             (length * length) ^ alpha
@@ -713,7 +715,8 @@ catmullRomPointHelper alpha p0 p1 p2 p3 =
                 n =
                     3 * l01_a * (l01_a + l12_a)
             in
-            Vector2d.minus (Vector2d.scaleBy a p) (Vector2d.scaleBy l12_2a p0)
+            Vector2d.scaleBy a p
+                |> Vector2d.minus (Vector2d.scaleBy l12_2a p0)
                 |> Vector2d.plus (Vector2d.scaleBy l01_2a p2)
                 |> Vector2d.scaleBy (1 / n)
 
@@ -752,7 +755,8 @@ slope2 : Vector2d Unitless coordinates -> Vector2d Unitless coordinates -> Float
 slope2 p0 p1 t =
     let
         ( dx, dy ) =
-            Vector2d.minus p0 p1
+            p0
+                |> Vector2d.minus p1
                 |> Vector2d.toTuple Quantity.toFloat
     in
     if dx /= 0 then
@@ -770,11 +774,13 @@ slope3 :
 slope3 p0 p1 p2 =
     let
         ( dx1, dy1 ) =
-            Vector2d.minus p1 p0
+            p1
+                |> Vector2d.minus p0
                 |> Vector2d.toTuple Quantity.toFloat
 
         ( dx2, dy2 ) =
-            Vector2d.minus p2 p1
+            p2
+                |> Vector2d.minus p1
                 |> Vector2d.toTuple Quantity.toFloat
 
         ( s0h, s1h ) =

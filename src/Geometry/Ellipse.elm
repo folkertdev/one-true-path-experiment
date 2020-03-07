@@ -164,7 +164,8 @@ coordinatePrime { start, end, xAxisRotate } =
         rotate =
             inverseConversionMatrix xAxisRotate
     in
-    Vector2d.minus (Vector2d.fromTuple Quantity.float start) (Vector2d.fromTuple Quantity.float end)
+    Vector2d.fromTuple Quantity.float start
+        |> Vector2d.minus (Vector2d.fromTuple Quantity.float end)
         |> Vector2d.scaleBy 0.5
         |> Vector2d.toTuple Quantity.toFloat
         |> matrixMulVector rotate
@@ -228,7 +229,8 @@ endpointToCenter ({ start, end, radii, xAxisRotate, arcFlag, direction } as para
         startAngle =
             let
                 temp =
-                    Vector2d.minus p1 center_
+                    p1
+                        |> Vector2d.minus center_
                         |> Vector2d.toTuple Quantity.toFloat
                         |> (\( x, y ) -> ( x / radiusX, y / radiusY ))
                         |> Vector2d.fromTuple Quantity.float
@@ -251,13 +253,15 @@ endpointToCenter ({ start, end, radii, xAxisRotate, arcFlag, direction } as para
         deltaTheta =
             let
                 first =
-                    Vector2d.minus p1 center_
+                    p1
+                        |> Vector2d.minus center_
                         |> Vector2d.toTuple Quantity.toFloat
                         |> (\( x, y ) -> ( x / radiusX, y / radiusY ))
                         |> Vector2d.fromTuple Quantity.float
 
                 second =
-                    Vector2d.minus (Vector2d.scaleBy -1 p1) center_
+                    Vector2d.scaleBy -1 p1
+                        |> Vector2d.minus center_
                         |> Vector2d.toTuple Quantity.toFloat
                         |> (\( x, y ) -> ( x / radiusX, y / radiusY ))
                         |> Vector2d.fromTuple Quantity.float

@@ -374,9 +374,8 @@ continue =
         helper right left =
             let
                 distance =
-                    Vector2d.minus
-                        (Vector2d.fromTuple Quantity.float (finalPoint left))
-                        (Vector2d.fromTuple Quantity.float (firstPoint right))
+                    Vector2d.fromTuple Quantity.float (finalPoint left)
+                        |> Vector2d.minus (Vector2d.fromTuple Quantity.float (firstPoint right))
 
                 mapper =
                     Vector2d.toTuple Quantity.toFloat << Vector2d.plus distance << Vector2d.fromTuple Quantity.float
