@@ -97,6 +97,7 @@ import Internal.NaturalInterpolation exposing (naturalControlPoints)
 import List.Extra as List
 import LowLevel.Command as Command exposing (..)
 import Path.LowLevel as LowLevel exposing (Mode(..))
+import Quantity exposing (Unitless)
 import SubPath exposing (SubPath(..), close, connect, empty)
 import Vector2d exposing (Vector2d)
 
@@ -251,23 +252,27 @@ radial ( x, y ) =
 basisPoint : ( Float, Float ) -> ( Float, Float ) -> ( Float, Float ) -> Triplet ( Float, Float )
 basisPoint p0 p1 p =
     basisPointHelper
-        (Vector2d.fromComponents p0)
-        (Vector2d.fromComponents p1)
-        (Vector2d.fromComponents p)
-        |> mapTriplet Vector2d.components
+        (Vector2d.fromTuple Quantity.float p0)
+        (Vector2d.fromTuple Quantity.float p1)
+        (Vector2d.fromTuple Quantity.float p)
+        |> mapTriplet (Vector2d.toTuple Quantity.toFloat)
 
 
-basisPointHelper : Vector2d -> Vector2d -> Vector2d -> Triplet Vector2d
+basisPointHelper :
+    Vector2d Unitless coordinates
+    -> Vector2d Unitless coordinates
+    -> Vector2d Unitless coordinates
+    -> Triplet (Vector2d Unitless coordinates)
 basisPointHelper p0 p1 p =
     ( Vector2d.scaleBy 2 p0
-        |> Vector2d.sum p1
+        |> Vector2d.plus p1
         |> Vector2d.scaleBy (1 / 3)
     , Vector2d.scaleBy 2 p1
-        |> Vector2d.sum p0
+        |> Vector2d.plus p0
         |> Vector2d.scaleBy (1 / 3)
     , Vector2d.scaleBy 4 p1
-        |> Vector2d.sum p0
-        |> Vector2d.sum p
+        |> Vector2d.plus p0
+        |> Vector2d.plus p
         |> Vector2d.scaleBy (1 / 6)
     )
 
@@ -298,13 +303,13 @@ basis points =
 
         toFirst p0 p1 =
             Vector2d.scaleBy 5 p0
-                |> Vector2d.sum p1
+                |> Vector2d.plus p1
                 |> Vector2d.scaleBy (1 / 6)
-                |> Vector2d.components
+                |> Vector2d.toTuple Quantity.toFloat
     in
     case points of
         p0 :: p1 :: _ :: _ ->
-            SubPath.with (moveTo p0) (lineTo [ toFirst (Vector2d.fromComponents p0) (Vector2d.fromComponents p1) ] :: commonCase [] points)
+            SubPath.with (moveTo p0) (lineTo [ toFirst (Vector2d.fromTuple Quantity.float p0) (Vector2d.fromTuple Quantity.float p1) ] :: commonCase [] points)
 
         [ p0, p1 ] ->
             SubPath.with (moveTo p0) [ lineTo [ p1 ] ]
@@ -347,11 +352,11 @@ basisClosed points =
                     ]
 
                 start =
-                    Vector2d.fromComponents p0
-                        |> Vector2d.sum (Vector2d.scaleBy 4 (Vector2d.fromComponents p1))
-                        |> Vector2d.sum (Vector2d.fromComponents p)
+                    Vector2d.fromTuple Quantity.float p0
+                        |> Vector2d.plus (Vector2d.scaleBy 4 (Vector2d.fromTuple Quantity.float p1))
+                        |> Vector2d.plus (Vector2d.fromTuple Quantity.float p)
                         |> Vector2d.scaleBy (1 / 6)
-                        |> Vector2d.components
+                        |> Vector2d.toTuple Quantity.toFloat
             in
             SubPath.with (moveTo start)
                 [ cubicCurveTo (commonCase [] closing (p3 :: p4 :: rest)) ]
@@ -359,18 +364,18 @@ basisClosed points =
         [ p0_, p1_ ] ->
             let
                 p0 =
-                    Vector2d.fromComponents p0_
+                    Vector2d.fromTuple Quantity.float p0_
 
                 p1 =
-                    Vector2d.fromComponents p1_
+                    Vector2d.fromTuple Quantity.float p1_
 
                 start =
-                    Vector2d.scaleBy (1 / 3) (Vector2d.sum p0 (Vector2d.scaleBy 2 p1))
-                        |> Vector2d.components
+                    Vector2d.scaleBy (1 / 3) (Vector2d.plus p0 (Vector2d.scaleBy 2 p1))
+                        |> Vector2d.toTuple Quantity.toFloat
 
                 end =
-                    Vector2d.scaleBy (1 / 3) (Vector2d.sum p1 (Vector2d.scaleBy 2 p0))
-                        |> Vector2d.components
+                    Vector2d.scaleBy (1 / 3) (Vector2d.plus p1 (Vector2d.scaleBy 2 p0))
+                        |> Vector2d.toTuple Quantity.toFloat
             in
             SubPath.with (moveTo start) [ lineTo [ end ], closePath ]
 
@@ -396,11 +401,11 @@ basisOpen points =
         p0 :: p1 :: p :: pp :: rest ->
             let
                 start =
-                    Vector2d.fromComponents p0
-                        |> Vector2d.sum (Vector2d.scaleBy 4 (Vector2d.fromComponents p1))
-                        |> Vector2d.sum (Vector2d.fromComponents p)
+                    Vector2d.fromTuple Quantity.float p0
+                        |> Vector2d.plus (Vector2d.scaleBy 4 (Vector2d.fromTuple Quantity.float p1))
+                        |> Vector2d.plus (Vector2d.fromTuple Quantity.float p)
                         |> Vector2d.scaleBy (1 / 6)
-                        |> Vector2d.components
+                        |> Vector2d.toTuple Quantity.toFloat
             in
             SubPath.with (moveTo start) [ cubicCurveTo (helper [] (p1 :: p :: pp :: rest)) ]
 
@@ -412,7 +417,7 @@ basisOpen points =
 -}
 bundle : Float -> List ( Float, Float ) -> SubPath
 bundle beta points =
-    case List.map Vector2d.fromComponents points of
+    case List.map (Vector2d.fromTuple Quantity.float) points of
         [] ->
             empty
 
@@ -429,7 +434,7 @@ bundle beta points =
                         |> toFloat
 
                 deltas =
-                    Vector2d.difference (List.last rest |> Maybe.withDefault p0) p0
+                    (List.last rest |> Maybe.withDefault p0) |> Vector2d.minus p0
 
                 helper i p =
                     let
@@ -439,10 +444,10 @@ bundle beta points =
                         newPoint =
                             deltas
                                 |> Vector2d.scaleBy t
-                                |> Vector2d.sum p0
+                                |> Vector2d.plus p0
                     in
                     Vector2d.interpolateFrom p newPoint beta
-                        |> Vector2d.components
+                        |> Vector2d.toTuple Quantity.toFloat
             in
             List.indexedMap helper (p0 :: rest)
                 |> basis
@@ -451,21 +456,29 @@ bundle beta points =
 cardinalPoint : Float -> ( Float, Float ) -> ( Float, Float ) -> ( Float, Float ) -> ( Float, Float ) -> Triplet ( Float, Float )
 cardinalPoint k p0 p1 p2 p =
     cardinalPointHelper k
-        (Vector2d.fromComponents p0)
-        (Vector2d.fromComponents p1)
-        (Vector2d.fromComponents p2)
-        (Vector2d.fromComponents p)
-        |> mapTriplet Vector2d.components
+        (Vector2d.fromTuple Quantity.float p0)
+        (Vector2d.fromTuple Quantity.float p1)
+        (Vector2d.fromTuple Quantity.float p2)
+        (Vector2d.fromTuple Quantity.float p)
+        |> mapTriplet (Vector2d.toTuple Quantity.toFloat)
 
 
-cardinalPointHelper : Float -> Vector2d -> Vector2d -> Vector2d -> Vector2d -> Triplet Vector2d
+cardinalPointHelper :
+    Float
+    -> Vector2d Unitless coordinates
+    -> Vector2d Unitless coordinates
+    -> Vector2d Unitless coordinates
+    -> Vector2d Unitless coordinates
+    -> Triplet (Vector2d Unitless coordinates)
 cardinalPointHelper k p0 p1 p2 p =
-    ( Vector2d.difference p2 p0
+    ( p2
+        |> Vector2d.minus p0
         |> Vector2d.scaleBy k
-        |> Vector2d.sum p1
-    , Vector2d.difference p1 p
+        |> Vector2d.plus p1
+    , p1
+        |> Vector2d.minus p
         |> Vector2d.scaleBy k
-        |> Vector2d.sum p2
+        |> Vector2d.plus p2
     , p2
     )
 
@@ -560,11 +573,14 @@ cardinalClosed tension points =
             SubPath.with (moveTo p4) [ cubicCurveTo (helper [] end points) ]
 
 
-catmullRomDistance : Float -> Vector2d -> Vector2d -> ( Float, Float )
+catmullRomDistance : Float -> Vector2d Unitless coordinates -> Vector2d Unitless coordinates -> ( Float, Float )
 catmullRomDistance alpha p1 p2 =
     let
+        (Quantity.Quantity length) =
+            Vector2d.length (p1 |> Vector2d.minus p2)
+
         l23_2a =
-            Vector2d.squaredLength (Vector2d.difference p1 p2) ^ alpha
+            (length * length) ^ alpha
     in
     ( sqrt l23_2a, l23_2a )
 
@@ -665,14 +681,20 @@ catmullRomClosed alpha points =
 catmullRomPoint : Float -> ( Float, Float ) -> ( Float, Float ) -> ( Float, Float ) -> ( Float, Float ) -> Triplet ( Float, Float )
 catmullRomPoint alpha p0 p1 p2 p3 =
     catmullRomPointHelper alpha
-        (Vector2d.fromComponents p0)
-        (Vector2d.fromComponents p1)
-        (Vector2d.fromComponents p2)
-        (Vector2d.fromComponents p3)
-        |> mapTriplet Vector2d.components
+        (Vector2d.fromTuple Quantity.float p0)
+        (Vector2d.fromTuple Quantity.float p1)
+        (Vector2d.fromTuple Quantity.float p2)
+        (Vector2d.fromTuple Quantity.float p3)
+        |> mapTriplet (Vector2d.toTuple Quantity.toFloat)
 
 
-catmullRomPointHelper : Float -> Vector2d -> Vector2d -> Vector2d -> Vector2d -> Triplet Vector2d
+catmullRomPointHelper :
+    Float
+    -> Vector2d Unitless coordinates
+    -> Vector2d Unitless coordinates
+    -> Vector2d Unitless coordinates
+    -> Vector2d Unitless coordinates
+    -> Triplet (Vector2d Unitless coordinates)
 catmullRomPointHelper alpha p0 p1 p2 p3 =
     let
         ( l01_a, l01_2a ) =
@@ -684,7 +706,7 @@ catmullRomPointHelper alpha p0 p1 p2 p3 =
         ( l23_a, l23_2a ) =
             catmullRomDistance alpha p2 p3
 
-        helper1 : Vector2d -> Vector2d
+        helper1 : Vector2d Unitless coordinates -> Vector2d Unitless coordinates
         helper1 p =
             let
                 a =
@@ -693,11 +715,12 @@ catmullRomPointHelper alpha p0 p1 p2 p3 =
                 n =
                     3 * l01_a * (l01_a + l12_a)
             in
-            Vector2d.difference (Vector2d.scaleBy a p) (Vector2d.scaleBy l12_2a p0)
-                |> Vector2d.sum (Vector2d.scaleBy l01_2a p2)
+            Vector2d.scaleBy a p
+                |> Vector2d.minus (Vector2d.scaleBy l12_2a p0)
+                |> Vector2d.plus (Vector2d.scaleBy l01_2a p2)
                 |> Vector2d.scaleBy (1 / n)
 
-        helper2 : Vector2d -> Vector2d
+        helper2 : Vector2d Unitless coordinates -> Vector2d Unitless coordinates
         helper2 p =
             let
                 b =
@@ -707,8 +730,8 @@ catmullRomPointHelper alpha p0 p1 p2 p3 =
                     3 * l23_a * (l23_a + l12_a)
             in
             Vector2d.scaleBy b p
-                |> Vector2d.sum (Vector2d.scaleBy l23_2a p1)
-                |> Vector2d.sum (Vector2d.scaleBy -l12_2a p3)
+                |> Vector2d.plus (Vector2d.scaleBy l23_2a p1)
+                |> Vector2d.plus (Vector2d.scaleBy -l12_2a p3)
                 |> Vector2d.scaleBy (1 / m)
 
         control1 =
@@ -728,12 +751,13 @@ catmullRomPointHelper alpha p0 p1 p2 p3 =
     ( control1, control2, p2 )
 
 
-slope2 : Vector2d -> Vector2d -> Float -> Float
+slope2 : Vector2d Unitless coordinates -> Vector2d Unitless coordinates -> Float -> Float
 slope2 p0 p1 t =
     let
         ( dx, dy ) =
-            Vector2d.difference p0 p1
-                |> Vector2d.components
+            p0
+                |> Vector2d.minus p1
+                |> Vector2d.toTuple Quantity.toFloat
     in
     if dx /= 0 then
         (3 * dy / dx - t) / 2
@@ -742,16 +766,22 @@ slope2 p0 p1 t =
         t
 
 
-slope3 : Vector2d -> Vector2d -> Vector2d -> Float
+slope3 :
+    Vector2d Unitless coordinates
+    -> Vector2d Unitless coordinates
+    -> Vector2d Unitless coordinates
+    -> Float
 slope3 p0 p1 p2 =
     let
         ( dx1, dy1 ) =
-            Vector2d.difference p1 p0
-                |> Vector2d.components
+            p1
+                |> Vector2d.minus p0
+                |> Vector2d.toTuple Quantity.toFloat
 
         ( dx2, dy2 ) =
-            Vector2d.difference p2 p1
-                |> Vector2d.components
+            p2
+                |> Vector2d.minus p1
+                |> Vector2d.toTuple Quantity.toFloat
 
         ( s0h, s1h ) =
             ( toH dx1 dx2, toH dx2 dx1 )
@@ -790,17 +820,17 @@ monotoneX points =
                 t1 : Float
                 t1 =
                     slope3
-                        (Vector2d.fromComponents p0)
-                        (Vector2d.fromComponents p1)
-                        (Vector2d.fromComponents p)
+                        (Vector2d.fromTuple Quantity.float p0)
+                        (Vector2d.fromTuple Quantity.float p1)
+                        (Vector2d.fromTuple Quantity.float p)
 
                 initialInstruction : Triplet ( Float, Float )
                 initialInstruction =
                     monotonePoint p0
                         p1
                         (slope2
-                            (Vector2d.fromComponents p0)
-                            (Vector2d.fromComponents p1)
+                            (Vector2d.fromTuple Quantity.float p0)
+                            (Vector2d.fromTuple Quantity.float p1)
                             t1
                         )
                         t1
@@ -825,9 +855,9 @@ monotoneXHelper acc t0 remaininPoints =
                 t1 : Float
                 t1 =
                     slope3
-                        (Vector2d.fromComponents p0)
-                        (Vector2d.fromComponents p1)
-                        (Vector2d.fromComponents p)
+                        (Vector2d.fromTuple Quantity.float p0)
+                        (Vector2d.fromTuple Quantity.float p1)
+                        (Vector2d.fromTuple Quantity.float p)
             in
             monotoneXHelper (monotonePoint p0 p1 t0 t1 :: acc) t1 (p1 :: p :: rest)
 
@@ -836,8 +866,8 @@ monotoneXHelper acc t0 remaininPoints =
                 t1 : Float
                 t1 =
                     slope2
-                        (Vector2d.fromComponents p0)
-                        (Vector2d.fromComponents p1)
+                        (Vector2d.fromTuple Quantity.float p0)
+                        (Vector2d.fromTuple Quantity.float p1)
                         t0
             in
             List.reverse (monotonePoint p0 p1 t0 t1 :: acc)
@@ -887,9 +917,9 @@ natural points =
             let
                 cubicTriplets =
                     points
-                        |> List.map Vector2d.fromComponents
+                        |> List.map (Vector2d.fromTuple Quantity.float)
                         |> naturalControlPoints
-                        |> List.map (mapTriplet Vector2d.components)
+                        |> List.map (mapTriplet (Vector2d.toTuple Quantity.toFloat))
             in
             SubPath.with (moveTo p) [ cubicCurveTo cubicTriplets ]
 

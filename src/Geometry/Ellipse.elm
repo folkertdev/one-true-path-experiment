@@ -8,9 +8,8 @@ module Geometry.Ellipse exposing
     , validateRadii
     )
 
--- import Matrix2 exposing (..)
-
 import Path.LowLevel as LowLevel exposing (ArcFlag(..), Direction(..))
+import Quantity exposing (Unitless)
 import Vector2d exposing (Vector2d)
 
 
@@ -96,20 +95,25 @@ inverseConversionMatrix xAxisRotate =
     )
 
 
-matrixMulVector : ( ( Float, Float ), ( Float, Float ) ) -> ( Float, Float ) -> Vector2d
+matrixMulVector : ( ( Float, Float ), ( Float, Float ) ) -> ( Float, Float ) -> Vector2d Unitless coordinates
 matrixMulVector ( ab, cd ) vec =
     let
         vector =
-            Vector2d.fromComponents vec
+            Vector2d.fromTuple Quantity.float vec
 
         row1 =
-            Vector2d.fromComponents ab
+            Vector2d.fromTuple Quantity.float ab
 
         row2 =
-            Vector2d.fromComponents cd
+            Vector2d.fromTuple Quantity.float cd
+
+        (Quantity.Quantity dot1) =
+            Vector2d.dot row1 vector
+
+        (Quantity.Quantity dot2) =
+            Vector2d.dot row2 vector
     in
-    Vector2d.fromComponents
-        ( Vector2d.dotProduct row1 vector, Vector2d.dotProduct row2 vector )
+    Vector2d.fromTuple Quantity.float ( dot1, dot2 )
 
 
 centerToEndpoint : CenterParameterization -> EndpointParameterization
@@ -127,14 +131,14 @@ centerToEndpoint { center, radii, startAngle, deltaTheta, xAxisRotate } =
         p1 =
             ( rx * cos startAngle, ry * sin startAngle )
                 |> matrixMulVector conversion
-                |> Vector2d.sum (Vector2d.fromComponents center)
-                |> Vector2d.components
+                |> Vector2d.plus (Vector2d.fromTuple Quantity.float center)
+                |> Vector2d.toTuple Quantity.toFloat
 
         p2 =
             ( rx * cos endAngle, ry * sin endAngle )
                 |> matrixMulVector conversion
-                |> Vector2d.sum (Vector2d.fromComponents center)
-                |> Vector2d.components
+                |> Vector2d.plus (Vector2d.fromTuple Quantity.float center)
+                |> Vector2d.toTuple Quantity.toFloat
 
         ( arcFlag, direction ) =
             LowLevel.decodeFlags
@@ -160,11 +164,12 @@ coordinatePrime { start, end, xAxisRotate } =
         rotate =
             inverseConversionMatrix xAxisRotate
     in
-    Vector2d.difference (Vector2d.fromComponents start) (Vector2d.fromComponents end)
+    Vector2d.fromTuple Quantity.float start
+        |> Vector2d.minus (Vector2d.fromTuple Quantity.float end)
         |> Vector2d.scaleBy 0.5
-        |> Vector2d.components
+        |> Vector2d.toTuple Quantity.toFloat
         |> matrixMulVector rotate
-        |> Vector2d.components
+        |> Vector2d.toTuple Quantity.toFloat
 
 
 endpointToCenter : EndpointParameterization -> CenterParameterization
@@ -177,7 +182,7 @@ endpointToCenter ({ start, end, radii, xAxisRotate, arcFlag, direction } as para
             coordinatePrime parameterization
 
         sign =
-            if (\( a, b ) -> (==) a b) (LowLevel.encodeFlags ( arcFlag, direction )) then
+            if (\( a, b ) -> a == b) (LowLevel.encodeFlags ( arcFlag, direction )) then
                 -1
 
             else
@@ -200,22 +205,22 @@ endpointToCenter ({ start, end, radii, xAxisRotate, arcFlag, direction } as para
                 sign * sqrt (numerator / denominator)
 
         center_ =
-            Vector2d.fromComponents
+            Vector2d.fromTuple Quantity.float
                 ( ((rx * y1_) / ry) * root
                 , (-1 * ((ry * x1_) / rx)) * root
                 )
 
         center =
             center_
-                |> Vector2d.components
+                |> Vector2d.toTuple Quantity.toFloat
                 |> matrixMulVector (conversionMatrix xAxisRotate)
-                |> Vector2d.sum
-                    (Vector2d.sum (Vector2d.fromComponents start) (Vector2d.fromComponents end)
+                |> Vector2d.plus
+                    (Vector2d.plus (Vector2d.fromTuple Quantity.float start) (Vector2d.fromTuple Quantity.float end)
                         |> Vector2d.scaleBy 0.5
                     )
 
         p1 =
-            Vector2d.fromComponents
+            Vector2d.fromTuple Quantity.float
                 ( x1_, y1_ )
 
         ( radiusX, radiusY ) =
@@ -224,11 +229,12 @@ endpointToCenter ({ start, end, radii, xAxisRotate, arcFlag, direction } as para
         startAngle =
             let
                 temp =
-                    Vector2d.difference p1 center_
-                        |> Vector2d.components
+                    p1
+                        |> Vector2d.minus center_
+                        |> Vector2d.toTuple Quantity.toFloat
                         |> (\( x, y ) -> ( x / radiusX, y / radiusY ))
-                        |> Vector2d.fromComponents
-                        |> signedAngle (Vector2d.fromComponents ( 1, 0 ))
+                        |> Vector2d.fromTuple Quantity.float
+                        |> signedAngle (Vector2d.fromTuple Quantity.float ( 1, 0 ))
 
                 ( _, fs ) =
                     LowLevel.encodeFlags ( arcFlag, direction )
@@ -247,16 +253,18 @@ endpointToCenter ({ start, end, radii, xAxisRotate, arcFlag, direction } as para
         deltaTheta =
             let
                 first =
-                    Vector2d.difference p1 center_
-                        |> Vector2d.components
+                    p1
+                        |> Vector2d.minus center_
+                        |> Vector2d.toTuple Quantity.toFloat
                         |> (\( x, y ) -> ( x / radiusX, y / radiusY ))
-                        |> Vector2d.fromComponents
+                        |> Vector2d.fromTuple Quantity.float
 
                 second =
-                    Vector2d.difference (Vector2d.scaleBy -1 p1) center_
-                        |> Vector2d.components
+                    Vector2d.scaleBy -1 p1
+                        |> Vector2d.minus center_
+                        |> Vector2d.toTuple Quantity.toFloat
                         |> (\( x, y ) -> ( x / radiusX, y / radiusY ))
-                        |> Vector2d.fromComponents
+                        |> Vector2d.fromTuple Quantity.float
             in
             signedAngle first second
 
@@ -275,7 +283,7 @@ endpointToCenter ({ start, end, radii, xAxisRotate, arcFlag, direction } as para
                    angle first second
         -}
         result =
-            { center = Vector2d.components center
+            { center = Vector2d.toTuple Quantity.toFloat center
             , xAxisRotate = xAxisRotate
             , startAngle = startAngle
             , deltaTheta = deltaTheta
@@ -285,14 +293,26 @@ endpointToCenter ({ start, end, radii, xAxisRotate, arcFlag, direction } as para
     result
 
 
-signedAngle : Vector2d -> Vector2d -> Float
+signedAngle : Vector2d Unitless coordinates -> Vector2d Unitless coordinates -> Float
 signedAngle u v =
     let
+        (Quantity.Quantity cross) =
+            u |> Vector2d.cross v
+
+        (Quantity.Quantity dot) =
+            Vector2d.dot u v
+
+        (Quantity.Quantity lengthU) =
+            Vector2d.length u
+
+        (Quantity.Quantity lengthV) =
+            Vector2d.length v
+
         sign =
-            if Vector2d.crossProduct u v < 0 then
+            if cross < 0 then
                 -1
 
             else
                 1
     in
-    sign * abs (acos (Vector2d.dotProduct u v / (Vector2d.length u * Vector2d.length v)))
+    sign * abs (acos (dot / (lengthU * lengthV)))

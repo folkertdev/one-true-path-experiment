@@ -15,7 +15,7 @@ module SubPath exposing
     )
 
 {-| `SubPath` is the fundamental type in this package.
-
+t
 In most cases it should be created with functions from the `Curve` module.
 
     import Curve
@@ -132,12 +132,13 @@ This is great for calculating the total length of your subpath (for instance to 
 
 -}
 
-import Curve.ParameterValue as ParameterValue
+import Angle
 import Deque exposing (Deque)
 import List.Extra as List
 import LowLevel.Command as Command exposing (CursorState, DrawTo(..), MoveTo(..))
 import Path.LowLevel as LowLevel
 import Point2d exposing (Point2d)
+import Quantity
 import Segment exposing (Segment)
 import Svg
 import Svg.Attributes
@@ -373,12 +374,11 @@ continue =
         helper right left =
             let
                 distance =
-                    Vector2d.difference
-                        (Vector2d.fromComponents (finalPoint left))
-                        (Vector2d.fromComponents (firstPoint right))
+                    Vector2d.fromTuple Quantity.float (finalPoint left)
+                        |> Vector2d.minus (Vector2d.fromTuple Quantity.float (firstPoint right))
 
                 mapper =
-                    Vector2d.components << Vector2d.sum distance << Vector2d.fromComponents
+                    Vector2d.toTuple Quantity.toFloat << Vector2d.plus distance << Vector2d.fromTuple Quantity.float
             in
             unsafeConcatenate left (mapCoordinateInstructions mapper right)
                 |> SubPath
@@ -402,7 +402,7 @@ continueSmooth right left =
                 Just first ->
                     let
                         angle =
-                            -- angle is negated because the svg coord system has +y facing down
+                            -- angle is negated because the svg coordinate system has +y facing down
                             Segment.angle final first
                                 |> negate
                     in
@@ -493,7 +493,7 @@ It is assumed that for every two adjacent segments in the list, the first segmen
         --> SubPath.toString <| Curve.linear [ (0,0), (10,10), (20, 10) ]
 
 -}
-fromSegments : List Segment -> SubPath
+fromSegments : List (Segment coordinates) -> SubPath
 fromSegments segments =
     case segments of
         [] ->
@@ -513,7 +513,7 @@ fromSegments segments =
         --> [ line (0,0) (10,10) , line (10, 10) (20, 10) ]
 
 -}
-toSegments : SubPath -> List Segment
+toSegments : SubPath -> List (Segment coordinates)
 toSegments subpath =
     case subpath of
         Empty ->
@@ -622,7 +622,7 @@ compressHelper drawtos =
 -}
 translate : ( Float, Float ) -> SubPath -> SubPath
 translate vec subpath =
-    mapCoordinate (Vector2d.components << Vector2d.sum (Vector2d.fromComponents vec) << Vector2d.fromComponents) subpath
+    mapCoordinate (Vector2d.toTuple Quantity.toFloat << Vector2d.plus (Vector2d.fromTuple Quantity.float vec) << Vector2d.fromTuple Quantity.float) subpath
 
 
 {-| Rotate a subpath around its starting point by an angle (in radians).
@@ -639,7 +639,7 @@ rotate angle subpath =
                     moveto
 
                 center =
-                    Point2d.fromCoordinates startPoint
+                    Point2d.fromTuple Quantity.float startPoint
 
                 -- attempt to round to "nice" floats for fuzz tests
                 cleanFloat v =
@@ -652,9 +652,9 @@ rotate angle subpath =
 
                 transform point =
                     point
-                        |> Point2d.fromCoordinates
-                        |> Point2d.rotateAround center angle
-                        |> Point2d.coordinates
+                        |> Point2d.fromTuple Quantity.float
+                        |> Point2d.rotateAround center (Angle.radians angle)
+                        |> Point2d.toTuple Quantity.toFloat
             in
             mapCoordinate transform subpath
 
@@ -731,9 +731,9 @@ toLowLevel subpath =
 
 {-| The arc length parameterization as a binary tree of segments.
 -}
-type ArcLengthParameterized
-    = Node { totalLength : Float, lengthAtSplit : Float, left : ArcLengthParameterized, right : ArcLengthParameterized, tolerance : Float }
-    | Leaf { segment : Segment.ArcLengthParameterized, tolerance : Float }
+type ArcLengthParameterized coordinates
+    = Node { totalLength : Float, lengthAtSplit : Float, left : ArcLengthParameterized coordinates, right : ArcLengthParameterized coordinates, tolerance : Float }
+    | Leaf { segment : Segment.ArcLengthParameterized coordinates, tolerance : Float }
     | None
 
 
@@ -754,21 +754,26 @@ you can supply a `tolerance`: Operations (arcLength, pointOn, ect.) are at most 
 > Using a much smaller `tolerance` can really slow down your page.
 
 -}
-arcLengthParameterized : Float -> SubPath -> ArcLengthParameterized
+arcLengthParameterized : Float -> SubPath -> ArcLengthParameterized coordinates
 arcLengthParameterized tolerance subpath =
     arcLengthParameterizedHelper tolerance (toSegments subpath)
 
 
-arcLengthParameterizedHelper : Float -> List Segment -> ArcLengthParameterized
+arcLengthParameterizedHelper : Float -> List (Segment coordinates) -> ArcLengthParameterized coordinates
 arcLengthParameterizedHelper tolerance segments =
     case segments of
         [] ->
             None
 
         [ segment ] ->
-            Leaf { segment = Segment.arcLengthParameterized tolerance segment, tolerance = tolerance }
+            case Segment.arcLengthParameterized tolerance segment of
+                Nothing ->
+                    None
 
-        xs ->
+                Just parameterized ->
+                    Leaf { segment = parameterized, tolerance = tolerance }
+
+        _ ->
             let
                 ( leftSegments, rightSegments ) =
                     List.splitAt (ceiling <| toFloat (List.length segments) / 2) segments
@@ -803,7 +808,7 @@ arcLengthParameterizedHelper tolerance segments =
         --> 100
 
 -}
-arcLength : ArcLengthParameterized -> Float
+arcLength : ArcLengthParameterized coordinates -> Float
 arcLength parameterized =
     case parameterized of
         None ->
@@ -816,7 +821,46 @@ arcLength parameterized =
             totalLength
 
 
-traverse : (Segment.ArcLengthParameterized -> Float -> Maybe a) -> ArcLengthParameterized -> Float -> Maybe a
+fold : (Segment.ArcLengthParameterized coordinates -> Float -> a) -> ArcLengthParameterized coordinates -> Float -> Maybe a
+fold tagger parameterized t =
+    let
+        clamp totalLength tolerance length =
+            if abs (length - totalLength) <= tolerance then
+                totalLength
+
+            else if abs length <= tolerance then
+                0
+
+            else
+                length
+    in
+    case parameterized of
+        None ->
+            Nothing
+
+        Leaf { segment, tolerance } ->
+            let
+                totalLength =
+                    Segment.arcLength segment
+
+                answer =
+                    tagger segment (clamp totalLength tolerance t)
+            in
+            Just answer
+
+        Node { totalLength, lengthAtSplit, left, right, tolerance } ->
+            let
+                clamped =
+                    clamp totalLength tolerance t
+            in
+            if clamped <= lengthAtSplit then
+                fold tagger left clamped
+
+            else
+                fold tagger right (clamped - lengthAtSplit)
+
+
+traverse : (Segment.ArcLengthParameterized coordinates -> Float -> Maybe a) -> ArcLengthParameterized coordinates -> Float -> Maybe a
 traverse tagger parameterized t =
     let
         clamp totalLength tolerance length =
@@ -868,9 +912,9 @@ traverse tagger parameterized t =
         --> Just (5, 0)
 
 -}
-pointAlong : ArcLengthParameterized -> Float -> Maybe ( Float, Float )
+pointAlong : ArcLengthParameterized coordinates -> Float -> Maybe ( Float, Float )
 pointAlong parameterized t =
-    traverse Segment.pointAlong parameterized t
+    fold Segment.pointAlong parameterized t
 
 
 {-| The tangent along the curve
@@ -886,23 +930,23 @@ pointAlong parameterized t =
         --> Just (1, 0)
 
 -}
-tangentAlong : ArcLengthParameterized -> Float -> Maybe ( Float, Float )
+tangentAlong : ArcLengthParameterized coordinates -> Float -> Maybe ( Float, Float )
 tangentAlong parameterized t =
     traverse Segment.tangentAlong parameterized t
 
 
 {-| Find the arc length at some parameter value.
 -}
-parameterValueToArcLength : ArcLengthParameterized -> Float -> Maybe Float
+parameterValueToArcLength : ArcLengthParameterized coordinates -> Float -> Maybe Float
 parameterValueToArcLength parameterized t =
     traverse (\segment value -> Just (Segment.parameterValueToArcLength segment value)) parameterized t
 
 
 {-| Find the parameter value at some arc length
 -}
-arcLengthToParameterValue : ArcLengthParameterized -> Float -> Maybe Float
+arcLengthToParameterValue : ArcLengthParameterized coordinates -> Float -> Maybe Float
 arcLengthToParameterValue parameterized t =
-    traverse Segment.arcLengthToParameterValue parameterized t
+    fold Segment.arcLengthToParameterValue parameterized t
 
 
 {-| Find `n` evenly spaced points on an arc length parameterized subpath
@@ -925,7 +969,7 @@ Includes the start and end point.
         --> [(0,0),(2.5,0),(5,0),(7.5,0),(10,0)]
 
 -}
-evenlySpacedPoints : Int -> ArcLengthParameterized -> List ( Float, Float )
+evenlySpacedPoints : Int -> ArcLengthParameterized coordinates -> List ( Float, Float )
 evenlySpacedPoints count parameterized =
     evenlySpacedWithEndpoints count parameterized
         |> List.filterMap (pointAlong parameterized)
@@ -933,7 +977,7 @@ evenlySpacedPoints count parameterized =
 
 {-| Evenly splits the curve into `count` segments, giving their length along the curve
 -}
-evenlySpaced : Int -> ArcLengthParameterized -> List Float
+evenlySpaced : Int -> ArcLengthParameterized coordinates -> List Float
 evenlySpaced count parameterized =
     let
         length =
@@ -945,13 +989,13 @@ evenlySpaced count parameterized =
 
 {-| Similar to `evenlySpaced`, but also gives the start and end point of the curve
 
-    evenlySpacedPoints : Int -> ArcLengthParameterized -> List ( Float, Float )
+    evenlySpacedPoints : Int -> ArcLengthParameterized coordinates -> List ( Float, Float )
     evenlySpacedPoints count parameterized =
         evenlySpacedWithEndpoints count parameterized
             |> List.filterMap (pointAlong parameterized)
 
 -}
-evenlySpacedWithEndpoints : Int -> ArcLengthParameterized -> List Float
+evenlySpacedWithEndpoints : Int -> ArcLengthParameterized coordinates -> List Float
 evenlySpacedWithEndpoints count parameterized =
     let
         length =
