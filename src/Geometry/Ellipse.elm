@@ -297,7 +297,7 @@ signedAngle : Vector2d Unitless coordinates -> Vector2d Unitless coordinates -> 
 signedAngle u v =
     let
         (Quantity.Quantity cross) =
-            Vector2d.cross u v
+            u |> Vector2d.cross v
 
         (Quantity.Quantity dot) =
             Vector2d.dot u v

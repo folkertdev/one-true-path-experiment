@@ -402,7 +402,7 @@ continueSmooth right left =
                 Just first ->
                     let
                         angle =
-                            -- angle is negated because the svg coord system has +y facing down
+                            -- angle is negated because the svg coordinate system has +y facing down
                             Segment.angle final first
                                 |> negate
                     in
