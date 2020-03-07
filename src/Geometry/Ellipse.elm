@@ -181,7 +181,7 @@ endpointToCenter ({ start, end, radii, xAxisRotate, arcFlag, direction } as para
             coordinatePrime parameterization
 
         sign =
-            if (\( a, b ) -> (==) a b) (LowLevel.encodeFlags ( arcFlag, direction )) then
+            if (\( a, b ) -> a == b) (LowLevel.encodeFlags ( arcFlag, direction )) then
                 -1
 
             else

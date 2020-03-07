@@ -262,8 +262,8 @@ fromLowLevelMoveTo (LowLevel.MoveTo mode target) ({ cursor } as state) =
             let
                 absoluteTarget =
                     Vector2d.plus (Vector2d.fromTuple Quantity.float target) (Vector2d.fromTuple Quantity.float cursor)
-                        |> Vector2d.components
-                        |> unitlessComponents
+                    |> Vector2d.toTuple Quantity.toFloat
+                        
             in
             ( { state | start = absoluteTarget, cursor = absoluteTarget, previousControlPoint = Nothing }
             , MoveTo absoluteTarget
@@ -429,8 +429,8 @@ makeControlPointExplicitVec1 initial withoutContolPoint =
                     -}
                     Vector2d.minus (Vector2d.fromTuple Quantity.float state.cursor) (Vector2d.fromTuple Quantity.float previousControlPoint)
                         |> Vector2d.plus (Vector2d.fromTuple Quantity.float state.cursor)
-                        |> Vector2d.components
-                        |> unitlessComponents
+                        |> Vector2d.toTuple Quantity.toFloat
+                        
             in
             ( { state | cursor = target, previousControlPoint = Just newControlPoint }
             , ( newControlPoint, target ) :: accum
@@ -451,8 +451,8 @@ makeControlPointExplicitVec2 initial withoutContolPoint =
                 newControlPoint =
                     Vector2d.minus (Vector2d.fromTuple Quantity.float state.cursor) (Vector2d.fromTuple Quantity.float previousControlPoint)
                         |> Vector2d.plus (Vector2d.fromTuple Quantity.float state.cursor)
-                        |> Vector2d.components
-                        |> unitlessComponents
+                        |> Vector2d.toTuple Quantity.toFloat
+                        
             in
             ( { state | cursor = target, previousControlPoint = Just c2 }
             , ( newControlPoint, c2, target ) :: accum
@@ -508,8 +508,8 @@ addArgument offset argument =
     { argument
         | target =
             Vector2d.plus (Vector2d.fromTuple Quantity.float argument.target) (Vector2d.fromTuple Quantity.float offset)
-                |> Vector2d.components
-                |> unitlessComponents
+            |> Vector2d.toTuple Quantity.toFloat
+                
     }
 
 
@@ -785,13 +785,13 @@ scaleDrawTo { origin, scaleX, scaleY } drawto =
     let
         scaling point =
             Vector2d.minus (Vector2d.fromTuple Quantity.float origin) (Vector2d.fromTuple Quantity.float point)
-                |> Vector2d.components
-                |> unitlessComponents
+            |> Vector2d.toTuple Quantity.toFloat
+                
                 |> (\( x, y ) -> ( scaleX * x, scaleY * y ))
                 |> Vector2d.fromTuple Quantity.float
                 |> Vector2d.plus (Vector2d.fromTuple Quantity.float origin)
-                |> Vector2d.components
-                |> unitlessComponents
+                |> Vector2d.toTuple Quantity.toFloat
+                
     in
     case drawto of
         LineTo points ->
@@ -821,8 +821,8 @@ scaleDrawTo { origin, scaleX, scaleY } drawto =
 addVectors : ( Float, Float ) -> ( Float, Float ) -> ( Float, Float )
 addVectors x y =
     Vector2d.plus (Vector2d.fromTuple Quantity.float x) (Vector2d.fromTuple Quantity.float y)
-        |> Vector2d.components
-        |> unitlessComponents
+    |> Vector2d.toTuple Quantity.toFloat
+        
 
 
 mapTuple2 : (a -> b) -> ( a, a ) -> ( b, b )

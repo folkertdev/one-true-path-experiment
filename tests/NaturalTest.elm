@@ -6,6 +6,7 @@ import Internal.NaturalInterpolation exposing (naturalControlPoints)
 import List.Extra as List
 import LowLevel.Command exposing (cubicCurveTo, lineTo, moveTo)
 import Path exposing (Path)
+import Quantity
 import SubPath
 import Test exposing (..)
 import Vector2d
@@ -203,8 +204,8 @@ tests =
             \points ->
                 case points of
                     _ :: _ :: _ ->
-                        Internal.NaturalInterpolation.naturalControlPoints (List.map Vector2d.fromComponents points)
-                            |> List.map (mapTriplet Vector2d.components)
+                        Internal.NaturalInterpolation.naturalControlPoints (List.map (Vector2d.fromTuple Quantity.float) points)
+                            |> List.map (mapTriplet (Vector2d.toTuple Quantity.toFloat))
                             |> Expect.equal (naturalControlPoints points)
 
                     _ ->

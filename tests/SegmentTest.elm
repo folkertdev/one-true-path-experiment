@@ -1,7 +1,7 @@
 module SegmentTest exposing (angle, arc, cleanFloat, cleanVec2, conversionFromToDrawTo, derivative, segment, segments, startAndEnd, toSegments, vec2)
 
+import Angle
 import Curve
-import Curve.ParameterValue as ParameterValue
 import Direction2d
 import EllipticalArc2d exposing (EllipticalArc2d)
 import Expect
@@ -9,6 +9,7 @@ import Fuzz
 import Geometry.Ellipse as Ellipse
 import LowLevel.Command exposing (arcTo, clockwise, counterClockwise, largestArc, lineTo, moveTo, smallestArc)
 import Point2d exposing (Point2d)
+import Quantity
 import Segment exposing (Segment(..))
 import SubPath
 import Test exposing (..)
@@ -67,7 +68,7 @@ xAngleFuzzer =
     Fuzz.map (\k -> toFloat k * (pi / 2)) (Fuzz.intRange 0 2)
 
 
-segment : Fuzz.Fuzzer Segment
+segment : Fuzz.Fuzzer (Segment a)
 segment =
     Fuzz.frequency
         [ ( 1, Fuzz.map2 Segment.line vec2 vec2 )
@@ -168,11 +169,11 @@ segments =
 startAndEnd =
     let
         createTests name value =
-            [ test (name ++ "- first point is (0, 42)") <|
+            [ test (name ++ ": first point is (0, 42)") <|
                 \_ ->
                     Segment.firstPoint value
                         |> expectEqualPoints ( 0, 42 )
-            , test (name ++ "- final point is (42, 0)") <|
+            , test (name ++ ": final point is (42, 0)") <|
                 \_ ->
                     Segment.finalPoint value
                         |> expectEqualPoints ( 42, 0 )
@@ -209,11 +210,18 @@ derivative =
             \_ ->
                 let
                     myArc =
-                        EllipticalArc2d.with { centerPoint = Point2d.fromCoordinates ( 5, 0 ), startAngle = -pi, sweptAngle = -(pi / 2), xDirection = Direction2d.fromAngle 0, xRadius = 5, yRadius = 5 }
+                        EllipticalArc2d.with
+                            { centerPoint = Point2d.unitless 5 0
+                            , startAngle = Angle.radians -pi
+                            , sweptAngle = Angle.radians -(pi / 2)
+                            , xDirection = Direction2d.fromAngle (Angle.radians 0)
+                            , xRadius = Quantity.float 5
+                            , yRadius = Quantity.float 5
+                            }
                 in
-                EllipticalArc2d.firstDerivative myArc ParameterValue.zero
+                EllipticalArc2d.firstDerivative myArc 0
                     |> Vector2d.normalize
-                    |> Vector2d.components
+                    |> Vector2d.toTuple Quantity.toFloat
                     |> expectEqualPoints ( 0, 1 )
         ]
 

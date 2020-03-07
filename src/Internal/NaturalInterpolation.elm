@@ -7,27 +7,30 @@ It's in a special module so that the internals can be tested separately.
 -}
 
 import List.Extra as List
+import Quantity exposing (Unitless)
 import Vector2d exposing (Vector2d)
 
 
 {-| calculate the control points for natural spline interpolation
 -}
-naturalControlPoints : List Vector2d -> List ( Vector2d, Vector2d, Vector2d )
+naturalControlPoints :
+    List (Vector2d Unitless coordinates)
+    -> List ( Vector2d Unitless coordinates, Vector2d Unitless coordinates, Vector2d Unitless coordinates )
 naturalControlPoints points =
     let
         ( xs, ys ) =
             points
-                |> List.map Vector2d.components
+                |> List.map (Vector2d.toTuple Quantity.toFloat)
                 |> List.unzip
     in
     case Maybe.map2 (\a b -> ( a, b )) (controlPoints xs) (controlPoints ys) of
         Just ( ( px0, px1 ), ( py0, py1 ) ) ->
             let
                 pa =
-                    List.map2 (\a b -> Vector2d.fromComponents ( a, b )) px0 py0
+                    List.map2 (\a b -> Vector2d.unitless a b) px0 py0
 
                 pb =
-                    List.map2 (\a b -> Vector2d.fromComponents ( a, b )) px1 py1
+                    List.map2 (\a b -> Vector2d.unitless a b) px1 py1
             in
             List.map3 (\a b c -> ( a, b, c )) pa pb (List.drop 1 points)
 

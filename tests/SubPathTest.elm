@@ -4,6 +4,7 @@ import Curve
 import Expect
 import Fuzz
 import LowLevel.Command exposing (lineTo, moveTo, quadraticCurveTo)
+import Quantity
 import Segment exposing (Segment(..))
 import SubPath
 import Test exposing (..)
@@ -31,13 +32,13 @@ left =
 
 
 slope =
+    -- TODO should this not be (100 ,100)? why the intermediate steps?
     Curve.linear
         [ ( 0, 0 )
-        , ( 100, 100 )
-            |> Vector2d.fromComponents
+        , Vector2d.unitless 100 100
             |> Vector2d.normalize
             |> Vector2d.scaleBy 100
-            |> Vector2d.components
+            |> Vector2d.toTuple Quantity.toFloat
         ]
 
 
