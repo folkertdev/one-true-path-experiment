@@ -129,7 +129,7 @@ type alias EllipticalArcArgument =
     , xAxisRotate : Float
     , arcFlag : LowLevel.ArcFlag
     , direction : LowLevel.Direction
-    , target : LowLevel.Coordinate
+    , target : ( Float, Float )
     }
 
 
