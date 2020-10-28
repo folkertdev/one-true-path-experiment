@@ -672,9 +672,9 @@ pointAlong parameterized t =
 tangentAlong : ArcLengthParameterized coordinates -> Float -> Maybe ( Float, Float )
 tangentAlong parameterized t =
     let
-        parameterValue : Quantity.Quantity Float Unitless
-        parameterValue =
-            Quantity.float (clamp 0 1 t)
+        lengthValue : Quantity.Quantity Float Unitless
+        lengthValue =
+            Quantity.float t
     in
     Maybe.map (\direction -> direction |> Direction2d.toVector |> Vector2d.toTuple Quantity.toFloat) <|
         case parameterized of
@@ -683,17 +683,17 @@ tangentAlong parameterized t =
 
             ParameterizedQuadratic spline ->
                 spline
-                    |> (\validSpline -> QuadraticSpline2d.tangentDirectionAlong validSpline parameterValue)
+                    |> (\validSpline -> QuadraticSpline2d.tangentDirectionAlong validSpline lengthValue)
                     |> Just
 
             ParameterizedCubic spline ->
                 spline
-                    |> (\validSpline -> CubicSpline2d.tangentDirectionAlong validSpline parameterValue)
+                    |> (\validSpline -> CubicSpline2d.tangentDirectionAlong validSpline lengthValue)
                     |> Just
 
             ParameterizedArc arc ->
                 arc
-                    |> (\validSpline -> EllipticalArc2d.tangentDirectionAlong validSpline parameterValue)
+                    |> (\validSpline -> EllipticalArc2d.tangentDirectionAlong validSpline lengthValue)
                     |> Just
 
 
