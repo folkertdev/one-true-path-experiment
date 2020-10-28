@@ -650,9 +650,8 @@ arcLength parameterized =
 pointAlong : ArcLengthParameterized coordinates -> Float -> ( Float, Float )
 pointAlong parameterized t =
     let
-        parameterValue : Quantity.Quantity Float Unitless
-        parameterValue =
-            Quantity.float (clamp 0 1 t)
+        lengthValue =
+            Quantity.float t
     in
     Point2d.toTuple Quantity.toFloat <|
         case parameterized of
@@ -660,13 +659,13 @@ pointAlong parameterized t =
                 LineSegment2d.interpolate lineSegment (t / Quantity.toFloat (LineSegment2d.length lineSegment))
 
             ParameterizedQuadratic spline ->
-                QuadraticSpline2d.pointAlong spline parameterValue
+                QuadraticSpline2d.pointAlong spline lengthValue
 
             ParameterizedCubic spline ->
-                CubicSpline2d.pointAlong spline parameterValue
+                CubicSpline2d.pointAlong spline lengthValue
 
             ParameterizedArc arc ->
-                EllipticalArc2d.pointAlong arc parameterValue
+                EllipticalArc2d.pointAlong arc lengthValue
 
 
 {-| -}
