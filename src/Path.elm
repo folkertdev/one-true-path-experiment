@@ -33,7 +33,7 @@ Most of the interesting stuff happens in the `SubPath` and `Curve` modules.
 -}
 
 import LowLevel.Command as Command
-import Parser
+import Parser.Advanced
 import Path.LowLevel as LowLevel
 import Path.LowLevel.Parser as PathParser
 import SubPath exposing (SubPath)
@@ -99,7 +99,7 @@ The parser uses [`elm-tools/parser`](http://package.elm-lang.org/packages/elm-to
 The error type is [`Parser.Error`](http://package.elm-lang.org/packages/elm-tools/parser/2.0.1/Parser#Error).
 
 -}
-parse : String -> Result (List Parser.DeadEnd) Path
+parse : String -> Result (List (Parser.Advanced.DeadEnd String String)) Path
 parse =
     Result.map fromLowLevel << PathParser.parse
 
