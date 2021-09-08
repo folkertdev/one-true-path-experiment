@@ -5,9 +5,9 @@ import Fuzz exposing (..)
 import Internal.NaturalInterpolation exposing (naturalControlPoints)
 import List.Extra as List
 import LowLevel.Command exposing (cubicCurveTo, lineTo, moveTo)
-import Path exposing (Path)
 import Quantity
-import SubPath
+import Svg.Path as Path exposing (SvgPath)
+import Svg.SubPath as SubPath
 import Test exposing (..)
 import Vector2d
 
@@ -161,7 +161,7 @@ controlPoints points =
     ( a_, b_ )
 
 
-natural : List ( Float, Float ) -> Path
+natural : List ( Float, Float ) -> SvgPath
 natural points =
     case points of
         [] ->

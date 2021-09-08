@@ -1,8 +1,8 @@
-module Path exposing
-    ( Path
-    , parse
+module Svg.Path exposing
+    ( parse
     , element, toString
     , fromLowLevel, toLowLevel
+    , SvgPath
     )
 
 {-| Module for layering SubPaths into Paths.
@@ -36,27 +36,27 @@ import LowLevel.Command as Command
 import Parser.Advanced
 import Path.LowLevel as LowLevel
 import Path.LowLevel.Parser as PathParser
-import SubPath exposing (SubPath)
 import Svg
 import Svg.Attributes
+import Svg.SubPath exposing (SubPath)
 
 
 {-| A path is a list of [`SubPath`](#subpath)s.
 -}
-type alias Path =
+type alias SvgPath =
     List SubPath
 
 
 {-| Construct an svg path element from a `Path` with the given attributes
 -}
-element : Path -> List (Svg.Attribute msg) -> Svg.Svg msg
+element : SvgPath -> List (Svg.Attribute msg) -> Svg.Svg msg
 element path attributes =
     Svg.path (Svg.Attributes.d (toString path) :: attributes) []
 
 
 {-| Turn a `Path` into a `String`. The result is ready to be used with the `d` attribute.
 
-    import Curve
+    import Svg.Curve as Curve
     import SubPath exposing (SubPath)
 
     myPath : SubPath
@@ -76,14 +76,14 @@ element path attributes =
         --> Ok arc
 
 -}
-toString : Path -> String
+toString : SvgPath -> String
 toString =
-    String.join " " << List.map SubPath.toString
+    String.join " " << List.map Svg.SubPath.toString
 
 
 {-| Parse a path string into a `Path`
 
-    import Curve
+    import Svg.Curve as Curve
     import SubPath exposing (SubPath)
 
     expected : SubPath
@@ -99,14 +99,14 @@ The parser uses [`elm-tools/parser`](http://package.elm-lang.org/packages/elm-to
 The error type is [`Parser.Error`](http://package.elm-lang.org/packages/elm-tools/parser/2.0.1/Parser#Error).
 
 -}
-parse : String -> Result (List (Parser.Advanced.DeadEnd String String)) Path
+parse : String -> Result (List (Parser.Advanced.DeadEnd String String)) SvgPath
 parse =
     Result.map fromLowLevel << PathParser.parse
 
 
 {-| Converting a svg-path-lowlevel subpath into a one-true-path subpath. Used in parsing
 -}
-fromLowLevel : List LowLevel.SubPath -> Path
+fromLowLevel : List LowLevel.SubPath -> SvgPath
 fromLowLevel lowlevels =
     case lowlevels of
         [] ->
@@ -128,7 +128,7 @@ fromLowLevel lowlevels =
                                 ( stateAfterDrawtos, newDrawTos ) =
                                     Command.fromLowLevelDrawTos drawtos stateAfterMoveTo
                             in
-                            ( stateAfterDrawtos, SubPath.with newMoveTo newDrawTos :: accum )
+                            ( stateAfterDrawtos, Svg.SubPath.with newMoveTo newDrawTos :: accum )
                     in
                     List.foldl folder ( initialCursorState, [] ) lowlevels
                         |> Tuple.second
@@ -137,6 +137,6 @@ fromLowLevel lowlevels =
 
 {-| Convert a path to a svg-path-lowlevel list of subpaths
 -}
-toLowLevel : Path -> List LowLevel.SubPath
+toLowLevel : SvgPath -> List LowLevel.SubPath
 toLowLevel =
-    List.filterMap SubPath.toLowLevel
+    List.filterMap Svg.SubPath.toLowLevel

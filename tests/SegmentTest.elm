@@ -1,7 +1,6 @@
 module SegmentTest exposing (angle, arc, cleanFloat, cleanVec2, conversionFromToDrawTo, derivative, segment, segments, startAndEnd, toSegments, vec2)
 
 import Angle
-import Curve
 import Direction2d
 import EllipticalArc2d exposing (EllipticalArc2d)
 import Expect
@@ -10,8 +9,9 @@ import Geometry.Ellipse as Ellipse
 import LowLevel.Command exposing (arcTo, clockwise, counterClockwise, largestArc, lineTo, moveTo, smallestArc)
 import Point2d exposing (Point2d)
 import Quantity
-import Segment exposing (Segment(..))
-import SubPath
+import Svg.Curve as Curve
+import Svg.Segment as Segment exposing (Segment(..))
+import Svg.SubPath as SubPath
 import Test exposing (..)
 import Vector2d exposing (Vector2d)
 

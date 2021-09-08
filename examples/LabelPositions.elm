@@ -1,6 +1,6 @@
 module Main exposing (main)
 
-import Curve
+import Svg.Curve as Curve
 import Html.Attributes exposing (attribute)
 import LowLevel.Command exposing (..)
 import OpenSolid.Direction2d as Direction2d

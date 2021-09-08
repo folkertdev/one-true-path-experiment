@@ -1,9 +1,9 @@
 module Issue7 exposing (suite)
 
 import Expect exposing (FloatingPointTolerance(..))
-import Path
-import Segment
-import SubPath
+import Svg.Path as Path
+import Svg.Segment as Segment
+import Svg.SubPath as SubPath
 import Test exposing (..)
 
 

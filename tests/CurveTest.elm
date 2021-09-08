@@ -57,11 +57,11 @@ console.log("4 points", result)
 
 -}
 
-import Curve exposing (..)
 import Expect
 import LowLevel.Command exposing (DrawTo(..), MoveTo(..))
-import Path
-import SubPath exposing (SubPath, decimalPlaces, mergeAdjacent)
+import Svg.Curve as Curve exposing (..)
+import Svg.Path as Path
+import Svg.SubPath as SubPath exposing (SubPath, decimalPlaces, mergeAdjacent)
 import Test exposing (..)
 
 

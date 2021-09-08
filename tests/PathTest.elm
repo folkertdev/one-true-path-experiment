@@ -3,9 +3,9 @@ module PathTest exposing (docsExample, fuzzCoordinate, fuzzMode, fuzzMoveTo, toA
 import Expect
 import Fuzz exposing (..)
 import LowLevel.Command as Command exposing (DrawTo(..), MoveTo(..))
-import Path
 import Path.LowLevel as LowLevel exposing (ArcFlag(..), Direction(..), Mode(..))
-import SubPath
+import Svg.Path as Path
+import Svg.SubPath as SubPath
 import Test exposing (..)
 
 

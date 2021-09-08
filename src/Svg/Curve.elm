@@ -1,4 +1,4 @@
-module Curve exposing
+module Svg.Curve exposing
     ( linear, linearClosed
     , cubicBezier, smoothCubicBezier, quadraticBezier, smoothQuadraticBezier
     , step, stepBefore, stepAfter
@@ -98,7 +98,7 @@ import List.Extra as List
 import LowLevel.Command as Command exposing (..)
 import Path.LowLevel as LowLevel exposing (Mode(..))
 import Quantity exposing (Unitless)
-import SubPath exposing (SubPath(..), close, connect, empty)
+import Svg.SubPath exposing (SubPath(..), close, connect, empty)
 import Vector2d exposing (Vector2d)
 
 
@@ -149,7 +149,7 @@ linear points =
             empty
 
         x :: xs ->
-            SubPath.with (moveTo x) [ lineTo xs ]
+            Svg.SubPath.with (moveTo x) [ lineTo xs ]
 
 
 {-| Draw a straigt line between the data points, connecting the ends.
@@ -164,7 +164,7 @@ linearClosed points =
             empty
 
         x :: xs ->
-            SubPath.with (moveTo x) [ lineTo xs, closePath ]
+            Svg.SubPath.with (moveTo x) [ lineTo xs, closePath ]
 
 
 {-| Shorthand to draw a sequence of cubic bezier segments
@@ -176,7 +176,7 @@ cubicBezier start points =
             empty
 
         x :: xs ->
-            SubPath.with (moveTo start) [ cubicCurveTo points ]
+            Svg.SubPath.with (moveTo start) [ cubicCurveTo points ]
 
 
 {-| Shorthand to draw a sequence of smooth cubic bezier segments
@@ -193,7 +193,7 @@ smoothCubicBezier start first points =
         lowLevelSubPath =
             { moveto = LowLevel.MoveTo Absolute start, drawtos = lowLevelDrawTos }
     in
-    SubPath.fromLowLevel lowLevelSubPath
+    Svg.SubPath.fromLowLevel lowLevelSubPath
 
 
 {-| Shorthand to draw a sequence of quadratic bezier segments
@@ -205,7 +205,7 @@ quadraticBezier start points =
             empty
 
         x :: xs ->
-            SubPath.with (moveTo start) [ quadraticCurveTo points ]
+            Svg.SubPath.with (moveTo start) [ quadraticCurveTo points ]
 
 
 {-| Shorthand to draw a sequence of smooth quadratic bezier segments
@@ -222,7 +222,7 @@ smoothQuadraticBezier start first points =
         lowLevelSubPath =
             { moveto = LowLevel.MoveTo Absolute start, drawtos = lowLevelDrawTos }
     in
-    SubPath.fromLowLevel lowLevelSubPath
+    Svg.SubPath.fromLowLevel lowLevelSubPath
 
 
 {-| Convert `(angle, radius)` pairs to `(x, y)` coordinates, relative to the given vector.
@@ -309,10 +309,10 @@ basis points =
     in
     case points of
         p0 :: p1 :: _ :: _ ->
-            SubPath.with (moveTo p0) (lineTo [ toFirst (Vector2d.fromTuple Quantity.float p0) (Vector2d.fromTuple Quantity.float p1) ] :: commonCase [] points)
+            Svg.SubPath.with (moveTo p0) (lineTo [ toFirst (Vector2d.fromTuple Quantity.float p0) (Vector2d.fromTuple Quantity.float p1) ] :: commonCase [] points)
 
         [ p0, p1 ] ->
-            SubPath.with (moveTo p0) [ lineTo [ p1 ] ]
+            Svg.SubPath.with (moveTo p0) [ lineTo [ p1 ] ]
 
         _ ->
             empty
@@ -358,7 +358,7 @@ basisClosed points =
                         |> Vector2d.scaleBy (1 / 6)
                         |> Vector2d.toTuple Quantity.toFloat
             in
-            SubPath.with (moveTo start)
+            Svg.SubPath.with (moveTo start)
                 [ cubicCurveTo (commonCase [] closing (p3 :: p4 :: rest)) ]
 
         [ p0_, p1_ ] ->
@@ -377,7 +377,7 @@ basisClosed points =
                     Vector2d.scaleBy (1 / 3) (Vector2d.plus p1 (Vector2d.scaleBy 2 p0))
                         |> Vector2d.toTuple Quantity.toFloat
             in
-            SubPath.with (moveTo start) [ lineTo [ end ], closePath ]
+            Svg.SubPath.with (moveTo start) [ lineTo [ end ], closePath ]
 
         _ ->
             empty
@@ -407,7 +407,7 @@ basisOpen points =
                         |> Vector2d.scaleBy (1 / 6)
                         |> Vector2d.toTuple Quantity.toFloat
             in
-            SubPath.with (moveTo start) [ cubicCurveTo (helper [] (p1 :: p :: pp :: rest)) ]
+            Svg.SubPath.with (moveTo start) [ cubicCurveTo (helper [] (p1 :: p :: pp :: rest)) ]
 
         _ ->
             empty
@@ -505,10 +505,10 @@ cardinal tension points =
     in
     case points of
         [ p0, p1 ] ->
-            SubPath.with (moveTo p0) [ lineTo [ p1 ] ]
+            Svg.SubPath.with (moveTo p0) [ lineTo [ p1 ] ]
 
         p0 :: p1 :: p2 :: rest ->
-            SubPath.with (moveTo p0) [ cubicCurveTo (cardinalPoint k p1 p0 p1 p2 :: helper [] points) ]
+            Svg.SubPath.with (moveTo p0) [ cubicCurveTo (cardinalPoint k p1 p0 p1 p2 :: helper [] points) ]
 
         _ ->
             empty
@@ -527,7 +527,7 @@ cardinalOpen tension points =
             List.map4 (cardinalPoint k) (p0 :: p1 :: p2 :: p3 :: rest) (p1 :: p2 :: p3 :: rest) (p2 :: p3 :: rest) (p3 :: rest)
                 |> cubicCurveTo
                 |> List.singleton
-                |> SubPath.with (moveTo p1)
+                |> Svg.SubPath.with (moveTo p1)
 
         _ ->
             empty
@@ -560,7 +560,7 @@ cardinalClosed tension points =
             empty
 
         [ p0, p1 ] ->
-            SubPath.with (moveTo p1) [ lineTo [ p0 ], closePath ]
+            Svg.SubPath.with (moveTo p1) [ lineTo [ p0 ], closePath ]
 
         p3 :: p4 :: p5 :: rest ->
             let
@@ -570,7 +570,7 @@ cardinalClosed tension points =
                     , cardinalPoint k p2 p3 p4 p5
                     ]
             in
-            SubPath.with (moveTo p4) [ cubicCurveTo (helper [] end points) ]
+            Svg.SubPath.with (moveTo p4) [ cubicCurveTo (helper [] end points) ]
 
 
 catmullRomDistance : Float -> Vector2d Unitless coordinates -> Vector2d Unitless coordinates -> ( Float, Float )
@@ -595,14 +595,14 @@ catmullRom alpha points =
     else
         case points of
             [ p1, p2 ] ->
-                SubPath.with (moveTo p1) [ lineTo [ p2 ] ]
+                Svg.SubPath.with (moveTo p1) [ lineTo [ p2 ] ]
 
             p0 :: p1 :: p2 :: rest ->
                 let
                     ending q0 q1 q2 =
                         [ catmullRomPoint alpha q0 q1 q2 q2 ]
                 in
-                SubPath.with (moveTo p0) [ cubicCurveTo (catmullRomHelper alpha ending (p0 :: points) []) ]
+                Svg.SubPath.with (moveTo p0) [ cubicCurveTo (catmullRomHelper alpha ending (p0 :: points) []) ]
 
             _ ->
                 empty
@@ -636,14 +636,14 @@ catmullRomOpen alpha points =
     else
         case points of
             [ p0, p1, p2 ] ->
-                SubPath.with (moveTo p1) [ closePath ]
+                Svg.SubPath.with (moveTo p1) [ closePath ]
 
             p0 :: p1 :: p2 :: p :: rest ->
                 let
                     ending _ _ _ =
                         []
                 in
-                SubPath.with (moveTo p1) [ cubicCurveTo (catmullRomHelper alpha ending points []) ]
+                Svg.SubPath.with (moveTo p1) [ cubicCurveTo (catmullRomHelper alpha ending points []) ]
 
             _ ->
                 empty
@@ -665,7 +665,7 @@ catmullRomClosed alpha points =
                 empty
 
             [ p1, p2 ] ->
-                SubPath.with (moveTo p2) [ lineTo [ p1 ], closePath ]
+                Svg.SubPath.with (moveTo p2) [ lineTo [ p1 ], closePath ]
 
             p3 :: p4 :: p5 :: rest ->
                 let
@@ -675,7 +675,7 @@ catmullRomClosed alpha points =
                         , catmullRomPoint alpha p2 p3 p4 p5
                         ]
                 in
-                SubPath.with (moveTo p4) [ cubicCurveTo (catmullRomHelper alpha ending points []) ]
+                Svg.SubPath.with (moveTo p4) [ cubicCurveTo (catmullRomHelper alpha ending points []) ]
 
 
 catmullRomPoint : Float -> ( Float, Float ) -> ( Float, Float ) -> ( Float, Float ) -> ( Float, Float ) -> Triplet ( Float, Float )
@@ -838,10 +838,10 @@ monotoneX points =
                 otherInstructions =
                     monotoneXHelper [] t1 (p1 :: p :: rest)
             in
-            SubPath.with (moveTo p0) [ cubicCurveTo (initialInstruction :: otherInstructions) ]
+            Svg.SubPath.with (moveTo p0) [ cubicCurveTo (initialInstruction :: otherInstructions) ]
 
         [ p0, p1 ] ->
-            SubPath.with (moveTo p0) [ lineTo [ p1 ] ]
+            Svg.SubPath.with (moveTo p0) [ lineTo [ p1 ] ]
 
         _ ->
             empty
@@ -883,7 +883,7 @@ monotoneY points =
     points
         |> List.map (\( x, y ) -> ( y, x ))
         |> monotoneX
-        |> SubPath.mapCoordinate (\( x, y ) -> ( y, x ))
+        |> Svg.SubPath.mapCoordinate (\( x, y ) -> ( y, x ))
 
 
 toH : Float -> Float -> Float
@@ -911,7 +911,7 @@ natural points =
             empty
 
         [ p1, p2 ] ->
-            SubPath.with (moveTo p1) [ lineTo [ p2 ] ]
+            Svg.SubPath.with (moveTo p1) [ lineTo [ p2 ] ]
 
         p :: _ :: _ ->
             let
@@ -921,7 +921,7 @@ natural points =
                         |> naturalControlPoints
                         |> List.map (mapTriplet (Vector2d.toTuple Quantity.toFloat))
             in
-            SubPath.with (moveTo p) [ cubicCurveTo cubicTriplets ]
+            Svg.SubPath.with (moveTo p) [ cubicCurveTo cubicTriplets ]
 
 
 {-| ![step](https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/step.svg)

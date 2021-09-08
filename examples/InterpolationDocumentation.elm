@@ -6,8 +6,8 @@ import Html exposing (..)
 import Html.Attributes
 import LowLevel.Command exposing (moveTo, lineTo, closePath)
 import SubPath exposing (subpath)
-import Path
-import Curve exposing (..)
+import SvgPath
+import Svg.Curve as Curve exposing (..)
 import Color
 import Color.Interpolate as Color exposing (Space(LAB))
 import Color.Convert as Color
