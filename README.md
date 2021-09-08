@@ -22,7 +22,7 @@ The code for drawing the letter H looks like this:
 
 ```elm
 import SubPath exposing SubPath
-import Curve
+import Svg.Curve as Curve
 import Svg exposing (Svg)
 import Svg.Attributes exposing 
     (width, height, viewBox, fill, stroke)
@@ -71,8 +71,8 @@ A `SubPath` can be `ArcLengthParameterized`, to sample the curve, animate along 
 Finally, a piece of svg path syntax can be parsed into a list of `SubPath`s
 
 ```elm
-import Path 
-import SubPath
+import SvgPath 
+import Svg.SubPath as SubPath
 
 pathAsString = 
     """
@@ -87,7 +87,7 @@ pathAsString =
     """
 
 path = 
-    Path.parse pathAsString
+    SvgPath.parse pathAsString
         |> Result.toMaybe
         |> Maybe.andThen List.head
 ```
@@ -103,7 +103,7 @@ access the `OpenSolid` values and use that package to modify your geometry.
 
 ## Others 
 
-The `Path` module is a convenience for when you have a list of `SubPath`s and want to render them into one `path` element.
+The `SvgPath` module is a convenience for when you have a list of `SubPath`s and want to render them into one `path` element.
 
 The `LowLevel.Command` module is meant for package authors. It allows more control over the generated svg instructions, but 
 is pretty cumbersome to work with. Try to stay away from it.

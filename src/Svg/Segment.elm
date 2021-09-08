@@ -1,4 +1,4 @@
-module Segment exposing
+module Svg.Segment exposing
     ( Segment(..)
     , line, quadratic, cubic, ellipticalArc
     , at, angle

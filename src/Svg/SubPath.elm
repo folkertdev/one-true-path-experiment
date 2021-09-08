@@ -1,4 +1,4 @@
-module SubPath exposing
+module Svg.SubPath exposing
     ( SubPath
     , with, empty
     , element, toString, toStringWith
@@ -18,10 +18,10 @@ module SubPath exposing
 t
 In most cases it should be created with functions from the `Curve` module.
 
-    import Curve
     import SubPath exposing (connect)
     import Svg
     import Svg.Attributes exposing (fill)
+    import Svg.Curve as Curve
 
     right =
         Curve.linear [ ( 0, 0 ), ( 1, 0 ) ]
@@ -73,7 +73,7 @@ And can generate svg elements
 
 ![composition of subpaths](https://rawgit.com/folkertdev/one-true-path-experiment/master/docs/subpath-composition.svg)
 
-    import Curve
+    import Svg.Curve as Curve
 
     curve : SubPath
     curve =
@@ -139,9 +139,9 @@ import LowLevel.Command as Command exposing (CursorState, DrawTo(..), MoveTo(..)
 import Path.LowLevel as LowLevel
 import Point2d exposing (Point2d)
 import Quantity
-import Segment exposing (Segment)
 import Svg
 import Svg.Attributes
+import Svg.Segment as Segment exposing (Segment)
 import Vector2d exposing (Vector2d)
 
 
@@ -233,7 +233,7 @@ optionFolder option config =
 
 {-| Set the maximum number of decimal places in the output
 
-    import Curve
+    import Svg.Curve as Curve
 
     line : SubPath
     line = Curve.linear [ (0, 0), (1/3, 1/7) ]
@@ -254,7 +254,7 @@ decimalPlaces =
 This can save a few characters, but more importantly makes
 comparison of subpaths (based on the ouput string) more reliable.
 
-    import Curve
+    import Svg.Curve as Curve
 
     right : SubPath
     right = Curve.linear [ (0, 0), (1, 0) ]
@@ -281,7 +281,7 @@ mergeAdjacent =
 
 {-| Convert a subpath into SVG path notation
 
-    import Curve
+    import Svg.Curve as Curve
 
     line : SubPath
     line = Curve.linear [ (0,0), (10,10), (10, 20) ]
@@ -483,8 +483,8 @@ finalCursorState { moveto, drawtos } =
 In the conversion, the starting point of a segment is discarded:
 It is assumed that for every two adjacent segments in the list, the first segment's end point is the second segment's starting point
 
-    import Curve
-    import Segment exposing (line)
+    import Svg.Curve as Curve
+    import Svg.Segment as Segment exposing (line)
 
 
     [ line (0,0) (10,10) , line (10, 10) (20, 10) ]
@@ -505,8 +505,8 @@ fromSegments segments =
 
 {-| Convert a subpath to its `Segment`s
 
-    import Curve
-    import Segment exposing (line)
+    import Svg.Curve as Curve
+    import Svg.Segment as Segment exposing (line)
 
     Curve.linear [ (0,0), (10,10), (20, 10) ]
         |> toSegments
@@ -800,7 +800,7 @@ arcLengthParameterizedHelper tolerance segments =
 
 {-| Find the total arc length of an elliptical arc. This will be accurate to within the tolerance given when calling arcLengthParameterized.
 
-    import Curve
+    import Svg.Curve as Curve
 
     Curve.linear [ (0,0), (100, 0) ]
         |> arcLengthParameterized 1e-4
@@ -901,7 +901,7 @@ traverse tagger parameterized t =
 
 {-| A point at some distance along the curve.
 
-    import Curve
+    import Svg.Curve as Curve
 
     parameterized : ArcLengthParameterized
     parameterized =
@@ -919,7 +919,7 @@ pointAlong parameterized t =
 
 {-| The tangent along the curve
 
-    import Curve
+    import Svg.Curve as Curve
 
     parameterized : ArcLengthParameterized
     parameterized =
@@ -952,7 +952,7 @@ arcLengthToParameterValue parameterized t =
 {-| Find `n` evenly spaced points on an arc length parameterized subpath
 Includes the start and end point.
 
-    import Curve
+    import Svg.Curve as Curve
 
     curve : ArcLengthParameterized
     curve =

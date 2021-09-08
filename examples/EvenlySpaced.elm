@@ -6,10 +6,10 @@ import Html.Attributes as Attributes
 import Html.Events as Events
 import Svg.Attributes exposing (width, height, fill, stroke)
 import Html.Attributes
-import CurveImages exposing (gridRect, svgGrid, nodes)
-import Curve
-import SubPath
-import Path
+import Svg.Curve as CurveImages exposing (gridRect, svgGrid, nodes)
+import Svg.Curve as Curve
+import Svg.SubPath as SubPath
+import SvgPath
 import Geometry.Ellipse exposing (signedAngle)
 import AnimationFrame
 import Time exposing (Time)

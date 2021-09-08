@@ -1,12 +1,12 @@
 module SubPathTest exposing (arcLengthParameterization, down, left, n, right, slope, tests, u, up)
 
-import Curve
 import Expect
 import Fuzz
 import LowLevel.Command exposing (lineTo, moveTo, quadraticCurveTo)
 import Quantity
-import Segment exposing (Segment(..))
-import SubPath
+import Svg.Curve as Curve
+import Svg.Segment as Segment exposing (Segment(..))
+import Svg.SubPath as SubPath
 import Test exposing (..)
 import Vector2d
 

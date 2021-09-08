@@ -11,10 +11,10 @@ and then used in the documentations
 -}
 
 import Color
-import Curve
+import Svg.Curve as Curve
 import Html
 import Html.Attributes
-import Path
+import SvgPath
 import SubPath exposing (SubPath, with)
 import Svg exposing (Attribute, Svg)
 import Svg.Attributes exposing (..)
