@@ -313,9 +313,17 @@ fromLowLevelDrawTo drawto ({ start, cursor } as state) =
                     ( LineTo points
                     , { state | cursor = ( Tuple.first final, Tuple.second cursor ), previousControlPoint = Nothing }
                     )
+
+                other =
+                    case mode of
+                        Absolute ->
+                            Tuple.second cursor
+
+                        Relative ->
+                            0
             in
             xs
-                |> List.map (\x -> ( x, 0 ))
+                |> List.map (\x -> ( x, other ))
                 |> toAbsoluteFloat mode cursor
                 |> Maybe.map updateState
 
@@ -325,9 +333,17 @@ fromLowLevelDrawTo drawto ({ start, cursor } as state) =
                     ( LineTo points
                     , { state | cursor = ( Tuple.first cursor, Tuple.second final ), previousControlPoint = Nothing }
                     )
+
+                other =
+                    case mode of
+                        Absolute ->
+                            Tuple.first cursor
+
+                        Relative ->
+                            0
             in
             ys
-                |> List.map (\y -> ( 0, y ))
+                |> List.map (\y -> ( other, y ))
                 |> toAbsoluteFloat mode cursor
                 |> Maybe.map updateState
 

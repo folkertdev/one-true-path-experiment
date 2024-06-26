@@ -1,17 +1,16 @@
 module EvenlySpaced exposing (..)
 
-import Svg
+import AnimationFrame
+import Curve
+import CurveImages exposing (gridRect, nodes, svgGrid)
+import Geometry.Ellipse exposing (signedAngle)
 import Html
 import Html.Attributes as Attributes
 import Html.Events as Events
-import Svg.Attributes exposing (width, height, fill, stroke)
-import Html.Attributes
-import CurveImages exposing (gridRect, svgGrid, nodes)
-import Curve
-import SubPath
 import Path
-import Geometry.Ellipse exposing (signedAngle)
-import AnimationFrame
+import SubPath
+import Svg
+import Svg.Attributes exposing (fill, height, stroke, width)
 import Time exposing (Time)
 import Vector2 as Vec2
 
@@ -59,7 +58,7 @@ update msg model =
                         size =
                             segmentLength model.count
                     in
-                        floatModulo new size
+                    floatModulo new size
               }
             , Cmd.none
             )
@@ -94,8 +93,8 @@ arrowHead location tangent =
         b =
             SubPath.rotate (angle + (pi + pi / 4)) line
     in
-        SubPath.reverse a
-            |> SubPath.continue b
+    SubPath.reverse a
+        |> SubPath.continue b
 
 
 view : Model -> Html.Html Msg
@@ -116,12 +115,12 @@ view { count, offset } =
             List.map2 arrowHead locations tangents
                 |> flip Path.element [ fill "none", stroke "black" ]
     in
-        CurveImages.grid { width = 600, height = 400 }
-            []
-            (SubPath.element mySubPath [ fill "none", stroke "black" ]
-                :: arrowHeads
-                :: (nodes "black" points ++ nodes "red" locations)
-            )
+    CurveImages.grid { width = 600, height = 400 }
+        []
+        (SubPath.element mySubPath [ fill "none", stroke "black" ]
+            :: arrowHeads
+            :: (nodes "black" points ++ nodes "red" locations)
+        )
 
 
 view2 : Model -> Html.Html Msg
@@ -142,13 +141,13 @@ view2 { count, offset } =
             List.map2 arrowHead locations tangents
                 |> flip Path.element [ fill "none", stroke "black" ]
     in
-        Html.div
+    Html.div
+        []
+        [ CurveImages.grid { width = 1000, height = 400 }
             []
-            [ CurveImages.grid { width = 1000, height = 400 }
-                []
-                (SubPath.element mySubPath [ fill "none", stroke "black" ]
-                    :: arrowHeads
-                    :: (nodes "black" points ++ nodes "red" locations)
-                )
-            , Html.input [ Attributes.type_ "range", Attributes.min "0", Attributes.max "20", Events.onInput Count ] []
-            ]
+            (SubPath.element mySubPath [ fill "none", stroke "black" ]
+                :: arrowHeads
+                :: (nodes "black" points ++ nodes "red" locations)
+            )
+        , Html.input [ Attributes.type_ "range", Attributes.min "0", Attributes.max "20", Events.onInput Count ] []
+        ]

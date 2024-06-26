@@ -1,17 +1,17 @@
 module InterpolationDocumentation exposing (..)
 
-import Svg
-import Svg.Attributes exposing (..)
+import Color
+import Color.Convert as Color
+import Color.Interpolate as Color exposing (Space(..))
+import Color.Manipulate as Color
+import Curve exposing (..)
 import Html exposing (..)
 import Html.Attributes
-import LowLevel.Command exposing (moveTo, lineTo, closePath)
-import SubPath exposing (subpath)
+import LowLevel.Command exposing (closePath, lineTo, moveTo)
 import Path
-import Curve exposing (..)
-import Color
-import Color.Interpolate as Color exposing (Space(LAB))
-import Color.Convert as Color
-import Color.Manipulate as Color
+import SubPath exposing (subpath)
+import Svg
+import Svg.Attributes exposing (..)
 
 
 (=>) =
@@ -56,8 +56,8 @@ smallGrid dim =
         p =
             [ subpath (moveTo ( dim, 0 )) [ lineTo [ ( 0, 0 ), ( 0, dim ) ] ] ]
     in
-        Svg.pattern [ id "smallGrid", width (Basics.toString dim), height (Basics.toString dim), patternUnits "userSpaceOnUse" ]
-            [ Path.element p [ fill "none", stroke "white", strokeWidth "1" ] ]
+    Svg.pattern [ id "smallGrid", width (Basics.toString dim), height (Basics.toString dim), patternUnits "userSpaceOnUse" ]
+        [ Path.element p [ fill "none", stroke "white", strokeWidth "1" ] ]
 
 
 grid dim =
@@ -65,10 +65,10 @@ grid dim =
         p =
             [ subpath (moveTo ( dim, 0 )) [ lineTo [ ( 0, 0 ), ( 0, dim ) ] ] ]
     in
-        Svg.pattern [ id "grid", width (Basics.toString dim), height (Basics.toString dim), patternUnits "userSpaceOnUse" ]
-            [ Svg.rect [ width (Basics.toString dim), height (Basics.toString dim), fill "url(#smallGrid)" ] []
-            , Path.element p [ fill "none", stroke "white", strokeWidth "1.5" ]
-            ]
+    Svg.pattern [ id "grid", width (Basics.toString dim), height (Basics.toString dim), patternUnits "userSpaceOnUse" ]
+        [ Svg.rect [ width (Basics.toString dim), height (Basics.toString dim), fill "url(#smallGrid)" ] []
+        , Path.element p [ fill "none", stroke "white", strokeWidth "1.5" ]
+        ]
 
 
 tau =
@@ -124,13 +124,13 @@ stacked name toPath points =
         labels =
             List.indexedMap label values
     in
-        Svg.svg [ width "1000", height "400", Html.Attributes.style [ ( "background-color", "#efefef" ) ] ] (svgGrid :: gridRect :: (labels ++ paths ++ nodes points))
+    Svg.svg [ width "1000", height "400", Html.Attributes.style [ ( "background-color", "#efefef" ) ] ] (svgGrid :: gridRect :: (labels ++ paths ++ nodes points))
 
 
 nodes points =
     List.map
         (\( xx, yy ) ->
-            Svg.circle [ fill "white", stroke "black", strokeWidth "2", cx (Basics.toString xx), cy (Basics.toString (yy)), r "4" ] []
+            Svg.circle [ fill "white", stroke "black", strokeWidth "2", cx (Basics.toString xx), cy (Basics.toString yy), r "4" ] []
         )
         points
 
@@ -157,7 +157,7 @@ diagram name toPath points =
         gridRect =
             Svg.rect [ width "100%", height "100%", fill "url(#grid)" ] []
     in
-        Svg.svg [ width "1000", height "400", Html.Attributes.style [ ( "background-color", "#efefef" ) ] ] (svgGrid :: gridRect :: label :: path :: nodes points)
+    Svg.svg [ width "1000", height "400", Html.Attributes.style [ ( "background-color", "#efefef" ) ] ] (svgGrid :: gridRect :: label :: path :: nodes points)
 
 
 continuing : List ( Float, Float ) -> SubPath.SubPath
@@ -185,16 +185,16 @@ continuing points =
                 |> SubPath.continue right
                 |> SubPath.continue down
     in
-        down
-            |> SubPath.continue right
-            |> SubPath.continueSmooth right
-            |> SubPath.continueSmooth slope
-            |> SubPath.continueSmooth up
-            |> SubPath.continueSmooth down
-            |> SubPath.continueSmooth u
-            |> SubPath.continueSmooth u
-            |> SubPath.continueSmooth up
-            |> SubPath.continueSmooth up
+    down
+        |> SubPath.continue right
+        |> SubPath.continueSmooth right
+        |> SubPath.continueSmooth slope
+        |> SubPath.continueSmooth up
+        |> SubPath.continueSmooth down
+        |> SubPath.continueSmooth u
+        |> SubPath.continueSmooth u
+        |> SubPath.continueSmooth up
+        |> SubPath.continueSmooth up
 
 
 
@@ -234,9 +234,9 @@ test points =
         back =
             List.drop (v - 1) points
     in
-        front
-            |> linear
-            |> SubPath.continueSmooth (linear back)
+    front
+        |> linear
+        |> SubPath.continueSmooth (linear back)
 
 
 main =

@@ -200,7 +200,7 @@ naturalControlPoints points =
 
 tests =
     describe "natural interpolation"
-        [ fuzz (list (tuple ( float, float ))) "control points" <|
+        [ fuzz (list (pair float float)) "control points" <|
             \points ->
                 case points of
                     _ :: _ :: _ ->
