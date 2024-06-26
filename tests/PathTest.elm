@@ -89,7 +89,7 @@ toAbsoluteConversion =
         , test "horizontal absolute" <|
             \_ ->
                 fromLowLevelDrawTo startConfig (LowLevel.Horizontal Absolute [ 10 ])
-                    |> Expect.equal (Just ( LineTo [ ( 10, 0 ) ], { startConfig | cursor = ( 10, 100 ) } ))
+                    |> Expect.equal (Just ( LineTo [ ( 10, 100 ) ], { startConfig | cursor = ( 10, 100 ) } ))
         , test "vertical relative" <|
             \_ ->
                 fromLowLevelDrawTo startConfig (LowLevel.Vertical Relative [ 10 ])
@@ -97,7 +97,7 @@ toAbsoluteConversion =
         , test "vertical absolute" <|
             \_ ->
                 fromLowLevelDrawTo startConfig (LowLevel.Vertical Absolute [ 10 ])
-                    |> Expect.equal (Just ( LineTo [ ( 0, 10 ) ], { startConfig | cursor = ( 100, 10 ) } ))
+                    |> Expect.equal (Just ( LineTo [ ( 100, 10 ) ], { startConfig | cursor = ( 100, 10 ) } ))
         , test "curveTo relative" <|
             \_ ->
                 fromLowLevelDrawTo startConfig (LowLevel.CurveTo Relative [ ( ( 0, 5 ), ( 10, 5 ), ( 10, 10 ) ) ])
